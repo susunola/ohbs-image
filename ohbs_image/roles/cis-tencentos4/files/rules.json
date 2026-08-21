@@ -3415,10 +3415,10 @@
       1
     ],
     "platforms": [],
-    "assessment": "Manual",
-    "family": "manual",
+    "assessment": "Automated",
+    "family": "rsyslog_no_receive",
     "params": {},
-    "risk": "none",
+    "risk": "safe",
     "page": 475
   },
   {
