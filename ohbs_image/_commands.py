@@ -38,7 +38,7 @@ from ._reports import (
 def _write_build_result(args: argparse.Namespace, r: ResolvedConfig, *, status: str,
                         image_name: str, image_ids: list[str], score: float | None,
                         report: Path | None = None, provenance: Path | None = None,
-                        signed: bool = False, reason: str = "") -> None:
+                        signed: bool = False, reason: str = "") -> bool:
     """Optionally persist one stable JSON contract for build automation."""
     result_file = getattr(args, "result_file", None)
     # argparse always supplies a string.  Deliberately avoid PathLike's
@@ -46,7 +46,7 @@ def _write_build_result(args: argparse.Namespace, r: ResolvedConfig, *, status: 
     # accidentally create a directory named after the object in test or host
     # working directories.
     if not isinstance(result_file, str) or not result_file:
-        return
+        return True
     doc = {
         "schema": "https://ohbs-image.dev/result/v1",
         "status": status,
@@ -66,8 +66,19 @@ def _write_build_result(args: argparse.Namespace, r: ResolvedConfig, *, status: 
         _atomic_write_bytes(Path(result_file),
                             (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
         info(f"Build result -> {result_file}")
+        return True
     except OSError as exc:
         warn(f"Could not write build result {result_file}: {exc}")
+        return False
+
+
+def _attestation_allows_release(r: ResolvedConfig, provenance: Path | None) -> bool:
+    """Return whether configured evidence policy permits a success event."""
+    signed = bool(provenance and provenance.with_suffix(provenance.suffix + ".sig").is_file())
+    if getattr(r, "attestation_required", False) is True and not signed:
+        fail("required attestation was not signed — release actions are blocked")
+        return False
+    return True
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -318,6 +329,16 @@ def cmd_build(args: argparse.Namespace) -> int:
                                          sbom_sha=sbom_sha, sbom_count=sbom_count)
         if lin:
             info(f"Lineage recorded -> {lin}")
+        # An explicitly requested result artifact is part of the release
+        # contract.  Do not share or trigger deployment if it could not be
+        # written for the downstream automation that requested it.
+        if not _write_build_result(args, r, status="approved", image_name=image_name,
+                                   image_ids=image_ids, score=score, report=rep,
+                                   provenance=prov, signed=signed):
+            fail("requested build result could not be written — release actions are blocked")
+            _send_notification(r, False, image_ids, score, image_name)
+            _close_build_log(_fh)
+            return 1
         # P2#9 — sharing occurs only after the evidence and clean-boot gates.
         if r.image_share_accounts and image_ids:
             ohbs_image._share_images(r, image_ids, r.image_share_accounts)
@@ -330,10 +351,10 @@ def cmd_build(args: argparse.Namespace) -> int:
         ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
                         sbom_sha=sbom_sha, sbom_count=sbom_count)
 
-    _write_build_result(args, r, status="approved" if success else "failed",
-                        image_name=image_name, image_ids=image_ids, score=score,
-                        report=rep, provenance=prov, signed=signed,
-                        reason="" if success else "packer build failed")
+    if not success:
+        _write_build_result(args, r, status="failed", image_name=image_name,
+                            image_ids=image_ids, score=score, report=rep,
+                            provenance=prov, signed=signed, reason="packer build failed")
     # [notify] — WeCom webhook; never affects the exit code.
     _send_notification(r, success, image_ids, score, image_name)
 
@@ -382,6 +403,45 @@ def cmd_images(args: argparse.Namespace) -> int:
         src = str(rec.get("source_image_id") or "")
         print(f"{ts:s}  {status:6s}  L{level if level is not None else '?'}  "
               f"score={score_s:>6s}  {name:s}  src={src:s}  ->  {imgs}")
+    return 0
+
+
+def cmd_cleanup_runs(args: argparse.Namespace) -> int:
+    """Retire tagged, orphaned ephemeral build/probe CVMs (dry-run by default)."""
+    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    if prep is None:
+        return 1
+    r, _ = prep
+    cutoff = datetime.now(UTC).timestamp() - args.older_than * 3600
+    try:
+        instances = ohbs_image._list_ephemeral_instances(r)
+    except ConfigError as exc:
+        fail(str(exc))
+        return 1
+    stale: list[str] = []
+    for instance in instances:
+        created = str(instance.get("CreatedTime", ""))
+        try:
+            created_ts = datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            warn(f"Skipping {instance.get('InstanceId', '?')}: unparseable CreatedTime {created!r}")
+            continue
+        if created_ts <= cutoff and isinstance(instance.get("InstanceId"), str):
+            stale.append(instance["InstanceId"])
+    if not stale:
+        ok(f"No tagged ephemeral runs older than {args.older_than} hour(s).")
+        return 0
+    for instance_id in stale:
+        warn(f"{'terminating' if args.apply else '[dry-run] would terminate'} {instance_id}")
+    if not args.apply:
+        info("Re-run with --apply to terminate these tagged ephemeral instances.")
+        return 0
+    try:
+        ohbs_image._terminate_ephemeral_instances(r, stale)
+    except ConfigError as exc:
+        fail(str(exc))
+        return 1
+    ok(f"Terminated {len(stale)} tagged ephemeral instance(s).")
     return 0
 
 def cmd_check_source(args: argparse.Namespace) -> int:
@@ -1025,8 +1085,12 @@ def cmd_scan(args: argparse.Namespace) -> int:
         return 1
 
     ok(f"Output image ID(s): {', '.join(image_ids)}")
+    provenance = ohbs_image._write_provenance(r, image_ids, image_name, score)
+    if not _attestation_allows_release(r, provenance):
+        ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False, mode="scan")
+        _send_notification(r, False, image_ids, score, image_name)
+        return 1
     ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True, mode="scan")
-    ohbs_image._write_provenance(r, image_ids, image_name, score)
     info(f"Audit report archived -> {rep}")
     _send_notification(r, True, image_ids, score, image_name)
     return 0

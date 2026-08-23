@@ -174,6 +174,8 @@ ohbs-image images [--latest] [-n N]           # list recorded builds (lineage)
 ohbs-image pending                            # change detection: is a rebuild required? (exit 0/1)
 ohbs-image cleanup-images [--older-than 30]   # retire old images by lineage age
 ohbs-image cleanup-images --apply             # actually delete (default = dry run)
+ohbs-image cleanup-runs --older-than 24       # find tagged orphaned build/probe CVMs (dry run)
+ohbs-image cleanup-runs --older-than 24 --apply # actually terminate the tagged CVMs
 ohbs-image verify --provenance <file>         # verify a SLSA provenance signature
 ohbs-image verify --image <img-id>            # ... or locate provenance by image ID
 ohbs-image verify-image --image <img-id>      # clean-boot verification of a produced image
@@ -190,6 +192,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 |---|---|---|
 | `--config <path>` | all | Config file path (default `./ohbs-image.toml`) |
 | `--workdir <dir>` | all | Build output directory (default `./.ohbs-image-build`) |
+| `--state-dir <dir>` | build/scan/etc. | Evidence state directory (or `OHBS_IMAGE_STATE_DIR`) |
 | `--quiet` | validate, build, scan | Suppress packer output |
 | `--debug` | validate, build, scan | Enable `PACKER_LOG=1` |
 | `-y` / `--yes` | build | Skip confirmation prompt |
@@ -204,6 +207,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | `--baseline <name>` | audit | inspec baseline (default `dev-sec/linux-baseline`) |
 | `--parse <csv>` | audit --tool kitty | HardeningKitty audit CSV export to parse |
 | `--older-than <days>` | cleanup-images | Retire builds older than N days (default `30`) |
+| `--older-than <hours>` | cleanup-runs | Retire tagged ephemeral CVMs older than N hours (default `24`) |
 | `--keep-latest <n>` | cleanup-images | Always keep the newest N builds (default `1`) |
 | `--unused-since <days>` | cleanup-images | Only delete images NOT shared with other accounts; the in-use guard expires N days after the lineage record — older shared images are presumed unused and retired anyway (`0` = off) |
 | `--apply` | cleanup-images | Actually delete (default is a dry run) |
@@ -705,6 +709,12 @@ distribute pipeline):
   Evidence is stored with owner-only permissions under `~/.ohbs-image`; each
   build receives a UUID run ID, so concurrent builds do not reuse provenance
   filenames or invocation IDs.
+
+  Webhook endpoints must use HTTPS. Deploy events carry the build `run_id` as
+  both `event_id` and `Idempotency-Key`; delivery retries transient failures
+  three times. Use `--state-dir /secure/ohbs-state` (or
+  `OHBS_IMAGE_STATE_DIR`) to isolate CI jobs or retain team evidence outside a
+  runner home directory.
 
 - **SBOM + change detection (supply chain)** — with `[meta].sbom = true` the
   build emits a zero-dependency SBOM (`/opt/ohbs-image-SBOM.jsonl`, native

@@ -553,6 +553,30 @@ def _fetch_baseline(r: ResolvedConfig, image_id: str) -> dict[str, Any] | None:
             warn(f"Baseline file {local} is corrupt — ignoring")
     return None  # caller fetches the in-image one over SSH
 
+def _list_ephemeral_instances(r: ResolvedConfig) -> list[dict[str, Any]]:
+    """List only build/probe CVMs explicitly tagged as ohbs-image ephemeral."""
+    sid, skey, tok = _creds(r.secret_id_env, r.secret_key_env, r.security_token_env)
+    if not sid or not skey:
+        raise ConfigError("Tencent Cloud credentials are required to inspect ephemeral runs")
+    response = ohbs_image._tc3_api(
+        "cvm", "DescribeInstances", "2017-03-12", r.region,
+        {"Filters": [{"Name": "tag:managed_by", "Values": ["ohbs-image"]},
+                     {"Name": "tag:ephemeral", "Values": ["true"]}]},
+        sid, skey, tok or None)
+    return cast("list[dict[str, Any]]", response.get("Response", {}).get("InstanceSet") or [])
+
+
+def _terminate_ephemeral_instances(r: ResolvedConfig, instance_ids: list[str]) -> None:
+    """Terminate an explicit, already-reviewed set of tagged ephemeral CVMs."""
+    if not instance_ids:
+        return
+    sid, skey, tok = _creds(r.secret_id_env, r.secret_key_env, r.security_token_env)
+    response = ohbs_image._tc3_api("cvm", "TerminateInstances", "2017-03-12", r.region,
+                                   {"InstanceIds": instance_ids}, sid, skey, tok or None)
+    if "Error" in response.get("Response", {}):
+        raise ConfigError(f"TerminateInstances failed: {response['Response']['Error']}")
+
+
 def _share_images(r: ResolvedConfig, image_ids: list[str], accounts: list[str]) -> None:
     """Share built images with other Tencent Cloud accounts (P2#9).
 

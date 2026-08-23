@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from ._catalog import _catalog_basename, _catalog_path, _is_legacy_benchmark
 from ._logging import ConfigError, warn
@@ -146,6 +148,18 @@ def _read_required_str(data: dict[str, Any], section: str, key: str) -> str:
     if not cleaned:
         raise ConfigError(f"[{section}].{key} must not be empty.")
     return cleaned
+
+
+def _validate_https_url(value: str, label: str) -> str:
+    """Validate an optional notification endpoint without permitting SSRF-by-default."""
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise ConfigError(f"{label} must be an absolute https URL.")
+    if parsed.username or parsed.password:
+        raise ConfigError(f"{label} must not contain URL credentials.")
+    return value
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -398,7 +412,8 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
 
     # [notify] — WeCom group-robot webhook; empty webhook disables notifications.
     notify = _get_table(data, "notify")
-    notify_webhook = str(notify.get("webhook", "")).strip()
+    notify_webhook = _validate_https_url(str(notify.get("webhook", "")).strip(),
+                                         "[notify].webhook")
     notify_on = str(notify.get("on", "failure")).strip().lower()
     if notify_on not in ("always", "success", "failure"):
         raise ConfigError(
@@ -546,7 +561,9 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         allow_scoped_approval=allow_scoped_approval,
         notify_webhook=notify_webhook,
         notify_on=notify_on,
-        deploy_webhook=str(data.get("notify", {}).get("deploy_webhook", "")).strip(),
+        deploy_webhook=_validate_https_url(
+            str(data.get("notify", {}).get("deploy_webhook", "")).strip(),
+            "[notify].deploy_webhook"),
         sign_key=sign_key,
         attestation_required=attestation_required,
         test_components=test_components,
@@ -554,7 +571,13 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
     )
 
 def _lineage_path() -> Path:
-    return Path.home() / ".ohbs-image" / "lineage.jsonl"
+    return _state_dir() / "lineage.jsonl"
 
 def _reports_dir() -> Path:
-    return Path.home() / ".ohbs-image" / "reports"
+    return _state_dir() / "reports"
+
+
+def _state_dir() -> Path:
+    """Return the evidence root, configurable for isolated CI/team storage."""
+    raw = os.environ.get("OHBS_IMAGE_STATE_DIR", "").strip()
+    return Path(raw).expanduser() if raw else Path.home() / ".ohbs-image"

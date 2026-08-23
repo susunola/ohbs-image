@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 import ohbs_image
@@ -11,6 +12,7 @@ from ._commands import (
     cmd_check_source,
     cmd_clean,
     cmd_cleanup_images,
+    cmd_cleanup_runs,
     cmd_drift,
     cmd_images,
     cmd_init,
@@ -34,6 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Path to config file (default ./ohbs-image.toml)")
     common.add_argument("--workdir", default=DEFAULT_WORKDIR,
                         help=f"Rendered working directory (default ./{DEFAULT_WORKDIR})")
+    common.add_argument("--state-dir", default=None,
+                        help="Evidence state directory (default $OHBS_IMAGE_STATE_DIR or ~/.ohbs-image)")
 
     parser = argparse.ArgumentParser(
         prog="ohbs-image",
@@ -202,6 +206,13 @@ def build_parser() -> argparse.ArgumentParser:
                           help="Actually delete images (default is a dry run)")
     p_clnimg.set_defaults(func=cmd_cleanup_images)
 
+    p_clnruns = sub.add_parser("cleanup-runs", parents=[common],
+                               help="Retire tagged orphaned build/probe CVMs (dry-run by default)")
+    p_clnruns.add_argument("--older-than", type=int, default=24,
+                           help="Terminate tagged ephemeral CVMs older than N hours (default 24)")
+    p_clnruns.add_argument("--apply", action="store_true", help="Actually terminate instances")
+    p_clnruns.set_defaults(func=cmd_cleanup_runs)
+
     return parser
 
 def main(argv: list[str] | None = None) -> int:
@@ -212,6 +223,8 @@ def main(argv: list[str] | None = None) -> int:
     if not getattr(args, "func", None):
         parser.print_help()
         return 2
+    if getattr(args, "state_dir", None):
+        os.environ["OHBS_IMAGE_STATE_DIR"] = args.state_dir
     _setup_logging(verbose=args.verbose)
     try:
         return int(args.func(args))

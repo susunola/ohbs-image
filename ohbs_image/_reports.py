@@ -24,7 +24,7 @@ def _new_run_id() -> str:
 
 
 def _state_lock(path: Path, timeout_s: float = 10.0) -> Path:
-    """Acquire a portable directory lock for a small local state update."""
+    """Acquire a portable directory lock, recovering an expired owner lease."""
     lock = path.with_name(path.name + ".lock")
     deadline = time.monotonic() + timeout_s
     while True:
@@ -32,6 +32,14 @@ def _state_lock(path: Path, timeout_s: float = 10.0) -> Path:
             lock.mkdir(mode=0o700)
             return lock
         except FileExistsError:
+            try:
+                age = time.time() - lock.stat().st_mtime
+                if age > 300:
+                    lock.rmdir()
+                    warn(f"Recovered stale state lock {lock} ({age:.0f}s old)")
+                    continue
+            except OSError:
+                pass
             if time.monotonic() >= deadline:
                 raise OSError(f"timed out waiting for state lock {lock}") from None
             time.sleep(0.05)
@@ -339,6 +347,7 @@ def _trigger_deploy_webhook(r: ResolvedConfig, image_ids: list[str],
     """POST image metadata to [notify].deploy_webhook on build success."""
     payload = json.dumps({
         "event": "image.ready",
+        "event_id": r.run_id,
         "image_id": (image_ids[0] if image_ids else ""),
         "image_ids": image_ids,
         "image_name": image_name,
@@ -348,18 +357,23 @@ def _trigger_deploy_webhook(r: ResolvedConfig, image_ids: list[str],
         "benchmark": r.image_benchmark,
         "score": score,
         "ohbs_image_version": VERSION,
+        "attestation_required": r.attestation_required,
     }, ensure_ascii=False).encode("utf-8")
-    try:
-        req = urllib.request.Request(
-            r.deploy_webhook, data=payload,
-            headers={"Content-Type": "application/json"}, method="POST")
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            if resp.status < 300:
-                ok(f"Deploy webhook triggered ({resp.status})")
-            else:
-                warn(f"Deploy webhook returned HTTP {resp.status}")
-    except Exception as exc:  # must never fail the build
-        warn(f"Deploy webhook failed: {exc}")
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(
+                r.deploy_webhook, data=payload,
+                headers={"Content-Type": "application/json", "Idempotency-Key": r.run_id}, method="POST")
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status < 300:
+                    ok(f"Deploy webhook triggered ({resp.status}, event {r.run_id})")
+                    return
+                raise OSError(f"returned HTTP {resp.status}")
+        except Exception as exc:  # notifications must never fail the image build
+            if attempt == 2:
+                warn(f"Deploy webhook failed after 3 attempts: {exc}")
+                return
+            time.sleep(2 ** attempt)
 
 def _write_provenance(r: ResolvedConfig, image_ids: list[str], image_name: str,
                       score: float | None,
