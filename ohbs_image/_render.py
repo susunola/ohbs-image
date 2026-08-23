@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+import secrets
 import shlex
 import shutil
 import subprocess
@@ -224,8 +226,9 @@ def _image_name(r: ResolvedConfig) -> str:
         return r.image_name_override
     from datetime import datetime
     snap_ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    run_id = secrets.token_hex(3)
     level_short = r.cis_level_tag.replace("-server", "")
-    return f"{r.image_name_prefix}-{level_short}-{snap_ts}"
+    return f"{r.image_name_prefix}-{level_short}-{snap_ts}-{run_id}"
 
 def render_pkrvars(r: ResolvedConfig, image_name: str | None = None) -> str:
     """Generate auto.pkrvars.hcl content."""
@@ -474,7 +477,11 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
                     f"[meta].test_components: script not found: {script}")
             # keep the basename; prefix with an index so ordering survives
             # the copy and the packer file-upload naming.
-            dest_name = f"{i:02d}-{src.name}"
+            # HCL paths must not inherit arbitrary POSIX filename syntax
+            # (quotes/newlines are legal in filenames).  Preserve order while
+            # deriving a stable, safe label from the original basename.
+            suffix = hashlib.sha256(src.name.encode("utf-8")).hexdigest()[:10]
+            dest_name = f"{i:02d}-component-{suffix}"
             shutil.copyfile(src, tc_dir / dest_name)
             if family == "windows":
                 uploads.append(

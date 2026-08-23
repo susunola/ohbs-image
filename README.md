@@ -215,7 +215,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 
 Validation is strict about types: list options (`rules_include`,
 `rules_exclude`, `share_accounts`, `share_org_units`, `test_components`) must
-be TOML arrays, and `level`, `min_score`, `assume_role_duration`, `ssh_port`
+be TOML arrays of non-empty strings, and `level`, `min_score`, `assume_role_duration`, `ssh_port`
 must be integers (floats and booleans are rejected). The hardening section is
 `[ohbs]` (what `ohbs-image init` generates); the legacy `[cis]` name is still
 accepted — if both exist, `[ohbs]` wins with a warning.
@@ -682,11 +682,16 @@ distribute pipeline):
   ```bash
   ohbs-image verify --provenance ~/.ohbs-image/provenance/xxx.provenance.json
   ohbs-image verify --image img-ekny61ig        # auto-locate by image ID
+  ohbs-image verify --provenance ~/.ohbs-image/provenance/xxx.provenance.json \
+    --trusted-key-fingerprint ABCDEF0123456789ABCDEF0123456789ABCDEF01
   ```
 
   Output shows subject (image IDs), profile/level/region/source, builder
   version, re-audit score, and the GPG signature status (VALID / INVALID /
-  NONE). Exit code is non-zero when the signature is missing or invalid.
+  NONE). `--trusted-key-fingerprint` may be repeated to form a signer
+  allowlist. Exit code is non-zero when the signature is missing, invalid,
+  cannot be checked because GPG is unavailable or times out, the signer is not
+  allowlisted, or `--image` is not a subject of the provenance.
 
 - **SBOM + change detection (supply chain)** — with `[meta].sbom = true` the
   build emits a zero-dependency SBOM (`/opt/ohbs-image-SBOM.jsonl`, native

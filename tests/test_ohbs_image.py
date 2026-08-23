@@ -284,9 +284,11 @@ class TestResolve:
 
     def test_image_name_auto_when_empty(self, valid_toml):
         assert resolve(valid_toml).image_name_override == ""
-        name = ohbs_image._image_name(resolve(valid_toml))
-        assert name.startswith("tencentos3-ohbs-level1-")
-        assert re.fullmatch(r"[A-Za-z0-9._-]+", name)
+        r = resolve(valid_toml)
+        names = {ohbs_image._image_name(r) for _ in range(3)}
+        assert len(names) == 3
+        assert all(name.startswith("tencentos3-ohbs-level1-") for name in names)
+        assert all(re.fullmatch(r"[A-Za-z0-9._-]+", name) for name in names)
 
     def test_image_name_invalid_chars(self, valid_toml):
         valid_toml["image"]["name"] = "bad/name;rm"
@@ -2518,6 +2520,26 @@ class TestVerify:
         rc = cmd_verify(mock.MagicMock(provenance=str(p), image=None))
         assert rc == 1  # unsigned provenance does not verify
 
+    def test_verify_gpg_missing_fails_closed(self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import cmd_verify
+        p = self._make_prov(tmp_path, monkeypatch)
+        with mock.patch("subprocess.run", side_effect=FileNotFoundError):
+            assert cmd_verify(mock.MagicMock(provenance=str(p), image=None,
+                                             trusted_key_fingerprint=[])) == 1
+
+    def test_verify_requires_trusted_signer(self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import cmd_verify
+        p = self._make_prov(tmp_path, monkeypatch)
+        signer = "A" * 40
+        with mock.patch("subprocess.run") as sub:
+            sub.return_value = mock.Mock(
+                returncode=0, stderr="", stdout=f"[GNUPG:] VALIDSIG {signer} 2026-01-01\n")
+            args = mock.MagicMock(provenance=str(p), image=None,
+                                  trusted_key_fingerprint=[signer])
+            assert cmd_verify(args) == 0
+            args.trusted_key_fingerprint = ["B" * 40]
+            assert cmd_verify(args) == 1
+
     def test_verify_by_image_id(self, valid_toml, tmp_path, monkeypatch):
         from ohbs_image import cmd_verify
         self._make_prov(tmp_path, monkeypatch, image_id="img-target-1")
@@ -4260,6 +4282,14 @@ class TestRound2Config:
         valid_toml.setdefault("meta", {})["test_components"] = ["scripts/a.sh"]
         assert resolve(valid_toml).test_components == ["scripts/a.sh"]
 
+    def test_string_lists_reject_non_strings_and_empty_values(self, valid_toml):
+        valid_toml["ohbs"]["rules_include"] = [True]
+        with pytest.raises(ConfigError, match=r"rules_include\[0\].*string"):
+            resolve(valid_toml)
+        valid_toml["ohbs"]["rules_include"] = ["  "]
+        with pytest.raises(ConfigError, match=r"rules_include\[0\].*empty"):
+            resolve(valid_toml)
+
     def test_deploy_webhook_parsed(self, valid_toml):
         valid_toml.setdefault("notify", {})["deploy_webhook"] = "https://ci.example.com/x"
         assert resolve(valid_toml).deploy_webhook == "https://ci.example.com/x"
@@ -4295,10 +4325,21 @@ class TestTestComponents:
         assert "ohbs-image-user-tests.sh" in hcl
         assert "USER TEST FAIL" in hcl
         # both scripts uploaded via file provisioners
-        assert 'test-components/00-check-a.sh' in hcl
-        assert 'test-components/01-check-b.sh' in hcl
+        assert 'test-components/00-component-' in hcl
+        assert 'test-components/01-component-' in hcl
         # uploaded copies exist in the workdir
-        assert (wd / "packer" / "scripts" / "test-components" / "00-check-a.sh").exists()
+        assert len(list((wd / "packer" / "scripts" / "test-components").iterdir())) == 2
+
+    def test_filename_is_not_injected_into_hcl(self, valid_toml, tmp_path):
+        from ohbs_image import render_all
+        script = tmp_path / 'check"unsafe.sh'
+        script.write_text("exit 0\n", encoding="utf-8")
+        valid_toml.setdefault("meta", {})["test_components"] = [str(script)]
+        wd = tmp_path / "w"
+        render_all(wd, resolve(valid_toml))
+        hcl = (wd / "packer" / "main.pkr.hcl").read_text(encoding="utf-8")
+        assert script.name not in hcl
+        assert "00-component-" in hcl
 
     def test_missing_script_fails_fast(self, valid_toml, tmp_path):
         from ohbs_image import render_all
@@ -4928,7 +4969,7 @@ class TestTestComponentsNonRoot:
         wd = tmp_path / "w"
         render_all(wd, r)
         hcl = (wd / "packer" / "main.pkr.hcl").read_text(encoding="utf-8")
-        assert "/home/ubuntu/ohbs-image-test-components/00-check.sh" in hcl
+        assert "/home/ubuntu/ohbs-image-test-components/00-component-" in hcl
         assert "/root/ohbs-image-test-components/" not in hcl
         # runner loop resolves __REMOTE_DIR__ to /home/ubuntu in the rendered HCL
         assert "for t in /home/ubuntu/ohbs-image-test-components/*" in hcl
@@ -4941,7 +4982,7 @@ class TestTestComponentsNonRoot:
         wd = tmp_path / "w"
         render_all(wd, r)
         hcl = (wd / "packer" / "main.pkr.hcl").read_text(encoding="utf-8")
-        assert "/root/ohbs-image-test-components/00-check.sh" in hcl
+        assert "/root/ohbs-image-test-components/00-component-" in hcl
 
     def test_runner_template_has_no_hardcoded_root(self):
         with open("ohbs_image/_templates.py", encoding="utf-8") as fh:

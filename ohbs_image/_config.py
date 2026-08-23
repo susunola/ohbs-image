@@ -117,12 +117,22 @@ def _read_int(data: dict[str, Any], section: str, key: str, default: int) -> int
 
 
 def _read_str_list(data: dict[str, Any], section: str, key: str) -> list[str]:
-    """Read a TOML list of strings; a bare string would iterate char-by-char."""
+    """Read a TOML list containing only non-empty strings."""
     raw = _get_table(data, section).get(key, [])
     if not isinstance(raw, list):
         raise ConfigError(
             f"[{section}].{key} must be a list, got {type(raw).__name__}.")
-    return [str(x).strip() for x in raw if str(x).strip()]
+    values: list[str] = []
+    for index, value in enumerate(raw):
+        if not isinstance(value, str):
+            raise ConfigError(
+                f"[{section}].{key}[{index}] must be a string, got "
+                f"{type(value).__name__}.")
+        cleaned = value.strip()
+        if not cleaned:
+            raise ConfigError(f"[{section}].{key}[{index}] must not be empty.")
+        values.append(cleaned)
+    return values
 
 
 def load_config(path: Path) -> dict[str, Any]:

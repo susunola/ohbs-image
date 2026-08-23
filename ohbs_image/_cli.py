@@ -92,6 +92,8 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Path to a .provenance.json file")
     p_vrf.add_argument("--image", default=None,
                        help="Image ID to look up its provenance (e.g. img-xxx)")
+    p_vrf.add_argument("--trusted-key-fingerprint", action="append", default=[],
+                       help="Require signer fingerprint (40 hex chars); repeat for an allowlist")
     p_vrf.set_defaults(func=cmd_verify)
 
     p_lst = sub.add_parser("list", help="Enumerate available profiles with metadata")

@@ -969,6 +969,18 @@ def cmd_scan(args: argparse.Namespace) -> int:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     """Verify a signed provenance statement (SLSA signing verification)."""
+    raw_trusted = getattr(args, "trusted_key_fingerprint", [])
+    # Command tests and library callers may pass a lightweight Namespace-like
+    # object without this newer option; only an actual list is accepted.
+    if not isinstance(raw_trusted, list):
+        raw_trusted = []
+    trusted = {
+        str(fingerprint).replace(" ", "").upper()
+        for fingerprint in raw_trusted
+    }
+    if any(not re.fullmatch(r"[0-9A-F]{40}", fingerprint) for fingerprint in trusted):
+        fail("--trusted-key-fingerprint must be a 40-hex OpenPGP fingerprint")
+        return 2
     paths: list[Path] = []
     if args.provenance:
         p = Path(args.provenance)
@@ -996,7 +1008,12 @@ def cmd_verify(args: argparse.Namespace) -> int:
             continue
         banner("verify")
         ok(f"provenance : {prov_path}")
-        subjects = ", ".join(s.get("name", "?") for s in prov.get("subject", []))
+        subject_names = [str(s.get("name", "?")) for s in prov.get("subject", [])]
+        if args.image and args.image not in subject_names:
+            fail(f"provenance subject does not contain requested image {args.image}")
+            rc_all = 1
+            continue
+        subjects = ", ".join(subject_names)
         info(f"subject    : {subjects}")
         ext = prov.get("predicate", {}).get("buildDefinition", {}).get("externalParameters", {})
         info(f"profile    : {ext.get('profile', '?')}  |  CIS level {ext.get('cis_level', '?')}  |  region {ext.get('region', '?')}")
@@ -1009,17 +1026,27 @@ def cmd_verify(args: argparse.Namespace) -> int:
         sig = prov_path.with_suffix(prov_path.suffix + ".sig")
         if sig.exists():
             try:
-                rc = subprocess.run(["gpg", "--verify", str(sig), str(prov_path)],
+                rc = subprocess.run(["gpg", "--status-fd", "1", "--verify", str(sig), str(prov_path)],
                                     capture_output=True, text=True, timeout=30)
                 if rc.returncode == 0:
-                    ok(f"signature  : VALID ({prov_path.name}.sig)")
+                    fingerprints = set(re.findall(
+                        r"^\[GNUPG:\] VALIDSIG ([0-9A-F]+)\b", rc.stdout or "", re.MULTILINE))
+                    if trusted and not fingerprints.intersection(trusted):
+                        fail("signature  : VALID but signer is not in "
+                             "--trusted-key-fingerprint allowlist")
+                        rc_all = 1
+                    else:
+                        signer = next(iter(fingerprints), "local keyring")
+                        ok(f"signature  : VALID ({signer})")
                 else:
                     fail(f"signature  : INVALID — {(rc.stderr or rc.stdout).strip()[:200]}")
                     rc_all = 1
             except FileNotFoundError:
-                warn("gpg not found — cannot verify signature")
+                fail("gpg not found — cannot verify signature")
+                rc_all = 1
             except subprocess.TimeoutExpired:
-                warn("gpg verify timed out")
+                fail("gpg verify timed out")
+                rc_all = 1
         else:
             warn("signature  : NONE (provenance was not signed)")
             rc_all = 1
