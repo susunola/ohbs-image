@@ -129,6 +129,7 @@ level = 1                                 # 1 or 2
 # Rule selection (optional) — rule IDs to run / skip. Empty = all rules.
 # rules_include = ["1.5.6", "5.4.3.2"]    # when set, ONLY these run
 # rules_exclude = ["1.1.2.2.4"]           # always wins over rules_include
+# allow_scoped_approval = true            # explicitly approve an image built from a rule subset (default false)
 # Control-level overrides (optional) — tune individual rule parameters
 # without editing the bundled catalog. Key = CIS rule ID, value = params to
 # deep-merge into that rule (mirrors ansible-lockdown's per-control vars).

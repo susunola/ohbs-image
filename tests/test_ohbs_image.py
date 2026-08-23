@@ -266,10 +266,15 @@ class TestResolve:
         assert r.level == 2
 
     def test_meta_overrides(self, valid_toml):
-        valid_toml["meta"] = {"os_tag": "custom-os", "benchmark": "custom-v3"}
+        valid_toml["meta"] = {"os_tag": "custom-os", "benchmark": "CIS-custom-v3"}
         r = resolve(valid_toml)
         assert r.image_os_tag == "custom-os"
-        assert r.image_benchmark == "custom-v3"
+        assert r.image_benchmark == "CIS-custom-v3"
+
+    def test_non_cis_benchmark_requires_its_own_catalog(self, valid_toml):
+        valid_toml["meta"]["benchmark"] = "STIG-RHEL9"
+        with pytest.raises(ConfigError, match="No catalog bundled"):
+            resolve(valid_toml)
 
     def test_image_name_override(self, valid_toml):
         valid_toml["image"]["name"] = "my-ohbs-image"
@@ -3173,6 +3178,23 @@ class TestFingerprintAndChangeDetection:
         fp2 = _build_fingerprint(r)
         assert fp1 != fp2
 
+    def test_fingerprint_changes_with_assurance_and_packer_inputs(self, valid_toml):
+        from ohbs_image import _build_fingerprint
+        original = resolve(valid_toml)
+        valid_toml["ohbs"]["allow_disruptive"] = False
+        assert _build_fingerprint(original) != _build_fingerprint(resolve(valid_toml))
+        valid_toml["build"]["packer"] = {"disk_size": 100}
+        assert _build_fingerprint(original) != _build_fingerprint(resolve(valid_toml))
+
+    def test_fingerprint_changes_when_component_script_changes(self, valid_toml, tmp_path):
+        from ohbs_image import _build_fingerprint
+        component = tmp_path / "component.sh"
+        component.write_text("echo first\n", encoding="utf-8")
+        valid_toml["meta"]["test_components"] = [str(component)]
+        first = _build_fingerprint(resolve(valid_toml))
+        component.write_text("echo second\n", encoding="utf-8")
+        assert first != _build_fingerprint(resolve(valid_toml))
+
     def test_image_lookup_error_fails_closed(self, valid_toml, monkeypatch):
         # Change detection fails CLOSED (returns False) on API errors: a
         # transient cloud hiccup must never *skip* a scheduled rebuild —
@@ -3987,6 +4009,32 @@ class TestBuildNewFeatures:
         assert cmd_build(args) == 0
         assert rendered == [], "render_all must not run when skipping"
         assert run == [], "packer must not run when skipping"
+
+    def test_build_rejects_scoped_approval_without_explicit_opt_in(self,
+                                                                    valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import cmd_build
+        valid_toml["ohbs"]["rules_include"] = ["1.1.1.1"]
+        r = resolve(valid_toml)
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, tmp_path / "build"))
+        render = mock.MagicMock()
+        monkeypatch.setattr("ohbs_image.render_all", render)
+        args = mock.MagicMock(config="x", workdir=str(tmp_path / "build"), yes=True,
+                              quiet=False, log_file=None, skip_if_unchanged=False)
+        assert cmd_build(args) == 1
+        render.assert_not_called()
+
+    def test_build_requires_verifiable_artifacts(self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import PackerResult, cmd_build
+        r = resolve(valid_toml)
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, tmp_path / "build"))
+        monkeypatch.setattr("ohbs_image.render_all", lambda w, r: "image-name")
+        monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k: PackerResult(exit_code=0))
+        lineage = []
+        monkeypatch.setattr("ohbs_image._record_lineage", lambda *a, **k: lineage.append(k["ok"]))
+        args = mock.MagicMock(config="x", workdir=str(tmp_path / "build"), yes=True,
+                              quiet=False, log_file=None, skip_if_unchanged=False)
+        assert cmd_build(args) == 1
+        assert lineage == [False]
 
     def test_build_verify_boot_wires_probe(self, tmp_path, monkeypatch, caplog):
         from ohbs_image import PackerResult, cmd_build

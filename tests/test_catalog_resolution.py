@@ -1,12 +1,10 @@
 """Resolver tests for the benchmark-aware catalog layer.
 
 These prove the core can select a non-CIS catalog without touching the engine:
-CIS/legacy always map to ``rules.json``; a non-CIS benchmark resolves to
-``rules_<slug>.json`` and falls back to ``rules.json`` when that file is absent.
+CIS/legacy always map to ``rules.json``; a non-CIS benchmark always names its
+own ``rules_<slug>.json`` file and must not fall back to CIS.
 """
 from __future__ import annotations
-
-from pathlib import Path
 
 from ohbs_image._catalog import (
     _catalog_basename,
@@ -56,10 +54,11 @@ def test_stig_resolves_to_specific_file_when_present(tmp_path, monkeypatch):
     assert _catalog_path("cis-rhel9", "STIG-RHEL9").name == "rules_stig_rhel9.json"
 
 
-def test_stig_falls_back_to_rules_json_when_absent():
-    # No rules_stig_rhel9.json bundled yet -> fall back to rules.json so a
-    # profile can declare a new benchmark before its catalog exists.
-    assert _catalog_basename("cis-rhel9", "STIG-RHEL9") == "rules.json"
+def test_stig_does_not_fall_back_to_cis_when_absent():
+    # A missing STIG catalog must remain visibly missing; resolve() turns this
+    # into a configuration error instead of silently running CIS rules.
+    assert _catalog_basename("cis-rhel9", "STIG-RHEL9") == "rules_stig_rhel9.json"
+    assert _catalog_path("cis-rhel9", "STIG-RHEL9").name == "rules_stig_rhel9.json"
 
 
 def test_workspace_rules_json_takes_precedence(tmp_path):

@@ -91,6 +91,7 @@ def _record_lineage(r: ResolvedConfig, image_ids: list[str], image_name: str,
             "image_name": image_name,
             "image_ids": image_ids,
             "score": score,
+            "scope": "scoped" if (r.rules_include or r.rules_exclude) else "full",
             # P1#4/#7 — benchmark pinning + change detection: the fingerprint
             # lets 'build --skip-if-unchanged' skip rebuilds when nothing
             # changed, and the benchmark name/version anchors the audit.
@@ -130,12 +131,39 @@ def _bundled_rules_hash(role_dir: str, catalog: str = "rules.json") -> str:
     except OSError:
         return ""
 
+
+def _file_hash(path: Path) -> str:
+    """SHA-256 for an input file, recording a missing file deterministically."""
+    import hashlib
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return f"missing:{path}"
+
+
+def _test_components_hash(paths: list[str]) -> str:
+    """Hash component scripts by path and content, so edits force a rebuild."""
+    import hashlib
+    entries = [
+        {"path": str(Path(item).expanduser()),
+         "sha256": _file_hash(Path(item).expanduser())}
+        for item in paths
+    ]
+    return hashlib.sha256(
+        json.dumps(entries, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _bundled_engine_hash(role_dir: str) -> str:
+    """Hash the engine selected by a role; engine changes affect the image."""
+    filename = "ohbs_engine.ps1" if role_dir.startswith("cis-win") else "ohbs_engine.py"
+    return _file_hash(Path(__file__).parent / "roles" / role_dir / "files" / filename)
+
 def _build_fingerprint(r: ResolvedConfig) -> str:
     """Deterministic fingerprint of every build input that affects the image.
 
-    Includes the source image ID (rebuilds after a vendor image refresh are
-    NOT skipped), the rule catalog hash, benchmark, level, rule filters and
-    the builder version.  Stable across runs of the same inputs.
+    Includes every input that changes the resulting image, including engine
+    and component-script content.  Stable across runs of the same inputs.
     """
     import hashlib
     if not isinstance(r, ResolvedConfig):
@@ -154,6 +182,18 @@ def _build_fingerprint(r: ResolvedConfig) -> str:
         "include", ",".join(r.rules_include),
         "exclude", ",".join(r.rules_exclude),
         "overrides", json.dumps(r.rules_overrides, sort_keys=True, ensure_ascii=False),
+        "allow_disruptive", str(r.allow_disruptive),
+        "smoke_test", str(r.smoke_test),
+        "cve_scan", str(r.cve_scan),
+        "sbom", str(r.sbom),
+        "verify_boot", str(r.verify_boot),
+        "spot", str(r.spot),
+        "image_name_override", r.image_name_override,
+        "ssh_debug_password", hashlib.sha256(r.ssh_debug_password.encode("utf-8")).hexdigest(),
+        "packer_extra", json.dumps(r.packer_extra, sort_keys=True, ensure_ascii=False),
+        "test_components", _test_components_hash(r.test_components),
+        "engine", _bundled_engine_hash(r.role_dir),
+        "templates", _file_hash(Path(__file__).with_name("_templates.py")),
     ]
     return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ._catalog import _catalog_basename
+from ._catalog import _catalog_basename, _catalog_path, _is_legacy_benchmark
 from ._logging import ConfigError, warn
 from ._profiles import PROFILE_NAMES_HELP, PROFILES
 
@@ -59,6 +59,7 @@ class ResolvedConfig:
     level: int
     min_score: int                      # [ohbs].min_score — post-reboot audit gate, 0 disables (default 85)
     allow_disruptive: bool              # [ohbs].allow_disruptive — apply disruptive remediations during the build (default true)
+    allow_scoped_approval: bool         # [ohbs].allow_scoped_approval — explicitly permit a rule-subset image
     role_dir: str
     smoke_test: bool                    # [meta].smoke_test — run instance-level smoke checks before snapshot (default true)
     cve_scan: bool                      # [meta].cve_scan — trivy vulnerability scan gate before snapshot (default false)
@@ -444,6 +445,16 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
     # the audit, so disruptive fixes (mount options, service removals, …)
     # are safe here and skipping them only lowers the image's score.
     allow_disruptive = _read_bool(data, "ohbs", "allow_disruptive", True)
+    allow_scoped_approval = _read_bool(data, "ohbs", "allow_scoped_approval", False)
+
+    benchmark = str(meta.get("benchmark", p.get("benchmark", "")))
+    catalog_basename = _catalog_basename(role_dir=str(p["role_dir"]), benchmark=benchmark)
+    if (not _is_legacy_benchmark(benchmark.strip().lower())
+            and not _catalog_path(str(p["role_dir"]), benchmark).is_file()):
+        raise ConfigError(
+            f"No catalog bundled for benchmark {benchmark!r} on role "
+            f"{p['role_dir']!r}; expected {catalog_basename}."
+        )
 
     return ResolvedConfig(
         profile_name=profile_name,
@@ -479,9 +490,8 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         assume_role_session=assume_role_session,
         assume_role_duration=assume_role_duration,
         image_os_tag=str(meta.get("os_tag", p.get("os_tag", ""))),
-        image_benchmark=str(meta.get("benchmark", p.get("benchmark", ""))),
-        catalog_basename=_catalog_basename(role_dir=str(p["role_dir"]),
-                                            benchmark=str(meta.get("benchmark", p.get("benchmark", "")))),
+        image_benchmark=benchmark,
+        catalog_basename=catalog_basename,
         level=level,
         role_dir=str(p["role_dir"]),
         smoke_test=smoke_test,
@@ -492,6 +502,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         rules_overrides=rules_overrides,
         min_score=min_score,
         allow_disruptive=allow_disruptive,
+        allow_scoped_approval=allow_scoped_approval,
         notify_webhook=notify_webhook,
         notify_on=notify_on,
         deploy_webhook=str(data.get("notify", {}).get("deploy_webhook", "")).strip(),

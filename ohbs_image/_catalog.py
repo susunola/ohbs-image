@@ -17,8 +17,8 @@ from __future__ import annotations
 from pathlib import Path
 
 # Benchmarks whose catalog is the historical ``rules.json``.  Anything else
-# resolves to ``rules_<slug>.json`` (falling back to ``rules.json`` when that
-# file is absent, so a profile can opt into a new benchmark catalog gradually).
+# resolves to ``rules_<slug>.json``. A benchmark label must never silently
+# run the CIS catalog: callers validate that the requested file is bundled.
 _LEGACY_BENCHMARKS = frozenset({"", "cis", "cis benchmark"})
 
 
@@ -59,9 +59,6 @@ def _catalog_path(role_dir: str, benchmark: str, workdir: Path | None = None) ->
        there).  This mirrors where ``_render`` writes the active catalog.
     2. The bundled package catalog under ``ohbs_image/roles/<role_dir>/files/``:
        ``rules_<slug>.json`` for non-CIS benchmarks, else ``rules.json``.
-       When the benchmark-specific file is missing we fall back to
-       ``rules.json`` so a profile can declare a new benchmark before its
-       catalog exists.
 
     The returned path may not exist (callers already handle missing catalogs);
     it is always expressed relative to the ``roles`` tree so no absolute
@@ -80,9 +77,7 @@ def _catalog_path(role_dir: str, benchmark: str, workdir: Path | None = None) ->
     if _is_legacy_benchmark(bm):
         return (files_dir / "rules.json").resolve()
     specific = files_dir / f"rules_{benchmark_slug(benchmark)}.json"
-    if specific.exists():
-        return specific.resolve()
-    return (files_dir / "rules.json").resolve()
+    return specific.resolve()
 
 
 def _catalog_basename(role_dir: str, benchmark: str) -> str:
@@ -95,7 +90,4 @@ def _catalog_basename(role_dir: str, benchmark: str) -> str:
     bm = (benchmark or "").strip().lower()
     if _is_legacy_benchmark(bm):
         return "rules.json"
-    specific = _roles_dir() / role_dir / "files" / f"rules_{benchmark_slug(benchmark)}.json"
-    if specific.exists():
-        return specific.name
-    return "rules.json"
+    return f"rules_{benchmark_slug(benchmark)}.json"

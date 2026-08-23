@@ -83,9 +83,7 @@ def _select_workspace_catalog(workdir: Path, role_dir: str, catalog_basename: st
     files_dir = workdir / "ansible" / "roles" / role_dir / "files"
     src = files_dir / catalog_basename
     if not src.is_file():
-        # Catalog not bundled yet — caller (resolve) still validated
-        # benchmark; build will surface a missing-catalog error at engine time.
-        return
+        raise ConfigError(f"Benchmark catalog is missing from rendered role: {src}")
     shutil.copyfile(src, files_dir / "rules.json")
 
 

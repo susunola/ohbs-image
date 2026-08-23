@@ -258,6 +258,7 @@ level = 1                                 # 1 or 2
 # allow_disruptive = true                 # apply disruptive remediations during the build (default true)
 # rules_include = ["1.5.6"]               # run only these rules
 # rules_exclude = ["1.1.2.2.4"]           # always wins over rules_include
+# allow_scoped_approval = true             # explicitly permit a subset-built image to be approved (default false)
 # Per-control parameter overrides (deep-merged into the catalog at render):
 # [ohbs.overrides."5.2.2"]
 # ssh_max_auth_tries = 4
@@ -320,6 +321,7 @@ benchmark = "CIS-v1.0.0"
 | | `allow_disruptive` | bool | Apply disruptive remediations during the build — mount options, service removals, etc. (default `true`; the build VM is ephemeral and rebooted before the audit, so these are safe) |
 | | `rules_include` | []string | Rule-ID filter — when set, ONLY these rules run (empty = all) |
 | | `rules_exclude` | []string | Rule-ID filter — always wins over `rules_include` |
+| | `allow_scoped_approval` | bool | Explicitly permit approval of an image built from a rule subset (default `false`) |
 | | `overrides` | table | Per-control parameter overrides, keyed by rule ID — deep-merged into the catalog at render time (e.g. `[ohbs.overrides."5.2.2"]`) |
 | `[cloud]` | `secret_id_env` | string | Env var for Secret ID |
 | | `secret_key_env` | string | Env var for Secret Key |

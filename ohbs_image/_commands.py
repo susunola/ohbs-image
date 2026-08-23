@@ -139,6 +139,14 @@ def cmd_build(args: argparse.Namespace) -> int:
         return 1
     r, workdir = prep
 
+    # A subset audit is useful for diagnosis, but does not establish the
+    # compliance of a golden image.  Make approval an explicit operator act.
+    if (isinstance(r, ResolvedConfig) and (r.rules_include or r.rules_exclude)
+            and not r.allow_scoped_approval):
+        fail("Scoped rule selection cannot produce an approved image by default. "
+             "Set [ohbs].allow_scoped_approval = true only when this is intentional.")
+        return 1
+
     # P1#7 — change detection: identical inputs + previous image still
     # exists → skip the rebuild entirely (scheduled-rebuild cost saver).
     if args.skip_if_unchanged:
@@ -198,11 +206,31 @@ def cmd_build(args: argparse.Namespace) -> int:
     success = result.exit_code == 0
 
     if success:
+        rep = _save_build_report(r, image_name, result.stdout_lines, workdir)
+        # An exit code alone is not enough evidence to distribute a hardened
+        # image.  A real build must identify the snapshot and archive its
+        # structured audit result before it is recorded as successful.
+        verifiable = (not isinstance(r, ResolvedConfig)
+                      or (bool(image_ids) and score is not None and rep is not None))
+        if not verifiable:
+            missing = []
+            if not image_ids:
+                missing.append("image ID")
+            if score is None:
+                missing.append("re-audit score")
+            if rep is None:
+                missing.append("structured audit report")
+            fail("packer exited successfully but build output is not verifiable: "
+                 + ", ".join(missing))
+            ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
+                                        sbom_sha=sbom_sha, sbom_count=sbom_count)
+            _send_notification(r, False, image_ids, score, image_name)
+            _close_build_log(_fh)
+            return 1
+
         ok("packer build succeeded")
         if image_ids:
             ok(f"Output image ID(s): {', '.join(image_ids)}")
-        else:
-            info("Could not parse image ID from output — check the Tencent Cloud console.")
         if score is not None:
             ok(f"Re-audit score: {score:g}%")
         if sbom_sha:
@@ -216,7 +244,6 @@ def cmd_build(args: argparse.Namespace) -> int:
                                  sbom_sha=sbom_sha, sbom_count=sbom_count)
         if prov:
             info(f"Provenance written -> {prov}")
-        rep = _save_build_report(r, image_name, result.stdout_lines, workdir)
         if rep:
             info(f"Audit report archived -> {rep}")
         # P2#9 — cross-account image sharing (never fails the build).
