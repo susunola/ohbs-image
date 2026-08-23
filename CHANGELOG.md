@@ -71,6 +71,18 @@ can be traced across rebuilds.
   `Reset-BuiltinAdminLockout` step unlocks the built-in Administrator
   after lockout-policy changes.  Engine 1.3.0-windows.
 
+- **`svc_disabled`: existing units are checked even when the provider
+  package is absent** — ubuntu2004 4.2.2 bundles nftables+firewalld; with
+  the nftables package missing the rule passed vacuously and firewalld
+  stayed enabled, and its nftables flush at boot wiped ufw's ruleset
+  (4.2.5-4.2.8 failed post-reboot).
+- **cleanup drops the generated `/etc/sudoers.d/90-cloud-init-users`** —
+  cloud-init 20.1 (vendor-pinned, held on the ubuntu2004 base image)
+  leaves a NUL-hole in that file when a consumer's user-data adds users
+  at first boot, breaking ALL sudo on the deployed VM.  The file holds
+  only generated per-user rules and is regenerated cleanly on every
+  fresh boot; the build needs it no further than the finalize step.
+
 ### Fixed (ubuntu2004 re-audit)
 - **ssh-guard no longer revives firewalld on ufw images** — both the
   build-time and boot-time guards ran `systemctl enable --now firewalld`
