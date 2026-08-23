@@ -4395,7 +4395,13 @@ class TestProvenanceSbom:
         r.run_id = "12345678-1234-1234-1234-123456789abc"
         audit = tmp_path / "audit.json"
         audit.write_text(json.dumps({"mode": "apply", "summary": {"all": {
-            "pass": 91, "fail": 2}}}), encoding="utf-8")
+            "pass": 91, "fail": 2, "manual": 3, "error": 1,
+            "applied": 8, "applied_pending": 2, "apply_failed": 1,
+            "skipped_disruptive": 4}}, "results": [{
+                "id": "1.2.3", "status": "fail", "apply_status": "apply_failed",
+                "title": "Example failed rule"}, {
+                "id": "1.2.4", "status": "manual", "apply_status": "skipped_manual",
+                "title": "Example manual rule"}]}), encoding="utf-8")
         monkeypatch.setattr("ohbs_image._reports_dir", lambda: tmp_path / "reports")
         p = _write_build_html_report(r, ["img-abc"], "release-<name>", 97.8,
                                      audit, tmp_path / "provenance.json", True)
@@ -4405,6 +4411,11 @@ class TestProvenanceSbom:
         assert "97.8%" in text
         assert "img-abc" in text
         assert "release-&lt;name&gt;" in text
+        assert "Manual" in text and ">3<" in text
+        assert "Security release dossier" in text
+        assert "Release decision" in text
+        assert "Rules requiring attention" in text
+        assert "Example failed rule" in text
 
     def test_provenance_without_sbom(self, valid_toml, tmp_path, monkeypatch):
         from ohbs_image import _write_provenance
