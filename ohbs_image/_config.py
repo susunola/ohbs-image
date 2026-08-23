@@ -71,9 +71,11 @@ class ResolvedConfig:
     notify_on: str                      # [notify].on — "always" | "success" | "failure" (default "failure")
     deploy_webhook: str                 # [notify].deploy_webhook — POST image metadata on build success ("" = off)
     sign_key: str                       # [sign].gpg_key — GPG key id/fingerprint for SLSA provenance signing ("" = off)
+    attestation_required: bool          # [attestation].required — signed provenance is required before release
     test_components: list[str]          # [meta].test_components — user-defined test scripts run before snapshot
     verify_boot: bool                   # [meta].verify_boot — boot a probe instance from the produced image and re-audit before declaring success (default false)
     packer_extra: dict[str, Any] = field(default_factory=dict)  # [build.packer] — arbitrary packer tencentcloud-cvm builder args (passthrough)
+    run_id: str = ""                    # runtime-only evidence correlation ID (not read from TOML)
 
 def _validate_value_present(label: str, value: Any) -> str | None:
     """Return an error message if *value* looks like a placeholder, else None."""
@@ -135,6 +137,17 @@ def _read_str_list(data: dict[str, Any], section: str, key: str) -> list[str]:
     return values
 
 
+def _read_required_str(data: dict[str, Any], section: str, key: str) -> str:
+    """Read a required, non-empty TOML string without coercing other types."""
+    value = _get_table(data, section).get(key)
+    if not isinstance(value, str):
+        raise ConfigError(f"[{section}].{key} must be a string, got {type(value).__name__}.")
+    cleaned = value.strip()
+    if not cleaned:
+        raise ConfigError(f"[{section}].{key} must not be empty.")
+    return cleaned
+
+
 def load_config(path: Path) -> dict[str, Any]:
     """Load and validate ohbs-image.toml.  Raises ConfigError on invalid input."""
     if not path.exists():
@@ -178,7 +191,19 @@ def load_config(path: Path) -> dict[str, Any]:
             if key not in data[section]:
                 raise ConfigError(f"Missing field: [{section}].{key}")
 
-    profile_name = str(data.get("build", {}).get("profile", ""))
+    # These flow directly into cloud API calls and HCL. Reject type coercion
+    # here so an accidental boolean/integer produces a precise config error,
+    # not a remote Packer failure later in the build.
+    for section, key in [
+        ("build", "profile"), ("build", "region"), ("build", "zone"),
+        ("build", "instance_type"), ("build", "source_image_id"),
+        ("build", "vpc_id"), ("build", "subnet_id"),
+        ("build", "security_group_id"), ("image", "name_prefix"),
+        ("cloud", "secret_id_env"), ("cloud", "secret_key_env"),
+    ]:
+        _read_required_str(data, section, key)
+
+    profile_name = _read_required_str(data, "build", "profile")
     if profile_name not in PROFILES:
         raise ConfigError(
             f"Unknown profile: {profile_name}\n"
@@ -189,7 +214,7 @@ def load_config(path: Path) -> dict[str, Any]:
     if not isinstance(level, int) or isinstance(level, bool) or level not in (1, 2):
         raise ConfigError(f"[ohbs].level must be 1 or 2, got: {level}")
 
-    itype = str(data["build"]["instance_type"])
+    itype = _read_required_str(data, "build", "instance_type")
     if "." not in itype:
         raise ConfigError(
             f"[build].instance_type '{itype}' is missing the CVM prefix.\n"
@@ -212,8 +237,10 @@ def load_config(path: Path) -> dict[str, Any]:
         raise ConfigError(
             f"[image].copy_regions must be a list, got {type(copy_regions_raw).__name__}."
         )
-    for region in copy_regions_raw:
-        region_str = str(region)
+    for index, region in enumerate(copy_regions_raw):
+        if not isinstance(region, str) or not region.strip():
+            raise ConfigError(f"[image].copy_regions[{index}] must be a non-empty string.")
+        region_str = region.strip()
         if not region_str or not all(c.isalnum() or c == "-" for c in region_str):
             warn(f"[image].copy_regions entry '{region_str}' does not look like a Tencent region code.")
 
@@ -222,7 +249,7 @@ def load_config(path: Path) -> dict[str, Any]:
         ("VPC ID", "vpc_id", "vpc-"),
         ("subnet ID", "subnet_id", "subnet-"),
     ]:
-        val = str(data["build"][key])
+        val = _read_required_str(data, "build", key)
         if not val.startswith(prefix):
             warn(f"[build].{key} '{val}' does not look like a {label} (should start with '{prefix}').")
 
@@ -257,7 +284,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
     elif "ohbs" in data and "cis" in data:
         warn("Both [ohbs] and [cis] sections are present; "
              "[ohbs] takes precedence and [cis] is ignored.")
-    profile_name: str = data["build"]["profile"]
+    profile_name = _read_required_str(data, "build", "profile")
     p = PROFILES[profile_name]
     meta: dict[str, Any] = _get_table(data, "meta")
     level: int = int(data["ohbs"]["level"])
@@ -269,9 +296,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
             f"[image].copy_regions must be a list, got {type(copy_regions_raw).__name__}. "
             f"Use [] for no copy or ['ap-shanghai'] for cross-region copy."
         )
-    copy_regions: list[str] = [
-        _sanitize_region_zone(str(r), "[image].copy_regions") for r in copy_regions_raw
-    ]
+    copy_regions = [_sanitize_region_zone(r.strip(), "[image].copy_regions") for r in copy_regions_raw]
 
     # Explicit None checks — `or` would silently discard a configured 0.
     _ssh_port_raw = meta.get("ssh_port")
@@ -381,6 +406,12 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
 
     # [sign] — GPG key for SLSA-style provenance signing ("" = off).
     sign_key = str(_get_table(data, "sign").get("gpg_key", "")).strip()
+    # When a signing key is configured, treating a failed signature as a
+    # successful production build is unsafe.  Operators can explicitly opt
+    # out for local development, but secure behaviour is the default.
+    attestation_required = _read_bool(data, "attestation", "required", bool(sign_key))
+    if attestation_required and not sign_key:
+        raise ConfigError("[attestation].required = true requires [sign].gpg_key.")
 
     # [ohbs].rules_include / rules_exclude — optional rule-id filters.
     rules_include = _read_str_list(data, "ohbs", "rules_include")
@@ -470,13 +501,13 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         profile_name=profile_name,
         profile=p,
         family=family,
-        region=_sanitize_region_zone(str(data["build"]["region"]), "[build].region"),
-        zone=_sanitize_region_zone(str(data["build"]["zone"]), "[build].zone"),
-        instance_type=str(data["build"]["instance_type"]),
-        source_image_id=str(data["build"]["source_image_id"]),
-        vpc_id=str(data["build"]["vpc_id"]),
-        subnet_id=str(data["build"]["subnet_id"]),
-        security_group_id=str(data["build"]["security_group_id"]),
+        region=_sanitize_region_zone(_read_required_str(data, "build", "region"), "[build].region"),
+        zone=_sanitize_region_zone(_read_required_str(data, "build", "zone"), "[build].zone"),
+        instance_type=_read_required_str(data, "build", "instance_type"),
+        source_image_id=_read_required_str(data, "build", "source_image_id"),
+        vpc_id=_read_required_str(data, "build", "vpc_id"),
+        subnet_id=_read_required_str(data, "build", "subnet_id"),
+        security_group_id=_read_required_str(data, "build", "security_group_id"),
         associate_public_ip=bool(data["build"]["associate_public_ip"]),
         ssh_port=ssh_port,
         ssh_timeout=ssh_timeout,
@@ -484,7 +515,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         ssh_debug_password=str(meta.get("ssh_debug_password", "")),
         winrm_username=str(p.get("winrm_username", "")),
         winrm_password_env=str(data.get("cloud", {}).get("winrm_password_env", "WINRM_PASSWORD")),
-        image_name_prefix=str(data["image"]["name_prefix"]),
+        image_name_prefix=_read_required_str(data, "image", "name_prefix"),
         image_name_override=image_name_override,
         instance_name=instance_name,
         packer_extra=packer_extra,
@@ -493,8 +524,8 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         image_share_org_units=share_org_units,
         spot=spot,
         cis_level_tag=f"level{level}-server",
-        secret_id_env=str(data["cloud"]["secret_id_env"]),
-        secret_key_env=str(data["cloud"]["secret_key_env"]),
+        secret_id_env=_read_required_str(data, "cloud", "secret_id_env"),
+        secret_key_env=_read_required_str(data, "cloud", "secret_key_env"),
         security_token_env=str(data.get("cloud", {}).get("security_token_env", "TENCENTCLOUD_SECURITY_TOKEN")),
         assume_role_arn=assume_role_arn,
         assume_role_session=assume_role_session,
@@ -517,6 +548,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         notify_on=notify_on,
         deploy_webhook=str(data.get("notify", {}).get("deploy_webhook", "")).strip(),
         sign_key=sign_key,
+        attestation_required=attestation_required,
         test_components=test_components,
         verify_boot=verify_boot,
     )

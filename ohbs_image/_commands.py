@@ -27,11 +27,47 @@ from ._packer import (
 )
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES, SAMPLE_CONFIG
 from ._reports import (
+    _atomic_write_bytes,
     _find_provenance,
     _missing_build_evidence,
     _save_build_report,
     _send_notification,
 )
+
+
+def _write_build_result(args: argparse.Namespace, r: ResolvedConfig, *, status: str,
+                        image_name: str, image_ids: list[str], score: float | None,
+                        report: Path | None = None, provenance: Path | None = None,
+                        signed: bool = False, reason: str = "") -> None:
+    """Optionally persist one stable JSON contract for build automation."""
+    result_file = getattr(args, "result_file", None)
+    # argparse always supplies a string.  Deliberately avoid PathLike's
+    # permissive ABC here: a MagicMock/third-party object can emulate it and
+    # accidentally create a directory named after the object in test or host
+    # working directories.
+    if not isinstance(result_file, str) or not result_file:
+        return
+    doc = {
+        "schema": "https://ohbs-image.dev/result/v1",
+        "status": status,
+        "reason": reason,
+        "run_id": r.run_id,
+        "image_name": image_name,
+        "image_ids": image_ids,
+        "profile": r.profile_name,
+        "cis_level": r.level,
+        "region": r.region,
+        "score": score,
+        "attestation_signed": signed,
+        "audit_report": str(report) if report else "",
+        "provenance": str(provenance) if provenance else "",
+    }
+    try:
+        _atomic_write_bytes(Path(result_file),
+                            (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        info(f"Build result -> {result_file}")
+    except OSError as exc:
+        warn(f"Could not write build result {result_file}: {exc}")
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -139,6 +175,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     if prep is None:
         return 1
     r, workdir = prep
+    r.run_id = ohbs_image._new_run_id()
 
     # A subset audit is useful for diagnosis, but does not establish the
     # compliance of a golden image.  Make approval an explicit operator act.
@@ -205,6 +242,9 @@ def cmd_build(args: argparse.Namespace) -> int:
     sbom_sha = _extract_sbom_sha(result.stdout_lines)
     sbom_count = _extract_sbom_count(result.stdout_lines)
     success = result.exit_code == 0
+    rep: Path | None = None
+    prov: Path | None = None
+    signed = False
 
     if success:
         rep = _save_build_report(r, image_name, result.stdout_lines, workdir)
@@ -218,6 +258,8 @@ def cmd_build(args: argparse.Namespace) -> int:
                  + ", ".join(missing))
             ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
                                         sbom_sha=sbom_sha, sbom_count=sbom_count)
+            _write_build_result(args, r, status="failed", image_name=image_name,
+                                image_ids=image_ids, score=score, reason="missing build evidence")
             _send_notification(r, False, image_ids, score, image_name)
             _close_build_log(_fh)
             return 1
@@ -229,27 +271,27 @@ def cmd_build(args: argparse.Namespace) -> int:
             ok(f"Re-audit score: {score:g}%")
         if sbom_sha:
             ok(f"SBOM: {sbom_count or '?'} packages, sha256 {sbom_sha[:16]}…")
-        # Build → test → distribute: record lineage + signed provenance
-        lin = ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True,
-                              sbom_sha=sbom_sha, sbom_count=sbom_count)
-        if lin:
-            info(f"Lineage recorded -> {lin}")
+        # Evidence is created before the image is made visible to downstream
+        # accounts or deployment automation.  A configured signing key is a
+        # release policy, not a best-effort logging preference.
         prov = ohbs_image._write_provenance(r, image_ids, image_name, score,
                                  sbom_sha=sbom_sha, sbom_count=sbom_count)
         if prov:
             info(f"Provenance written -> {prov}")
         if rep:
             info(f"Audit report archived -> {rep}")
-        # P2#9 — cross-account image sharing (never fails the build).
-        if r.image_share_accounts and image_ids:
-            ohbs_image._share_images(r, image_ids, r.image_share_accounts)
-        # [image].share_org_units (#17): NOT supported — ModifyImageSharePermission
-        # accepts account IDs only; org-unit strings in AccountIds are rejected
-        # by the cloud.  Warn and skip rather than failing the share call.
-        if r.image_share_org_units:
-            warn("[image].share_org_units is not supported by "
-                 "ModifyImageSharePermission (account IDs only) — skipped: "
-                 + ", ".join(r.image_share_org_units))
+        signed = bool(prov and prov.with_suffix(prov.suffix + ".sig").is_file())
+        if getattr(r, "attestation_required", False) is True and not signed:
+            fail("required attestation was not signed — image will not be approved, "
+                 "shared, or sent to deployment automation")
+            ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
+                                        sbom_sha=sbom_sha, sbom_count=sbom_count)
+            _write_build_result(args, r, status="failed", image_name=image_name,
+                                image_ids=image_ids, score=score, report=rep, provenance=prov,
+                                signed=False, reason="required attestation is unsigned")
+            _send_notification(r, False, image_ids, score, image_name)
+            _close_build_log(_fh)
+            return 1
         # P0#3 — clean-boot verification (build → test → distribute).
         # Boot a probe from the produced image and re-audit on fresh boot.
         if r.verify_boot and image_ids:
@@ -264,14 +306,34 @@ def cmd_build(args: argparse.Namespace) -> int:
                     fail("clean-boot verification FAILED — image not approved")
                     ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
                                     sbom_sha=sbom_sha, sbom_count=sbom_count)
+                    _write_build_result(args, r, status="failed", image_name=image_name,
+                                        image_ids=image_ids, score=score, report=rep, provenance=prov,
+                                        signed=signed, reason="clean-boot verification failed")
                     _send_notification(r, False, image_ids, score, image_name)
                     _close_build_log(_fh)
                     return vrc
+        # Build → attest → verify → distribute.  A successful lineage record
+        # is only emitted after every enabled release gate has passed.
+        lin = ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True,
+                                         sbom_sha=sbom_sha, sbom_count=sbom_count)
+        if lin:
+            info(f"Lineage recorded -> {lin}")
+        # P2#9 — sharing occurs only after the evidence and clean-boot gates.
+        if r.image_share_accounts and image_ids:
+            ohbs_image._share_images(r, image_ids, r.image_share_accounts)
+        if r.image_share_org_units:
+            warn("[image].share_org_units is not supported by "
+                 "ModifyImageSharePermission (account IDs only) — skipped: "
+                 + ", ".join(r.image_share_org_units))
     else:
         fail("packer build failed (see output above)")
         ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
                         sbom_sha=sbom_sha, sbom_count=sbom_count)
 
+    _write_build_result(args, r, status="approved" if success else "failed",
+                        image_name=image_name, image_ids=image_ids, score=score,
+                        report=rep, provenance=prov, signed=signed,
+                        reason="" if success else "packer build failed")
     # [notify] — WeCom webhook; never affects the exit code.
     _send_notification(r, success, image_ids, score, image_name)
 
@@ -801,6 +863,7 @@ def cmd_test(args: argparse.Namespace) -> int:
     if prep is None:
         return 1
     r, workdir = prep
+    r.run_id = ohbs_image._new_run_id()
 
     if args.idempotency and r.family == "windows":
         warn("Idempotency check is Linux-only — nothing to do for Windows.")
@@ -907,6 +970,7 @@ def cmd_scan(args: argparse.Namespace) -> int:
     if prep is None:
         return 1
     r, workdir = prep
+    r.run_id = ohbs_image._new_run_id()
 
     # See cmd_build: reuse the image name render_all baked into the build.
     image_name = ohbs_image.render_all(workdir, r, scan=True)

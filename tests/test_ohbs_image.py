@@ -2464,7 +2464,7 @@ class TestBuildGovernance:
         r = resolve(valid_toml)
         with mock.patch("ohbs_image._lineage_path",
                         return_value=tmp_path / "lineage.jsonl"), mock.patch(
-            "ohbs_image.Path.write_text",
+            "ohbs_image._reports._atomic_write_bytes",
             side_effect=OSError("disk full")):
             p = _write_provenance(r, ["img-xyz"], "img-name", 98.2)
         assert p is None
@@ -4205,6 +4205,49 @@ class TestBuildNewFeatures:
         assert lineage["count"] == 42
         assert prov["sha"] == "b" * 64
         assert prov["count"] == 42
+
+
+class TestAttestationPolicy:
+    def test_signing_key_enables_required_attestation_by_default(self, valid_toml):
+        valid_toml["sign"] = {"gpg_key": "TESTKEY"}
+        assert resolve(valid_toml).attestation_required is True
+
+    def test_attestation_can_be_explicitly_development_only(self, valid_toml):
+        valid_toml["sign"] = {"gpg_key": "TESTKEY"}
+        valid_toml["attestation"] = {"required": False}
+        assert resolve(valid_toml).attestation_required is False
+
+    def test_required_attestation_needs_a_signing_key(self, valid_toml):
+        valid_toml["attestation"] = {"required": True}
+        with pytest.raises(ConfigError, match=r"requires \[sign\].gpg_key"):
+            resolve(valid_toml)
+
+    def test_unsigned_required_attestation_blocks_share_and_writes_result(
+            self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import PackerResult, cmd_build
+        valid_toml["sign"] = {"gpg_key": "TESTKEY"}
+        valid_toml["image"]["share_accounts"] = ["uin/1234567890"]
+        r = resolve(valid_toml)
+        report = tmp_path / "report.json"
+        report.write_text("{}", encoding="utf-8")
+        provenance = tmp_path / "unsigned.provenance.json"
+        provenance.write_text("{}", encoding="utf-8")
+        shared: list[object] = []
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, tmp_path / "build"))
+        monkeypatch.setattr("ohbs_image.render_all", lambda w, r: "image-name")
+        monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k: PackerResult(
+            exit_code=0, stdout_lines=["Created image ID: img-new", "Score: 95%"]))
+        monkeypatch.setattr("ohbs_image._commands._save_build_report", lambda *a: report)
+        monkeypatch.setattr("ohbs_image._write_provenance", lambda *a, **k: provenance)
+        monkeypatch.setattr("ohbs_image._share_images", lambda *a: shared.append(a))
+        result = tmp_path / "result.json"
+        args = mock.MagicMock(config="x", workdir="w", yes=True, quiet=True, debug=False,
+                              log_file=None, result_file=str(result), skip_if_unchanged=False)
+        assert cmd_build(args) == 1
+        assert shared == []
+        doc = json.loads(result.read_text(encoding="utf-8"))
+        assert doc["status"] == "failed"
+        assert doc["reason"] == "required attestation is unsigned"
 
 
 class TestProvenanceSbom:

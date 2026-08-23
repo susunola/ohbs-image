@@ -245,6 +245,7 @@ def render_pkrvars(r: ResolvedConfig, image_name: str | None = None) -> str:
         "associate_public_ip_address": r.associate_public_ip,
         "image_name_prefix": r.image_name_prefix,
         "image_name": image_name,
+        "run_id": r.run_id,
         "instance_name": r.instance_name,
         "image_copy_regions": r.image_copy_regions,
         "cis_level": r.cis_level_tag,

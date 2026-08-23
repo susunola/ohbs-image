@@ -51,6 +51,7 @@ variable "image_name_prefix"           { type = string }
 # Computed once in Python (24h UTC) and passed in — the in-image
 # banner/report/motd must show the SAME name as the actual image.
 variable "image_name"                  { type = string }
+variable "run_id"                      { type = string }
 variable "image_copy_regions" {
   type    = list(string)
   default = []
@@ -105,8 +106,10 @@ __EXTRA_ARGS_BLOCK__
     built_with = "ohbs-image"
   }
   run_tags = {
-    purpose   = "ohbs-image-build"
-    ephemeral = "true"
+    managed_by = "ohbs-image"
+    purpose    = "ohbs-image-build"
+    run_id     = var.run_id
+    ephemeral  = "true"
   }
 __USER_DATA_BLOCK__
 }
@@ -526,7 +529,7 @@ build {
       "fi",
       "# Archive the audit JSON on the BUILD MACHINE too: emit it as one",
       "# gzipped+base64 line that ohbs-image extracts from the packer log and",
-      "# stores under ~/.ohbs-image/reports/<image>.json (the in-image copy at",
+      "# stores under ~/.ohbs-image/reports/<image>.<run-id>.json (the in-image copy at",
       "# /opt stays — drift/verify-image read it as the baseline).",
       "echo \"__CIS_IMAGE_AUDIT_B64__$(sudo gzip -c /opt/ohbs-image-AUDIT-RESULT.json 2>/dev/null | base64 -w0)\""
     ]
@@ -741,6 +744,7 @@ variable "image_name_prefix"           { type = string }
 # Computed once in Python (24h UTC) and passed in — the in-image
 # banner/report/motd must show the SAME name as the actual image.
 variable "image_name"                  { type = string }
+variable "run_id"                      { type = string }
 variable "image_copy_regions" {
   type    = list(string)
   default = []
@@ -818,8 +822,10 @@ __EXTRA_ARGS_BLOCK__
     built_with = "ohbs-image"
   }
   run_tags = {
-    purpose   = "ohbs-image-build"
-    ephemeral = "true"
+    managed_by = "ohbs-image"
+    purpose    = "ohbs-image-build"
+    run_id     = var.run_id
+    ephemeral  = "true"
   }
 }
 

@@ -162,6 +162,8 @@ secret_key_env = "TENCENTCLOUD_SECRET_KEY"
 # SLSA-style provenance signing (GPG). Empty = provenance unsigned.
 # [sign]
 # gpg_key = "ABCDEF0123456789"
+# [attestation]
+# required = true                         # default when gpg_key is configured; blocks release if signing fails
 
 [meta]
 os_tag    = "tencentos-3"

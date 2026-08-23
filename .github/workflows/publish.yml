@@ -23,6 +23,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Verify release metadata
+        run: python scripts/check_release.py --tag "${GITHUB_REF_NAME}"
+
       - name: Install build tooling
         run: pip install build
 

@@ -72,6 +72,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_bld.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompt")
     p_bld.add_argument("--log-file", default=None,
                        help="Write full build log to file (in addition to stderr)")
+    p_bld.add_argument("--result-file", default=None,
+                       help="Write the machine-readable build result JSON to PATH")
     p_bld.add_argument("--skip-if-unchanged", action="store_true",
                        help="Skip the rebuild when inputs (source image, rules, "
                             "benchmark, level) are unchanged since the last "

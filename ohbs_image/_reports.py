@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
+import time
 import urllib.request
+import uuid
+from contextlib import suppress
 from datetime import UTC
 from pathlib import Path
 from typing import Any
@@ -12,6 +16,41 @@ import ohbs_image
 
 from ._config import ResolvedConfig
 from ._logging import VERSION, info, ok, warn
+
+
+def _new_run_id() -> str:
+    """Return a collision-resistant identifier shared by one build's evidence."""
+    return str(uuid.uuid4())
+
+
+def _state_lock(path: Path, timeout_s: float = 10.0) -> Path:
+    """Acquire a portable directory lock for a small local state update."""
+    lock = path.with_name(path.name + ".lock")
+    deadline = time.monotonic() + timeout_s
+    while True:
+        try:
+            lock.mkdir(mode=0o700)
+            return lock
+        except FileExistsError:
+            if time.monotonic() >= deadline:
+                raise OSError(f"timed out waiting for state lock {lock}") from None
+            time.sleep(0.05)
+
+
+def _atomic_write_bytes(path: Path, content: bytes) -> None:
+    """Write evidence atomically and owner-readable only."""
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        with open(tmp, "xb") as fh:
+            os.chmod(tmp, 0o600)
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    finally:
+        with suppress(FileNotFoundError):
+            tmp.unlink()
 
 
 def _missing_build_evidence(image_ids: list[str], score: float | None,
@@ -34,7 +73,7 @@ def _save_build_report(r: ResolvedConfig, image_name: str,
     The in-image copy (/opt/ohbs-image-AUDIT-RESULT.json /
     C:\\ProgramData\\ohbs-image\\AUDIT-RESULT.json) travels with the image for
     drift/verify-image, but the operator's durable record belongs next to
-    the lineage + provenance: ~/.ohbs-image/reports/<image-name>.json.
+    the lineage + provenance: ~/.ohbs-image/reports/<image-name>.<run-id>.json.
 
     Linux emits the file as a gzipped+base64 marker line in the packer log
     (the finalize provisioner); Windows fetches result.json back to
@@ -67,9 +106,10 @@ def _save_build_report(r: ResolvedConfig, image_name: str,
     except ValueError:
         return None
     try:
-        out = ohbs_image._reports_dir() / f"{image_name}.json"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_bytes(raw)
+        run_id = r.run_id if isinstance(r, ResolvedConfig) else ""
+        suffix = f".{run_id}" if run_id else ""
+        out = ohbs_image._reports_dir() / f"{image_name}{suffix}.json"
+        _atomic_write_bytes(out, raw)
         return out
     except OSError:
         return None
@@ -78,7 +118,7 @@ def _record_lineage(r: ResolvedConfig, image_ids: list[str], image_name: str,
                     score: float | None, ok: bool,
                     sbom_sha: str | None = None,
                     sbom_count: int | None = None,
-                    mode: str = "build") -> Path | None:
+                    mode: str = "build", run_id: str | None = None) -> Path | None:
     """Append one lineage record. Returns the file path, or None on failure.
 
     *mode* — "build" (real hardening build), "scan" (audit-only) or "test"
@@ -89,10 +129,11 @@ def _record_lineage(r: ResolvedConfig, image_ids: list[str], image_name: str,
         return None  # defensive: only real resolved configs are recorded
     try:
         path = ohbs_image._lineage_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         from datetime import datetime
         rec = {
             "ts": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "run_id": run_id or r.run_id or _new_run_id(),
             "status": "ok" if ok else "failed",
             "mode": mode,
             "ohbs_image_version": VERSION,
@@ -119,8 +160,15 @@ def _record_lineage(r: ResolvedConfig, image_ids: list[str], image_name: str,
             rec["sbom_sha256"] = sbom_sha
         if sbom_count is not None:
             rec["sbom_packages"] = sbom_count
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        lock = _state_lock(path)
+        try:
+            with open(path, "a", encoding="utf-8") as fh:
+                os.chmod(path, 0o600)
+                fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+        finally:
+            lock.rmdir()
         return path
     except OSError:
         return None
@@ -316,16 +364,18 @@ def _trigger_deploy_webhook(r: ResolvedConfig, image_ids: list[str],
 def _write_provenance(r: ResolvedConfig, image_ids: list[str], image_name: str,
                       score: float | None,
                       sbom_sha: str | None = None,
-                      sbom_count: int | None = None) -> Path | None:
+                      sbom_count: int | None = None,
+                      run_id: str | None = None) -> Path | None:
     if not isinstance(r, ResolvedConfig):
         return None
     try:
         from datetime import datetime
         ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        invocation_id = run_id or r.run_id or _new_run_id()
         dirp = ohbs_image._lineage_path().parent / "provenance"
-        dirp.mkdir(parents=True, exist_ok=True)
+        dirp.mkdir(parents=True, exist_ok=True, mode=0o700)
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", image_name) or "image"
-        prov_path = dirp / f"{safe_name}.{ts.replace(':', '').replace('-', '').replace('T', '-')}.provenance.json"
+        prov_path = dirp / f"{safe_name}.{invocation_id}.provenance.json"
         prov: dict[str, Any] = {
             "_type": "https://in-toto.io/Statement/v1",
             "predicateType": "https://slsa.dev/provenance/v1",
@@ -352,7 +402,7 @@ def _write_provenance(r: ResolvedConfig, image_ids: list[str], image_name: str,
                 "runDetails": {
                     "builder": {"id": f"ohbsimage@{VERSION}"},
                     "metadata": {
-                        "invocationId": ts,
+                        "invocationId": invocation_id,
                         "startedOn": ts,
                         "finishedOn": ts,
                     },
@@ -368,8 +418,8 @@ def _write_provenance(r: ResolvedConfig, image_ids: list[str], image_name: str,
             prov["predicate"]["runDetails"]["metadata"]["sbomSha256"] = sbom_sha
         if sbom_count is not None:
             prov["predicate"]["runDetails"]["metadata"]["sbomPackageCount"] = sbom_count
-        prov_path.write_text(json.dumps(prov, ensure_ascii=False, indent=1) + "\n",
-                             encoding="utf-8")
+        _atomic_write_bytes(
+            prov_path, (json.dumps(prov, ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
         if r.sign_key:
             sig = prov_path.with_suffix(prov_path.suffix + ".sig")
             try:

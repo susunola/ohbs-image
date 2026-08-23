@@ -194,6 +194,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | `--debug` | validate, build, scan | Enable `PACKER_LOG=1` |
 | `-y` / `--yes` | build | Skip confirmation prompt |
 | `--log-file <path>` | build | Write full build log to file |
+| `--result-file <path>` | build | Write one atomic JSON result contract for CI/CD |
 | `--skip-if-unchanged` | build | Skip when inputs (source image, rules, benchmark, level) are unchanged |
 | `--min-score <pct>` | scan, audit, verify-image | Gate threshold (default `85`; below it → exit 1) |
 | `--sarif <path>` | scan, audit | Write findings as SARIF 2.1.0 |
@@ -344,6 +345,7 @@ benchmark = "CIS-v1.0.0"
 | | `on` | string | `always` \| `success` \| `failure` (default `failure`) |
 | | `deploy_webhook` | string | POST `{image_id, score, profile}` on build success to trigger downstream CI/CD (EventBridge-style; empty = off) |
 | `[sign]` | `gpg_key` | string | GPG key id/fingerprint for provenance signing (empty = unsigned) |
+| `[attestation]` | `required` | bool | Require a valid provenance signature before approval, sharing or deployment (defaults to `true` when `gpg_key` is set) |
 
 ---
 
@@ -630,7 +632,7 @@ distribute pipeline):
   `pending` ignore them (only `mode: build` records count; records written
   before the field existed count as `build`).  The full per-rule audit JSON is
   archived alongside it on the build machine at
-  `~/.ohbs-image/reports/<image-name>.json`.  Query it with:
+  `~/.ohbs-image/reports/<image-name>.<run-id>.json`.  Query it with:
 
   ```bash
   ohbs-image images            # recent builds, newest first
@@ -675,6 +677,9 @@ distribute pipeline):
   ```toml
   [sign]
   gpg_key = "ABCDEF0123456789"   # your GPG key id/fingerprint
+
+  [attestation]
+  required = true                  # fail closed: never distribute an unsigned build
   ```
 
   Verify any signed provenance (audit / compliance):
@@ -692,6 +697,14 @@ distribute pipeline):
   allowlist. Exit code is non-zero when the signature is missing, invalid,
   cannot be checked because GPG is unavailable or times out, the signer is not
   allowlisted, or `--image` is not a subject of the provenance.
+
+  With `[attestation].required = true`, a missing/failed/timed-out signature
+  blocks approval, cross-account sharing, and the deploy webhook. For CI/CD,
+  `ohbs-image build --result-file result.json` writes one atomic JSON document
+  containing the run ID, image IDs, score, evidence paths, and signature state.
+  Evidence is stored with owner-only permissions under `~/.ohbs-image`; each
+  build receives a UUID run ID, so concurrent builds do not reuse provenance
+  filenames or invocation IDs.
 
 - **SBOM + change detection (supply chain)** — with `[meta].sbom = true` the
   build emits a zero-dependency SBOM (`/opt/ohbs-image-SBOM.jsonl`, native
