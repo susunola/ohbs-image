@@ -2741,6 +2741,23 @@ class TestRunManifests:
         _write_run_manifest(r, status="completed", phase="probe-cleanup")
         assert _run_manifest_is_active(r.run_id) is False
 
+    def test_heartbeat_refreshes_active_lease(self, valid_toml, monkeypatch):
+        import time
+        from ohbs_image import resolve
+        from ohbs_image._commands import _start_run_lease_heartbeat
+        r = resolve(valid_toml)
+        r.run_id = "12345678-1234-1234-1234-123456789abc"
+        refreshed = mock.Mock()
+        monkeypatch.setattr("ohbs_image._write_run_manifest", refreshed)
+        monkeypatch.setattr("ohbs_image._commands._RUN_LEASE_HEARTBEAT_SECONDS", 0.01)
+        stop, worker = _start_run_lease_heartbeat(r)
+        try:
+            time.sleep(0.03)
+        finally:
+            stop.set()
+            worker.join(timeout=1)
+        refreshed.assert_called_with(r, status="active", phase="packer-build")
+
 
 class TestCleanupImages:
     """ohbs-image cleanup-images — retire old images by lineage age."""
@@ -4358,6 +4375,19 @@ class TestProvenanceSbom:
         ext = doc["predicate"]["buildDefinition"]["externalParameters"]
         assert ext["rules_sha256"] == "r" * 64
         assert ext["fingerprint"] == "f" * 64
+
+    def test_provenance_summarizes_provider_overrides_without_values(self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import _write_provenance
+        valid_toml["build"]["packer"] = {"disk_type": "CLOUD_SSD", "disk_size": 100}
+        r = resolve(valid_toml)
+        r.run_id = "12345678-1234-1234-1234-123456789abc"
+        monkeypatch.setattr("ohbs_image._lineage_path", lambda: tmp_path / "lineage.jsonl")
+        p = _write_provenance(r, ["img-abc"], "img-name", 96.5)
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        ext = doc["predicate"]["buildDefinition"]["externalParameters"]
+        assert ext["packer_extra_keys"] == ["disk_size", "disk_type"]
+        assert len(ext["packer_extra_sha256"]) == 64
+        assert "CLOUD_SSD" not in json.dumps(ext)
 
     def test_provenance_without_sbom(self, valid_toml, tmp_path, monkeypatch):
         from ohbs_image import _write_provenance

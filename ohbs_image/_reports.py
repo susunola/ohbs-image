@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -481,6 +482,14 @@ def _write_provenance(r: ResolvedConfig, image_ids: list[str], image_name: str,
                         "source_image_id": r.source_image_id,
                         "instance_type": r.instance_type,
                         "benchmark": r.image_benchmark,
+                        # Provider passthrough is privileged configuration.
+                        # Preserve an auditable, non-secret summary without
+                        # copying arbitrary operator-supplied values into the
+                        # provenance document.
+                        "packer_extra_keys": sorted(r.packer_extra),
+                        "packer_extra_sha256": hashlib.sha256(
+                            json.dumps(r.packer_extra, sort_keys=True,
+                                       ensure_ascii=False).encode("utf-8")).hexdigest(),
                         # P1#4 — pin the exact rule catalog version that was
                         # applied, so the provenance is auditable against the
                         # benchmark edition (ansible-lockdown pins per-benchmark).

@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -33,6 +34,21 @@ from ._reports import (
     _save_build_report,
     _send_notification,
 )
+
+_RUN_LEASE_HEARTBEAT_SECONDS = 300
+
+
+def _start_run_lease_heartbeat(r: ResolvedConfig) -> tuple[threading.Event, threading.Thread]:
+    """Keep a long-running Packer build visible to concurrent janitors."""
+    stop = threading.Event()
+
+    def _heartbeat() -> None:
+        while not stop.wait(_RUN_LEASE_HEARTBEAT_SECONDS):
+            ohbs_image._write_run_manifest(r, status="active", phase="packer-build")
+
+    worker = threading.Thread(target=_heartbeat, name=f"ohbs-lease-{r.run_id[:8]}", daemon=True)
+    worker.start()
+    return stop, worker
 
 
 def _write_build_result(args: argparse.Namespace, r: ResolvedConfig, *, status: str,
@@ -244,9 +260,13 @@ def cmd_build(args: argparse.Namespace) -> int:
     ohbs_image._write_run_manifest(r, status="active", phase="packer-build")
 
     _fh: logging.FileHandler | None = _open_build_log(args)
-
-    result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
-                        log_file=args.log_file)
+    heartbeat_stop, heartbeat_worker = _start_run_lease_heartbeat(r)
+    try:
+        result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
+                            log_file=args.log_file)
+    finally:
+        heartbeat_stop.set()
+        heartbeat_worker.join(timeout=5)
 
     # Sync file position: run_packer opened its own FD for appending,
     # so _fh's position is stale — seek to end before more logger writes.

@@ -726,8 +726,13 @@ distribute pipeline):
 
   Every build and clean-boot probe also writes a versioned run manifest under
   `runs/<run_id>.json`. It records the active lease, phase, and known temporary
-  resources. `cleanup-runs` skips unexpired active leases; it only treats age
-  as a fallback for expired or pre-manifest resources.
+  resources. Long-running Packer builds refresh that lease every five minutes.
+  `cleanup-runs` skips unexpired active leases; it only treats age as a fallback
+  for expired or pre-manifest resources.
+
+  `[build.packer]` remains a privileged provider-extension escape hatch. Its
+  values are not copied into provenance, but the exact sorted key set and a
+  SHA-256 digest of the complete override map are recorded for audit.
 
 - **SBOM + change detection (supply chain)** — with `[meta].sbom = true` the
   build emits a zero-dependency SBOM (`/opt/ohbs-image-SBOM.jsonl`, native
