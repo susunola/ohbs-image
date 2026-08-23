@@ -56,6 +56,13 @@ can be traced across rebuilds.
 - **cleanup drops `/var/tmp/dracut.*`** — kernel updates during the build
   leak dracut temp dirs whose files land outside the SUID baseline
   (rhel10 7.1.13).
+- **`bootloader_password` (Debian/Ubuntu): normalise `GRUB_DEFAULT`** —
+  Ubuntu cloud images ship `GRUB_DEFAULT=1`, pointing at the "Advanced
+  options" SUBMENU; with a superuser defined, GRUB 2.04 refuses to
+  auto-boot a default that resolves through a submenu and waits at the
+  menu forever (ubuntu2004 round-2/3 builds hung on the post-apply
+  reboot; reproduced live and confirmed fixed by `GRUB_DEFAULT=0`).
+  The fixer now rewrites a bare nonzero numeric default to `0`.
 - **Windows: defer `SeDenyNetworkLogonRight` (S-1-5-114) to first boot** —
   "deny network logon for local accounts in Administrators" kills the
   pywinrm channel mid-apply (401 on every re-authentication), same as the

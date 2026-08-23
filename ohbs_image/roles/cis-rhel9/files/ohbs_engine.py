@@ -4192,6 +4192,21 @@ def f_bootloader_password(ctx, p):
             if new != txt:
                 write_file(ctx, gen, new, 0o755)
                 patched = True
+        # Ubuntu cloud images ship GRUB_DEFAULT=1, which points at the
+        # "Advanced options" SUBMENU.  With a superuser defined, GRUB 2.04
+        # refuses to auto-boot a default that resolves through a submenu
+        # and waits at the menu forever (ubuntu2004 round-2/3 builds hung
+        # on the post-apply reboot; BIOS boot, no console to answer the
+        # prompt).  Normalise a bare nonzero numeric default to 0 — the
+        # first entry boots the same newest kernel.
+        dg = "/etc/default/grub"
+        dg_txt = read(dg)
+        if dg_txt and re.search(r"(?m)^\s*GRUB_DEFAULT=[1-9][0-9]*\s*$",
+                                dg_txt):
+            backup(ctx, dg)
+            write_file(ctx, dg,
+                       re.sub(r"(?m)^(\s*)GRUB_DEFAULT=[1-9][0-9]*\s*$",
+                              r"\1GRUB_DEFAULT=0", dg_txt), 0o644)
         body = ('#!/bin/sh\n'
                 'exec tail -n +3 $0\n'
                 '# CIS hardening: GRUB superuser (ohbs-image)\n'
