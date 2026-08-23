@@ -107,7 +107,14 @@ function Get-FirstbootEntries {
 
 function Test-FirstbootDeferred($Rule) {
     $params = $Rule.params
-    if (-not $params -or -not $params.path) { return $false }
+    if (-not $params) { return $false }
+    if ($Rule.family -eq "user-right") {
+        foreach ($e in (Get-FirstbootEntries)) {
+            if ($e.type -eq "userright" -and $e.privilege -eq "$($params.privilege)") { return $true }
+        }
+        return $false
+    }
+    if (-not $params.path) { return $false }
     $path = ConvertTo-RegistryPath $params.path
     foreach ($e in (Get-FirstbootEntries)) {
         if ($e.path -eq $path -and "$($e.name)" -eq "$($params.name)" -and "$($e.value)" -eq "$($params.value)") { return $true }
@@ -117,21 +124,32 @@ function Test-FirstbootDeferred($Rule) {
 
 function Add-FirstbootDeferred($Rule) {
     $params = $Rule.params
-    $type = switch ($Rule.family) {
-        "reg-string"   { "String" }
-        "reg-multisz"  { "MultiString" }
-        default        { "DWord" }
-    }
     try {
         $entries = @(@() + (Get-FirstbootEntries))
-        $path = ConvertTo-RegistryPath $params.path
-        $dup = $entries | Where-Object { $_.path -eq $path -and "$($_.name)" -eq "$($params.name)" }
-        if (-not $dup) {
-            $entries += [PSCustomObject]@{
-                path  = $path
-                name  = "$($params.name)"
-                type  = $type
-                value = $(if ($type -eq "MultiString") { @($params.value | ForEach-Object { "$_" }) } else { $params.value })
+        if ($Rule.family -eq "user-right") {
+            $dup = $entries | Where-Object { $_.type -eq "userright" -and $_.privilege -eq "$($params.privilege)" }
+            if (-not $dup) {
+                $entries += [PSCustomObject]@{
+                    type      = "userright"
+                    privilege = "$($params.privilege)"
+                    value     = "$($params.expected_sid)"
+                }
+            }
+        } else {
+            $type = switch ($Rule.family) {
+                "reg-string"   { "String" }
+                "reg-multisz"  { "MultiString" }
+                default        { "DWord" }
+            }
+            $path = ConvertTo-RegistryPath $params.path
+            $dup = $entries | Where-Object { $_.path -eq $path -and "$($_.name)" -eq "$($params.name)" }
+            if (-not $dup) {
+                $entries += [PSCustomObject]@{
+                    path  = $path
+                    name  = "$($params.name)"
+                    type  = $type
+                    value = $(if ($type -eq "MultiString") { @($params.value | ForEach-Object { "$_" }) } else { $params.value })
+                }
             }
         }
         if (-not (Test-Path $script:FirstbootDir)) { New-Item -ItemType Directory -Path $script:FirstbootDir -Force | Out-Null }
@@ -140,6 +158,20 @@ function Add-FirstbootDeferred($Rule) {
         # Regenerate the boot script from the full manifest (idempotent).
         $lines = @("# ohbs-image first-boot hardening (auto-generated - do not edit)")
         foreach ($e in $entries) {
+            if ($e.type -eq "userright") {
+                # User rights go through secedit: export, replace the
+                # privilege's member list, re-import (mirrors Invoke-Fix).
+                $priv = "$($e.privilege)".Replace("'", "''")
+                $sids = (($("$($e.value)" -split ',') | Where-Object { "$_".Trim() } | ForEach-Object { "*" + "$_".Trim().TrimStart('*') }) -join ",")
+                $lines += "`$inf = `"`$env:TEMP\ohbs-firstboot-ur.inf`""
+                $lines += "secedit /export /cfg `$inf /areas USER_RIGHTS 2>`$null | Out-Null"
+                $lines += "`$c = [IO.File]::ReadAllText(`$inf)"
+                $lines += "if (`$c -match '(?m)^\s*$priv\s*=') { `$c = `$c -replace '(?m)^\s*$priv\s*=.*$', '$priv = $sids' }"
+                $lines += 'else { $c = $c -replace ''(?m)^\[Privilege Rights\]'', "[Privilege Rights]`r`n' + "$priv = $sids" + '" }'
+                $lines += "[IO.File]::WriteAllText(`$inf, `$c)"
+                $lines += "secedit /configure /db `"`$env:TEMP\ohbs-firstboot-ur.sdb`" /cfg `$inf /areas USER_RIGHTS 2>`$null | Out-Null"
+                continue
+            }
             $p = "$($e.path)".Replace("'", "''")
             $n = "$($e.name)".Replace("'", "''")
             $lines += "if (-not (Test-Path '$p')) { New-Item -Path '$p' -Force | Out-Null }"
@@ -165,6 +197,21 @@ function Add-FirstbootDeferred($Rule) {
         Register-ScheduledTask -TaskName $script:FirstbootTask -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
         return "applied"
     } catch { return "failed: $($_.Exception.Message)" }
+}
+
+function Reset-BuiltinAdminLockout {
+    <#
+    Applying a lockout policy (threshold + AllowAdministratorLockout) while
+    transient failed logons are still in the SAM bad-password count can lock
+    the built-in Administrator mid-run, killing the WinRM channel with 401
+    "credentials rejected" (observed on the win2022 build).  Clearing the
+    lock flag also resets the bad-password counter; harmless when the
+    account is not locked.
+    #>
+    try {
+        $u = [ADSI]"WinNT://./Administrator,user"
+        if ($u.IsAccountLocked) { $u.IsAccountLocked = $false; $u.SetInfo() }
+    } catch { Write-Debug "Reset-BuiltinAdminLockout: $_" }
 }
 
 function ConvertTo-AccountSid($Name) {
@@ -782,11 +829,13 @@ function Invoke-Fix {
                     if ($dur -lt $win) { $dur = $win }
                     net accounts "/lockoutthreshold:$thr" "/lockoutwindow:$win" "/lockoutduration:$dur" 2>$null | Out-Null
                     if ($LASTEXITCODE -ne 0) { return "failed: net accounts exit $LASTEXITCODE" }
+                    Reset-BuiltinAdminLockout
                     return "applied"
                 } catch { return "failed: $($_.Exception.Message)" }
             }
             try {
                 Set-SecPolValue $key $expected
+                Reset-BuiltinAdminLockout
                 return "applied"
             } catch { return "failed: $($_.Exception.Message)" }
         }
@@ -1204,6 +1253,11 @@ foreach ($rule in $rules) {
 }
 
 # -- Summary -------------------------------------------------
+if ($isApply) {
+    # Belt and braces: make sure no rule combination locked out the account
+    # ansible/packer is using BEFORE we hand control back.
+    Reset-BuiltinAdminLockout
+}
 function Get-Summary($levelFilter) {
     $filtered = if ($levelFilter) { $global:Results | Where-Object { $_.level -eq $levelFilter } } else { $global:Results }
     # NOTE: @(...) is mandatory - a pipeline yielding exactly one PSCustomObject
@@ -1252,7 +1306,7 @@ $overallScore = $summary.all.score
 $output = @{
     mode = $Mode
     benchmark = $Benchmark
-    engine_version = "1.2.0-windows"
+    engine_version = "1.3.0-windows"
     duration_seconds = [math]::Round($sw.Elapsed.TotalSeconds, 1)
     started_at = $startedAt
     score = $overallScore

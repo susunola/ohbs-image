@@ -4365,11 +4365,9 @@
       "Server",
       "Workstation"
     ],
-    "family": "pam_module",
+    "family": "user_audit",
     "params": {
-      "module": "pam_wheel.so",
-      "arg": "use_uid",
-      "mode": "flag"
+      "kind": "su_wheel"
     },
     "risk": "safe",
     "page": 601,
