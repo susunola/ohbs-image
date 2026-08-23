@@ -4,6 +4,7 @@ import os
 import re
 import tomllib
 from dataclasses import dataclass, field
+from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -159,6 +160,15 @@ def _validate_https_url(value: str, label: str) -> str:
         raise ConfigError(f"{label} must be an absolute https URL.")
     if parsed.username or parsed.password:
         raise ConfigError(f"{label} must not contain URL credentials.")
+    # DNS names remain an administrator-controlled integration boundary, but
+    # never allow an explicit literal address to target a host-local, private,
+    # link-local, multicast, or otherwise non-public endpoint.
+    try:
+        host = ip_address(parsed.hostname)
+    except ValueError:
+        return value
+    if not host.is_global:
+        raise ConfigError(f"{label} must not use a non-public IP address.")
     return value
 
 

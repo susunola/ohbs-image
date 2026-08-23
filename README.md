@@ -175,7 +175,7 @@ ohbs-image pending                            # change detection: is a rebuild r
 ohbs-image cleanup-images [--older-than 30]   # retire old images by lineage age
 ohbs-image cleanup-images --apply             # actually delete (default = dry run)
 ohbs-image cleanup-runs --older-than 24       # find tagged orphaned build/probe CVMs (dry run)
-ohbs-image cleanup-runs --older-than 24 --apply # actually terminate the tagged CVMs
+ohbs-image cleanup-runs --older-than 24 --apply # actually terminate the tagged CVMs (hours must be > 0)
 ohbs-image verify --provenance <file>         # verify a SLSA provenance signature
 ohbs-image verify --image <img-id>            # ... or locate provenance by image ID
 ohbs-image verify-image --image <img-id>      # clean-boot verification of a produced image
@@ -192,7 +192,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 |---|---|---|
 | `--config <path>` | all | Config file path (default `./ohbs-image.toml`) |
 | `--workdir <dir>` | all | Build output directory (default `./.ohbs-image-build`) |
-| `--state-dir <dir>` | build/scan/etc. | Evidence state directory (or `OHBS_IMAGE_STATE_DIR`) |
+| `--state-dir <dir>` | all state-aware commands | Evidence state directory (or `OHBS_IMAGE_STATE_DIR`; it may precede the command) |
 | `--quiet` | validate, build, scan | Suppress packer output |
 | `--debug` | validate, build, scan | Enable `PACKER_LOG=1` |
 | `-y` / `--yes` | build | Skip confirmation prompt |
@@ -710,7 +710,9 @@ distribute pipeline):
   build receives a UUID run ID, so concurrent builds do not reuse provenance
   filenames or invocation IDs.
 
-  Webhook endpoints must use HTTPS. Deploy events carry the build `run_id` as
+  Webhook endpoints must use HTTPS and cannot use literal non-public IP
+  addresses. DNS webhook hosts remain administrator-controlled integrations;
+  production networks should also enforce an egress allowlist. Deploy events carry the build `run_id` as
   both `event_id` and `Idempotency-Key`; delivery retries transient failures
   three times. Use `--state-dir /secure/ohbs-state` (or
   `OHBS_IMAGE_STATE_DIR`) to isolate CI jobs or retain team evidence outside a

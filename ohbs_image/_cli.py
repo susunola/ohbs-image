@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Path to config file (default ./ohbs-image.toml)")
     common.add_argument("--workdir", default=DEFAULT_WORKDIR,
                         help=f"Rendered working directory (default ./{DEFAULT_WORKDIR})")
-    common.add_argument("--state-dir", default=None,
+    common.add_argument("--state-dir", default=argparse.SUPPRESS,
                         help="Evidence state directory (default $OHBS_IMAGE_STATE_DIR or ~/.ohbs-image)")
 
     parser = argparse.ArgumentParser(
@@ -46,6 +46,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"ohbs-image {VERSION}")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
+    parser.add_argument("--state-dir", default=None,
+                        help="Evidence state directory (may be placed before any command)")
 
     sub = parser.add_subparsers(dest="command")
 
@@ -87,13 +89,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_cln = sub.add_parser("clean", parents=[common], help="Remove working directory")
     p_cln.set_defaults(func=cmd_clean)
 
-    p_img = sub.add_parser("images", help="List recorded builds (image lineage)")
+    p_img = sub.add_parser("images", parents=[common],
+                           help="List recorded builds (image lineage)")
     p_img.add_argument("--latest", action="store_true", help="Show only the newest record")
     p_img.add_argument("-n", "--limit", type=int, default=10,
                        help="Max records to show (default 10; 0 = all)")
     p_img.set_defaults(func=cmd_images)
 
-    p_vrf = sub.add_parser("verify", help="Verify a SLSA provenance signature")
+    p_vrf = sub.add_parser("verify", parents=[common],
+                           help="Verify a SLSA provenance signature")
     p_vrf.add_argument("--provenance", default=None,
                        help="Path to a .provenance.json file")
     p_vrf.add_argument("--image", default=None,

@@ -399,7 +399,8 @@ def _probe_launch(r: ResolvedConfig, image_id: str, instance_name: str,
                                "InternetMaxBandwidthOut": 1},
         "InstanceCount": 1,
         "TagSpecification": [{"ResourceType": "instance",
-                              "Tags": [{"Key": "purpose", "Value": "ohbs-image-verify"},
+                              "Tags": [{"Key": "managed_by", "Value": "ohbs-image"},
+                                       {"Key": "purpose", "Value": "ohbs-image-verify"},
                                        {"Key": "ephemeral", "Value": "true"}]}]}
     if key_ids:
         params["LoginSettings"] = {"KeyIds": key_ids}
@@ -554,16 +555,30 @@ def _fetch_baseline(r: ResolvedConfig, image_id: str) -> dict[str, Any] | None:
     return None  # caller fetches the in-image one over SSH
 
 def _list_ephemeral_instances(r: ResolvedConfig) -> list[dict[str, Any]]:
-    """List only build/probe CVMs explicitly tagged as ohbs-image ephemeral."""
+    """List ohbs-image build/probe CVMs, including probes from older releases."""
     sid, skey, tok = _creds(r.secret_id_env, r.secret_key_env, r.security_token_env)
     if not sid or not skey:
         raise ConfigError("Tencent Cloud credentials are required to inspect ephemeral runs")
-    response = ohbs_image._tc3_api(
-        "cvm", "DescribeInstances", "2017-03-12", r.region,
-        {"Filters": [{"Name": "tag:managed_by", "Values": ["ohbs-image"]},
-                     {"Name": "tag:ephemeral", "Values": ["true"]}]},
-        sid, skey, tok or None)
-    return cast("list[dict[str, Any]]", response.get("Response", {}).get("InstanceSet") or [])
+    instances: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        response = ohbs_image._tc3_api(
+            "cvm", "DescribeInstances", "2017-03-12", r.region,
+            {"Limit": 100, "Offset": offset,
+             "Filters": [{"Name": "tag:ephemeral", "Values": ["true"]}]},
+            sid, skey, tok or None)
+        body = response.get("Response", {})
+        page = cast("list[dict[str, Any]]", body.get("InstanceSet") or [])
+        for instance in page:
+            tags = {str(tag.get("Key")): str(tag.get("Value"))
+                    for tag in instance.get("Tags", []) if isinstance(tag, dict)}
+            if (tags.get("managed_by") == "ohbs-image"
+                    or tags.get("purpose") == "ohbs-image-verify"):
+                instances.append(instance)
+        offset += len(page)
+        total = body.get("TotalCount")
+        if not page or not isinstance(total, int) or offset >= total:
+            return instances
 
 
 def _terminate_ephemeral_instances(r: ResolvedConfig, instance_ids: list[str]) -> None:

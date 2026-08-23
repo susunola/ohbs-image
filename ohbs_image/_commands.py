@@ -114,11 +114,8 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 def _load_resolve_preflight(config_path: str, workdir: str) -> tuple[ResolvedConfig, Path] | None:
     """Load config, resolve, run preflight. Returns (ResolvedConfig, workdir) or None on failure."""
-    try:
-        data = load_config(Path(config_path))
-        r = resolve(data)
-    except ConfigError as exc:
-        fail(str(exc))
+    r = _load_resolved(config_path)
+    if r is None:
         return None
 
     if not run_preflight(r):
@@ -133,6 +130,15 @@ def _load_resolve_preflight(config_path: str, workdir: str) -> tuple[ResolvedCon
     wd = Path(workdir).resolve()
     wd.mkdir(parents=True, exist_ok=True)
     return r, wd
+
+
+def _load_resolved(config_path: str) -> ResolvedConfig | None:
+    """Load configuration without build-only Packer or connectivity checks."""
+    try:
+        return resolve(load_config(Path(config_path)))
+    except ConfigError as exc:
+        fail(str(exc))
+        return None
 
 def cmd_preflight(args: argparse.Namespace) -> int:
     """Run pre-flight checks."""
@@ -323,12 +329,6 @@ def cmd_build(args: argparse.Namespace) -> int:
                     _send_notification(r, False, image_ids, score, image_name)
                     _close_build_log(_fh)
                     return vrc
-        # Build → attest → verify → distribute.  A successful lineage record
-        # is only emitted after every enabled release gate has passed.
-        lin = ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True,
-                                         sbom_sha=sbom_sha, sbom_count=sbom_count)
-        if lin:
-            info(f"Lineage recorded -> {lin}")
         # An explicitly requested result artifact is part of the release
         # contract.  Do not share or trigger deployment if it could not be
         # written for the downstream automation that requested it.
@@ -336,9 +336,18 @@ def cmd_build(args: argparse.Namespace) -> int:
                                    image_ids=image_ids, score=score, report=rep,
                                    provenance=prov, signed=signed):
             fail("requested build result could not be written — release actions are blocked")
+            ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
+                                        sbom_sha=sbom_sha, sbom_count=sbom_count)
             _send_notification(r, False, image_ids, score, image_name)
             _close_build_log(_fh)
             return 1
+        # Build → attest → verify → distribute.  A successful lineage record
+        # is emitted only after every enabled release gate, including an
+        # explicitly requested automation result artifact, has passed.
+        lin = ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True,
+                                         sbom_sha=sbom_sha, sbom_count=sbom_count)
+        if lin:
+            info(f"Lineage recorded -> {lin}")
         # P2#9 — sharing occurs only after the evidence and clean-boot gates.
         if r.image_share_accounts and image_ids:
             ohbs_image._share_images(r, image_ids, r.image_share_accounts)
@@ -408,11 +417,14 @@ def cmd_images(args: argparse.Namespace) -> int:
 
 def cmd_cleanup_runs(args: argparse.Namespace) -> int:
     """Retire tagged, orphaned ephemeral build/probe CVMs (dry-run by default)."""
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
-    if prep is None:
+    older_than = getattr(args, "older_than", None)
+    if not isinstance(older_than, int) or older_than <= 0:
+        fail("--older-than must be a positive number of hours")
         return 1
-    r, _ = prep
-    cutoff = datetime.now(UTC).timestamp() - args.older_than * 3600
+    r = _load_resolved(args.config)
+    if r is None:
+        return 1
+    cutoff = datetime.now(UTC).timestamp() - older_than * 3600
     try:
         instances = ohbs_image._list_ephemeral_instances(r)
     except ConfigError as exc:
@@ -429,7 +441,7 @@ def cmd_cleanup_runs(args: argparse.Namespace) -> int:
         if created_ts <= cutoff and isinstance(instance.get("InstanceId"), str):
             stale.append(instance["InstanceId"])
     if not stale:
-        ok(f"No tagged ephemeral runs older than {args.older_than} hour(s).")
+        ok(f"No tagged ephemeral runs older than {older_than} hour(s).")
         return 0
     for instance_id in stale:
         warn(f"{'terminating' if args.apply else '[dry-run] would terminate'} {instance_id}")

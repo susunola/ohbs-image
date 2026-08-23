@@ -1960,6 +1960,12 @@ class TestBuildParser:
             assert parser.parse_args([sub, "--verbose"]).verbose is True
             assert parser.parse_args([sub]).verbose is False
 
+    def test_state_dir_before_any_command_and_after_stateful_commands(self):
+        parser = build_parser()
+        assert parser.parse_args(["--state-dir", "/tmp/evidence", "images"]).state_dir == "/tmp/evidence"
+        assert parser.parse_args(["images", "--state-dir", "/tmp/evidence"]).state_dir == "/tmp/evidence"
+        assert parser.parse_args(["verify", "--state-dir", "/tmp/evidence", "--image", "img-x"]).state_dir == "/tmp/evidence"
+
 
 # ---------------------------------------------------------------------------
 # main() entry point
@@ -2658,6 +2664,52 @@ class TestScanListRules:
         assert rc == 1
         assert lin.call_args.kwargs["ok"] is False
         prov.assert_not_called()
+
+
+class TestCleanupRuns:
+    """cleanup-runs must be safe even when the build toolchain is unhealthy."""
+
+    def test_rejects_non_positive_retention_before_cloud_calls(self, monkeypatch):
+        from ohbs_image import cmd_cleanup_runs
+        load = mock.Mock()
+        monkeypatch.setattr("ohbs_image._commands._load_resolved", load)
+        assert cmd_cleanup_runs(mock.MagicMock(older_than=0, config="x", apply=True)) == 1
+        assert cmd_cleanup_runs(mock.MagicMock(older_than=-1, config="x", apply=True)) == 1
+        load.assert_not_called()
+
+    def test_cleanup_uses_minimal_config_path_and_dry_run(self, valid_toml, monkeypatch):
+        from ohbs_image import cmd_cleanup_runs, resolve
+        r = resolve(valid_toml)
+        monkeypatch.setattr("ohbs_image._commands._load_resolved", lambda _: r)
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight",
+                            lambda *a: (_ for _ in ()).throw(AssertionError("no preflight")))
+        monkeypatch.setattr("ohbs_image._list_ephemeral_instances", lambda _: [{
+            "InstanceId": "ins-old", "CreatedTime": "2020-01-01T00:00:00Z"}])
+        terminate = mock.Mock()
+        monkeypatch.setattr("ohbs_image._terminate_ephemeral_instances", terminate)
+        assert cmd_cleanup_runs(mock.MagicMock(older_than=24, config="x", apply=False)) == 0
+        terminate.assert_not_called()
+
+    def test_lists_pages_and_legacy_probe_tags(self, valid_toml, monkeypatch):
+        from ohbs_image import _list_ephemeral_instances, resolve
+        r = resolve(valid_toml)
+        monkeypatch.setenv("TENCENTCLOUD_SECRET_ID", "AKIDx")
+        monkeypatch.setenv("TENCENTCLOUD_SECRET_KEY", "key")
+        calls = []
+        def fake_tc3(_service, _action, _version, _region, params, *_args):
+            calls.append(params["Offset"])
+            if params["Offset"] == 0:
+                return {"Response": {"TotalCount": 2, "InstanceSet": [{
+                    "InstanceId": "ins-build", "Tags": [
+                        {"Key": "managed_by", "Value": "ohbs-image"},
+                        {"Key": "ephemeral", "Value": "true"}]}]}}
+            return {"Response": {"TotalCount": 2, "InstanceSet": [{
+                "InstanceId": "ins-probe", "Tags": [
+                    {"Key": "purpose", "Value": "ohbs-image-verify"},
+                    {"Key": "ephemeral", "Value": "true"}]}]}}
+        monkeypatch.setattr("ohbs_image._tc3_api", fake_tc3)
+        assert [item["InstanceId"] for item in _list_ephemeral_instances(r)] == ["ins-build", "ins-probe"]
+        assert calls == [0, 1]
 
 
 class TestCleanupImages:
@@ -3846,6 +3898,10 @@ class TestVerifyImage:
         assert captured["VirtualPrivateCloud"]["VpcId"] == r.vpc_id
         assert captured["VirtualPrivateCloud"]["SubnetId"] == r.subnet_id
         assert captured["InternetAccessible"]["PublicIpAssigned"] == r.associate_public_ip
+        tags = {tag["Key"]: tag["Value"]
+                for tag in captured["TagSpecification"][0]["Tags"]}
+        assert tags["managed_by"] == "ohbs-image"
+        assert tags["ephemeral"] == "true"
 
     def test_probe_launch_missing_creds(self, valid_toml, monkeypatch):
         from ohbs_image import _probe_launch
@@ -4336,6 +4392,13 @@ class TestRound2Config:
     def test_deploy_webhook_parsed(self, valid_toml):
         valid_toml.setdefault("notify", {})["deploy_webhook"] = "https://ci.example.com/x"
         assert resolve(valid_toml).deploy_webhook == "https://ci.example.com/x"
+
+    def test_webhooks_reject_literal_non_public_ip_addresses(self, valid_toml):
+        for key in ("webhook", "deploy_webhook"):
+            data = json.loads(json.dumps(valid_toml))
+            data.setdefault("notify", {})[key] = "https://127.0.0.1/hook"
+            with pytest.raises(ConfigError, match="non-public IP"):
+                resolve(data)
 
     def test_share_org_units_parsed(self, valid_toml):
         valid_toml.setdefault("image", {})["share_org_units"] = ["uin/999"]
