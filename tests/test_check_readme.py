@@ -76,6 +76,13 @@ class TestCheckReadme:
         assert any("profile" in e for e in errors)
         assert "tencentos4" in [e for e in errors if "profile" in e][0]
 
+    def test_reports_stale_version_badge(self):
+        readme = ("ohbs-image init\nubuntu2004 rhel9\n"
+                  "https://img.shields.io/badge/version-0.12.4-blue")
+        errors = check_readme.check_readme(readme, {"init"},
+                                           {"ubuntu2004", "rhel9"}, "0.17.0")
+        assert any("version badge" in e for e in errors)
+
 
 def monkeypatch_open(content: str):
     """Point check_readme's Path.read_text at an in-memory string and make any
@@ -108,7 +115,8 @@ class TestMainExitCodes:
 
     def test_main_returns_0_when_current(self, monkeypatch):
         readme = "\n".join(f"ohbs-image {c}" for c in ALL_CMDS) + "\n" + \
-                 " ".join(check_readme._PROFILE_NAMES)
+                 " ".join(check_readme._PROFILE_NAMES) + \
+                 "\nhttps://img.shields.io/badge/version-0.17.0-blue"
         monkeypatch.setattr(check_readme, "registered_subcommands",
                             lambda: set(ALL_CMDS))
         with monkeypatch_open(readme):

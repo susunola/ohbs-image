@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.12.4-blue?logo=pypi&logoColor=white" alt="Version 0.12.4">
+  <img src="https://img.shields.io/badge/version-0.17.0-blue?logo=pypi&logoColor=white" alt="Version 0.17.0">
   <img src="https://img.shields.io/badge/python-3.11_|_3.12_|_3.13-blue?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/profiles-12-orange" alt="12 profiles">
   <img src="https://img.shields.io/badge/platform-Tencent%20Cloud-0052D9" alt="Tencent Cloud">
@@ -96,7 +96,7 @@ export WINRM_PASSWORD=xxxx   # Windows builds only
 
 ```
 ══════════════════════════════════════════════════════════
-  ohbs-image 0.14.1 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.17.0 — tencentos3 (L1) → ap-guangzhou-4
 ══════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: Launching instance (S5.MEDIUM2)...
 [packer]  tencentcloud-cvm: Provisioning with ansible-local...

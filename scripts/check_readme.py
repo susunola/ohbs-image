@@ -62,7 +62,7 @@ def readme_documented_profiles(readme_text: str) -> set[str]:
 
 
 def check_readme(readme_text: str, registered: set[str],
-                 profiles: set[str]) -> list[str]:
+                 profiles: set[str], version: str = "") -> list[str]:
     """Return a list of human-readable problems, empty when docs are current."""
     errors: list[str] = []
 
@@ -77,6 +77,18 @@ def check_readme(readme_text: str, registered: set[str],
     if missing_profiles:
         errors.append("README.md does not mention these OS profile(s): "
                       + ", ".join(missing_profiles))
+
+    if version:
+        # The prominent version badge is a release promise, not an arbitrary
+        # historical example. Keep it tied to the package's single source of
+        # truth so users do not install a version different from the one the
+        # README advertises.
+        badge = re.search(r"shields\.io/badge/version-([^?-]+)-blue", readme_text)
+        if badge is None:
+            errors.append("README.md is missing its version badge")
+        elif badge.group(1) != version:
+            errors.append("README.md version badge is " + badge.group(1)
+                          + ", but package VERSION is " + version)
 
     return errors
 
@@ -106,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     profiles = set(ohbs_image.PROFILES.keys())
 
     readme_text = readme_path.read_text(encoding="utf-8")
-    errors = check_readme(readme_text, registered, profiles)
+    errors = check_readme(readme_text, registered, profiles, ohbs_image.VERSION)
 
     if args.check_tests:
         errors += check_test_consistency(registered, profiles)

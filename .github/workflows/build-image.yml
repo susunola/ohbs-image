@@ -28,10 +28,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
 
@@ -40,12 +40,12 @@ jobs:
 
       # packer is required by `ohbs-image build` (same pin as ci.yml).
       - name: Install packer
-        uses: hashicorp/setup-packer@main
+        uses: hashicorp/setup-packer@c4e4b2636b98ce7566f9ec9c309e26821f695bd2 # main, pinned 2026-08-23
         with:
           version: "1.16.0"
 
       - name: Authenticate to Tencent Cloud via OIDC
-        uses: everpcpc/tencentcloud-oidc-auth@v1
+        uses: everpcpc/tencentcloud-oidc-auth@bcc33538077d94b147dae540f7419a8cea2a60e8 # v1
         with:
           role-arn: ${{ secrets.TC_OIDC_ROLE_ARN }}
           oidc-provider-id: github
