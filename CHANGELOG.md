@@ -71,6 +71,24 @@ can be traced across rebuilds.
   `Reset-BuiltinAdminLockout` step unlocks the built-in Administrator
   after lockout-policy changes.  Engine 1.3.0-windows.
 
+### Fixed (ubuntu2004 re-audit)
+- **ssh-guard no longer revives firewalld on ufw images** — both the
+  build-time and boot-time guards ran `systemctl enable --now firewalld`
+  unconditionally, undoing the CIS single-stack disable (ubuntu2004 4.1.1
+  failed in the final image with firewalld+ufw both active).  The guard
+  now touches firewalld only when it is already the enabled/active stack.
+- **`ufw_rules`: self-enabling fixer + honest checker** — the checker
+  parked rules as `notapplicable` whenever ufw was not yet active, which
+  raced the parallel `svc_enabled` rule that enables ufw.service, so
+  ubuntu2004 4.2.5-4.2.8 never applied.  An installed-but-inactive ufw
+  now checks as fail, the fixer works on an inactive ufw (it finishes
+  with `ufw --force enable`), and parallel ufw_rules are serialised on a
+  command lock.
+- **`updates_applied` (apt): dpkg-held packages are out of scope** —
+  vendor-pinned holds (TencentCloud's cloud-init) cannot be upgraded by
+  apt and fail postinst when forced; the checker now passes with the
+  held set called out instead of failing the build.
+
 ### Fixed (fleet re-audit round, all 8 Linux roles)
 - **role bundling: purge stale roles from the shared workdir** — the build
   workdir is reused across runs, so `workdir/ansible/roles/` accumulated
