@@ -734,6 +734,11 @@ distribute pipeline):
   values are not copied into provenance, but the exact sorted key set and a
   SHA-256 digest of the complete override map are recorded for audit.
 
+  An approved image also receives a self-contained HTML delivery report beside
+  the archived audit JSON in `reports/`. It summarizes release status, score,
+  image IDs, run identity and evidence paths; when `--result-file` is used,
+  its path is returned as `html_report` for CI links and artifacts.
+
 - **SBOM + change detection (supply chain)** — with `[meta].sbom = true` the
   build emits a zero-dependency SBOM (`/opt/ohbs-image-SBOM.jsonl`, native
   rpm/dpkg query) into the image, and its SHA-256 + package count are pinned

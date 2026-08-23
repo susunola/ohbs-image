@@ -54,6 +54,7 @@ def _start_run_lease_heartbeat(r: ResolvedConfig) -> tuple[threading.Event, thre
 def _write_build_result(args: argparse.Namespace, r: ResolvedConfig, *, status: str,
                         image_name: str, image_ids: list[str], score: float | None,
                         report: Path | None = None, provenance: Path | None = None,
+                        html_report: Path | None = None,
                         signed: bool = False, reason: str = "") -> bool:
     """Optionally persist one stable JSON contract for build automation."""
     result_file = getattr(args, "result_file", None)
@@ -77,6 +78,7 @@ def _write_build_result(args: argparse.Namespace, r: ResolvedConfig, *, status: 
         "attestation_signed": signed,
         "audit_report": str(report) if report else "",
         "provenance": str(provenance) if provenance else "",
+        "html_report": str(html_report) if html_report else "",
     }
     try:
         _atomic_write_bytes(Path(result_file),
@@ -282,6 +284,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     success = result.exit_code == 0
     rep: Path | None = None
     prov: Path | None = None
+    html_rep: Path | None = None
     signed = False
 
     if success:
@@ -356,9 +359,13 @@ def cmd_build(args: argparse.Namespace) -> int:
         # An explicitly requested result artifact is part of the release
         # contract.  Do not share or trigger deployment if it could not be
         # written for the downstream automation that requested it.
+        html_rep = ohbs_image._write_build_html_report(
+            r, image_ids, image_name, score, rep, prov, signed)
+        if html_rep:
+            info(f"Delivery report -> {html_rep}")
         if not _write_build_result(args, r, status="approved", image_name=image_name,
                                    image_ids=image_ids, score=score, report=rep,
-                                   provenance=prov, signed=signed):
+                                   provenance=prov, html_report=html_rep, signed=signed):
             fail("requested build result could not be written — release actions are blocked")
             ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
                                         sbom_sha=sbom_sha, sbom_count=sbom_count)

@@ -4389,6 +4389,23 @@ class TestProvenanceSbom:
         assert len(ext["packer_extra_sha256"]) == 64
         assert "CLOUD_SSD" not in json.dumps(ext)
 
+    def test_delivery_html_report_contains_release_evidence(self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import _write_build_html_report
+        r = resolve(valid_toml)
+        r.run_id = "12345678-1234-1234-1234-123456789abc"
+        audit = tmp_path / "audit.json"
+        audit.write_text(json.dumps({"mode": "apply", "summary": {"all": {
+            "pass": 91, "fail": 2}}}), encoding="utf-8")
+        monkeypatch.setattr("ohbs_image._reports_dir", lambda: tmp_path / "reports")
+        p = _write_build_html_report(r, ["img-abc"], "release-<name>", 97.8,
+                                     audit, tmp_path / "provenance.json", True)
+        assert p is not None and p.exists()
+        text = p.read_text(encoding="utf-8")
+        assert "APPROVED" in text
+        assert "97.8%" in text
+        assert "img-abc" in text
+        assert "release-&lt;name&gt;" in text
+
     def test_provenance_without_sbom(self, valid_toml, tmp_path, monkeypatch):
         from ohbs_image import _write_provenance
         r = resolve(valid_toml)
