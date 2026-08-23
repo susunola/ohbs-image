@@ -7,6 +7,23 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Fixed (post-round-3 verification)
+- **Windows firstboot hardening: survive the WinRM startup race** — a
+  consumer-VM TAT audit of the win2022 image found two deferred values
+  missing after first boot (`AllowAutoConfig`, `WinRS\AllowRemoteShell`)
+  while their siblings landed: the WinRM service rewrites its policy key
+  while starting, reverting AtStartup writes that land too early.  The
+  generated boot script now waits for the WinRM service to be running
+  (≤90s), the task trigger gets a 45s delay, and every DWord/String write
+  is verified afterwards and retried once.
+- **regression tests for the round-3 engine fixes**
+  (`tests/test_engine_round3_fixes.py`, 14 cases): sshd probe fallback,
+  sshd crypto composing from effective algorithms (no CBC resurrection),
+  svc_disabled unit-vs-package short-circuit, ufw_rules self-enable under
+  lock, apt held-package pass-through, f_pam_arg authselect macro
+  stripping, bootloader_password GRUB_DEFAULT normalisation.
+
+
 ### Fixed (round-3 re-audit, all 8 Linux roles share the byte-identical engine)
 - **`sshd_effective`: create `/run/sshd` + absolute sshd path** — Ubuntu
   24.04 runs sshd socket-activated, so the privsep dir `/run/sshd` may not
