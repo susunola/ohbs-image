@@ -5,10 +5,11 @@ import os
 import re
 import subprocess
 import time
+import urllib.error
 import urllib.request
 import uuid
 from contextlib import suppress
-from datetime import UTC
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +60,71 @@ def _atomic_write_bytes(path: Path, content: bytes) -> None:
     finally:
         with suppress(FileNotFoundError):
             tmp.unlink()
+
+
+def _run_manifest_path(run_id: str) -> Path:
+    """Return the fixed, state-root-contained manifest path for *run_id*."""
+    if not re.fullmatch(r"[0-9a-f-]{36}", run_id):
+        raise OSError("invalid run ID for state manifest")
+    return ohbs_image._lineage_path().parent / "runs" / f"{run_id}.json"
+
+
+def _read_run_manifest(run_id: str) -> dict[str, Any] | None:
+    try:
+        doc = json.loads(_run_manifest_path(run_id).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _write_run_manifest(r: ResolvedConfig, *, status: str, phase: str,
+                        lease_hours: int = 48, resource: dict[str, str] | None = None,
+                        notification: str | None = None) -> Path | None:
+    """Atomically update the recoverable lifecycle record for one run."""
+    if not isinstance(r, ResolvedConfig) or not r.run_id:
+        return None
+    try:
+        path = _run_manifest_path(r.run_id)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        lock = _state_lock(path)
+        try:
+            current = _read_run_manifest(r.run_id) or {
+                "schema": "https://ohbs-image.dev/run-manifest/v1",
+                "run_id": r.run_id,
+                "profile": r.profile_name,
+                "region": r.region,
+                "started_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "resources": [],
+            }
+            current["status"] = status
+            current["phase"] = phase
+            current["updated_at"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+            if status == "active":
+                current["lease_expires_at"] = (datetime.now(UTC) + timedelta(hours=lease_hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            else:
+                current["lease_expires_at"] = current["updated_at"]
+            if resource and resource not in current["resources"]:
+                current["resources"].append(resource)
+            if notification is not None:
+                current["notification"] = notification
+            _atomic_write_bytes(path, (json.dumps(current, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+            return path
+        finally:
+            lock.rmdir()
+    except OSError as exc:
+        warn(f"Could not update run manifest for {r.run_id}: {exc}")
+        return None
+
+
+def _run_manifest_is_active(run_id: str) -> bool:
+    """True only while an on-disk manifest has an unexpired active lease."""
+    doc = _read_run_manifest(run_id)
+    if not doc or doc.get("status") != "active":
+        return False
+    try:
+        return datetime.fromisoformat(str(doc["lease_expires_at"]).replace("Z", "+00:00")) > datetime.now(UTC)
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 def _missing_build_evidence(image_ids: list[str], score: float | None,
@@ -369,6 +435,16 @@ def _trigger_deploy_webhook(r: ResolvedConfig, image_ids: list[str],
                     ok(f"Deploy webhook triggered ({resp.status}, event {r.run_id})")
                     return
                 raise OSError(f"returned HTTP {resp.status}")
+        except urllib.error.HTTPError as exc:
+            # A malformed/unauthorized request will not succeed by retrying;
+            # 429 is explicitly retryable and 5xx is treated as transient.
+            if 400 <= exc.code < 500 and exc.code != 429:
+                warn(f"Deploy webhook rejected event without retry (HTTP {exc.code}): {exc}")
+                return
+            if attempt == 2:
+                warn(f"Deploy webhook failed after 3 attempts: {exc}")
+                return
+            time.sleep(2 ** attempt)
         except Exception as exc:  # notifications must never fail the image build
             if attempt == 2:
                 warn(f"Deploy webhook failed after 3 attempts: {exc}")

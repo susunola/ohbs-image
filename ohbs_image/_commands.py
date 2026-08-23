@@ -241,6 +241,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     banner("build")
     info(f"Rendered working directory: {workdir}")
     info(f"Running packer build (CIS Level {r.level}, profile={r.profile_name}) ...")
+    ohbs_image._write_run_manifest(r, status="active", phase="packer-build")
 
     _fh: logging.FileHandler | None = _open_build_log(args)
 
@@ -277,6 +278,7 @@ def cmd_build(args: argparse.Namespace) -> int:
                                         sbom_sha=sbom_sha, sbom_count=sbom_count)
             _write_build_result(args, r, status="failed", image_name=image_name,
                                 image_ids=image_ids, score=score, reason="missing build evidence")
+            ohbs_image._write_run_manifest(r, status="failed", phase="evidence-gate")
             _send_notification(r, False, image_ids, score, image_name)
             _close_build_log(_fh)
             return 1
@@ -306,6 +308,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             _write_build_result(args, r, status="failed", image_name=image_name,
                                 image_ids=image_ids, score=score, report=rep, provenance=prov,
                                 signed=False, reason="required attestation is unsigned")
+            ohbs_image._write_run_manifest(r, status="failed", phase="attestation-gate")
             _send_notification(r, False, image_ids, score, image_name)
             _close_build_log(_fh)
             return 1
@@ -318,7 +321,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             else:
                 ok("Clean-boot verification: booting probe instance from "
                    f"{image_ids[0]} …")
-                vrc = ohbs_image.cmd_verify_image(args, image_id=image_ids[0])
+                vrc = ohbs_image.cmd_verify_image(args, image_id=image_ids[0], resolved=r)
                 if vrc != 0:
                     fail("clean-boot verification FAILED — image not approved")
                     ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
@@ -326,6 +329,7 @@ def cmd_build(args: argparse.Namespace) -> int:
                     _write_build_result(args, r, status="failed", image_name=image_name,
                                         image_ids=image_ids, score=score, report=rep, provenance=prov,
                                         signed=signed, reason="clean-boot verification failed")
+                    ohbs_image._write_run_manifest(r, status="failed", phase="clean-boot-gate")
                     _send_notification(r, False, image_ids, score, image_name)
                     _close_build_log(_fh)
                     return vrc
@@ -338,6 +342,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             fail("requested build result could not be written — release actions are blocked")
             ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
                                         sbom_sha=sbom_sha, sbom_count=sbom_count)
+            ohbs_image._write_run_manifest(r, status="failed", phase="result-write")
             _send_notification(r, False, image_ids, score, image_name)
             _close_build_log(_fh)
             return 1
@@ -368,6 +373,8 @@ def cmd_build(args: argparse.Namespace) -> int:
     _send_notification(r, success, image_ids, score, image_name)
 
     _close_build_log(_fh)
+    ohbs_image._write_run_manifest(r, status="completed" if success else "failed",
+                                   phase="release-complete" if success else "packer-build")
     return result.exit_code
 
 def cmd_images(args: argparse.Namespace) -> int:
@@ -432,6 +439,18 @@ def cmd_cleanup_runs(args: argparse.Namespace) -> int:
         return 1
     stale: list[str] = []
     for instance in instances:
+        tags = {str(tag.get("Key")): str(tag.get("Value"))
+                for tag in instance.get("Tags", []) if isinstance(tag, dict)}
+        run_id = tags.get("run_id", "")
+        legacy_probe = (tags.get("managed_by") != "ohbs-image"
+                        and tags.get("purpose") == "ohbs-image-verify")
+        if legacy_probe and not getattr(args, "include_legacy", False):
+            warn(f"Skipping legacy probe {instance.get('InstanceId', '?')}; "
+                 "re-run with --include-legacy after review")
+            continue
+        if run_id and ohbs_image._run_manifest_is_active(run_id):
+            info(f"Skipping active run {run_id} ({instance.get('InstanceId', '?')})")
+            continue
         created = str(instance.get("CreatedTime", ""))
         try:
             created_ts = datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()
@@ -511,7 +530,8 @@ def cmd_check_source(args: argparse.Namespace) -> int:
          "(run 'ohbs-image build')")
     return 1
 
-def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None) -> int:
+def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
+                     resolved: ResolvedConfig | None = None) -> int:
     """ohbs-image verify-image — clean-boot verification of a produced image.
 
     Boots a probe instance from *image_id*, runs the bundled engine in
@@ -519,10 +539,14 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None) -> i
     and always terminates the probe instance (even on gate failure).
     When called from cmd_build, *image_id* is passed explicitly.
     """
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
-    if prep is None:
-        return 1
-    r, _workdir = prep
+    if resolved is None:
+        prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+        if prep is None:
+            return 1
+        r, _workdir = prep
+        r.run_id = ohbs_image._new_run_id()
+    else:
+        r = resolved
     image_id = image_id or getattr(args, "image", "") or ""
     # When driven by 'build --verify-boot', args carries no --min-score —
     # fall back to the config's [ohbs].min_score (0 disables the gate;
@@ -544,13 +568,18 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None) -> i
     key_id = ""
     key_path = ""
     try:
+        ohbs_image._write_run_manifest(r, status="active", phase="probe-setup")
         try:
             # Throwaway SSH key pair for the probe (CIS hardening disables
             # password/root login, so the BatchMode probe needs -i).
             key_id, key_path, pub_key = ohbs_image._probe_setup_keypair(r)
+            ohbs_image._write_run_manifest(r, status="active", phase="probe-keypair",
+                                           resource={"type": "keypair", "id": key_id})
             instance_id = ohbs_image._probe_launch(
                 r, image_id, f"ohbs-image-verify-{image_id}",
                 key_ids=[key_id], pub_key=pub_key)
+            ohbs_image._write_run_manifest(r, status="active", phase="probe-running",
+                                           resource={"type": "instance", "id": instance_id})
         except ConfigError as exc:
             fail(str(exc))
             return 1
@@ -607,6 +636,7 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None) -> i
             ohbs_image._probe_terminate(r, instance_id)
         if key_id or key_path:
             ohbs_image._probe_teardown_keypair(r, key_id, key_path)
+        ohbs_image._write_run_manifest(r, status="completed", phase="probe-cleanup")
 
 def _drift_resolve_baseline(args: argparse.Namespace, r: ResolvedConfig,
                             host: str, ssh_port: int, ssh_user: str) -> dict[str, Any] | None:

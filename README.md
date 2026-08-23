@@ -176,6 +176,7 @@ ohbs-image cleanup-images [--older-than 30]   # retire old images by lineage age
 ohbs-image cleanup-images --apply             # actually delete (default = dry run)
 ohbs-image cleanup-runs --older-than 24       # find tagged orphaned build/probe CVMs (dry run)
 ohbs-image cleanup-runs --older-than 24 --apply # actually terminate the tagged CVMs (hours must be > 0)
+ohbs-image cleanup-runs --include-legacy --apply # explicitly include pre-manifest probes after review
 ohbs-image verify --provenance <file>         # verify a SLSA provenance signature
 ohbs-image verify --image <img-id>            # ... or locate provenance by image ID
 ohbs-image verify-image --image <img-id>      # clean-boot verification of a produced image
@@ -208,6 +209,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | `--parse <csv>` | audit --tool kitty | HardeningKitty audit CSV export to parse |
 | `--older-than <days>` | cleanup-images | Retire builds older than N days (default `30`) |
 | `--older-than <hours>` | cleanup-runs | Retire tagged ephemeral CVMs older than N hours (default `24`) |
+| `--include-legacy` | cleanup-runs | Include old probes without a run manifest (off by default) |
 | `--keep-latest <n>` | cleanup-images | Always keep the newest N builds (default `1`) |
 | `--unused-since <days>` | cleanup-images | Only delete images NOT shared with other accounts; the in-use guard expires N days after the lineage record — older shared images are presumed unused and retired anyway (`0` = off) |
 | `--apply` | cleanup-images | Actually delete (default is a dry run) |
@@ -717,6 +719,15 @@ distribute pipeline):
   three times. Use `--state-dir /secure/ohbs-state` (or
   `OHBS_IMAGE_STATE_DIR`) to isolate CI jobs or retain team evidence outside a
   runner home directory.
+
+  WeCom notifications are intentionally human-facing, best-effort messages:
+  they do not gate release and are not a delivery receipt. Automation must use
+  the result JSON and/or deploy webhook, both correlated by `run_id`.
+
+  Every build and clean-boot probe also writes a versioned run manifest under
+  `runs/<run_id>.json`. It records the active lease, phase, and known temporary
+  resources. `cleanup-runs` skips unexpired active leases; it only treats age
+  as a fallback for expired or pre-manifest resources.
 
 - **SBOM + change detection (supply chain)** — with `[meta].sbom = true` the
   build emits a zero-dependency SBOM (`/opt/ohbs-image-SBOM.jsonl`, native

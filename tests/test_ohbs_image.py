@@ -2711,6 +2711,36 @@ class TestCleanupRuns:
         assert [item["InstanceId"] for item in _list_ephemeral_instances(r)] == ["ins-build", "ins-probe"]
         assert calls == [0, 1]
 
+    def test_skips_unexpired_manifest_run(self, valid_toml, monkeypatch):
+        from ohbs_image import cmd_cleanup_runs, resolve
+        r = resolve(valid_toml)
+        monkeypatch.setattr("ohbs_image._commands._load_resolved", lambda _: r)
+        monkeypatch.setattr("ohbs_image._list_ephemeral_instances", lambda _: [{
+            "InstanceId": "ins-active", "CreatedTime": "2020-01-01T00:00:00Z",
+            "Tags": [{"Key": "managed_by", "Value": "ohbs-image"},
+                     {"Key": "run_id", "Value": "a" * 36}]}])
+        monkeypatch.setattr("ohbs_image._run_manifest_is_active", lambda _: True)
+        terminate = mock.Mock()
+        monkeypatch.setattr("ohbs_image._terminate_ephemeral_instances", terminate)
+        assert cmd_cleanup_runs(mock.MagicMock(older_than=1, config="x", apply=True,
+                                               include_legacy=False)) == 0
+        terminate.assert_not_called()
+
+
+class TestRunManifests:
+    def test_manifest_tracks_resources_and_lease(self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import _read_run_manifest, _run_manifest_is_active, _write_run_manifest, resolve
+        r = resolve(valid_toml)
+        r.run_id = "12345678-1234-1234-1234-123456789abc"
+        monkeypatch.setattr("ohbs_image._lineage_path", lambda: tmp_path / "lineage.jsonl")
+        p = _write_run_manifest(r, status="active", phase="probe-running",
+                                resource={"type": "instance", "id": "ins-1"})
+        assert p is not None and p.exists()
+        assert _run_manifest_is_active(r.run_id) is True
+        assert _read_run_manifest(r.run_id)["resources"] == [{"type": "instance", "id": "ins-1"}]
+        _write_run_manifest(r, status="completed", phase="probe-cleanup")
+        assert _run_manifest_is_active(r.run_id) is False
+
 
 class TestCleanupImages:
     """ohbs-image cleanup-images — retire old images by lineage age."""
@@ -4179,7 +4209,7 @@ class TestBuildNewFeatures:
         monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k:
                             PackerResult(exit_code=0, stdout_lines=[
                                 "Created image ID: img-new"]))
-        monkeypatch.setattr("ohbs_image.cmd_verify_image", lambda a, image_id=None: 0)
+        monkeypatch.setattr("ohbs_image.cmd_verify_image", lambda a, image_id=None, **_kwargs: 0)
         args = mock.MagicMock(config="x", workdir=str(wd), yes=True, quiet=False,
                               log_file=None, skip_if_unchanged=False)
         assert cmd_build(args) == 0
@@ -4204,7 +4234,7 @@ class TestBuildNewFeatures:
         monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k:
                             PackerResult(exit_code=0, stdout_lines=[
                                 "Created image ID: img-new"]))
-        monkeypatch.setattr("ohbs_image.cmd_verify_image", lambda a, image_id=None: 1)
+        monkeypatch.setattr("ohbs_image.cmd_verify_image", lambda a, image_id=None, **_kwargs: 1)
         args = mock.MagicMock(config="x", workdir=str(wd), yes=True, quiet=False,
                               log_file=None, skip_if_unchanged=False)
         assert cmd_build(args) == 1

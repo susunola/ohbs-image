@@ -214,6 +214,8 @@ def build_parser() -> argparse.ArgumentParser:
                                help="Retire tagged orphaned build/probe CVMs (dry-run by default)")
     p_clnruns.add_argument("--older-than", type=int, default=24,
                            help="Terminate tagged ephemeral CVMs older than N hours (default 24)")
+    p_clnruns.add_argument("--include-legacy", action="store_true",
+                           help="Also select pre-manifest probe instances (requires explicit opt-in)")
     p_clnruns.add_argument("--apply", action="store_true", help="Actually terminate instances")
     p_clnruns.set_defaults(func=cmd_cleanup_runs)
 

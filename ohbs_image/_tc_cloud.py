@@ -324,7 +324,6 @@ def _probe_setup_keypair(r: ResolvedConfig) -> tuple[str, str, str]:
     """
     import secrets
     import tempfile
-    import time as _time
     sid, skey, tok = _creds(r.secret_id_env, r.secret_key_env, r.security_token_env)
     if not sid or not skey:
         raise ConfigError(
@@ -340,7 +339,9 @@ def _probe_setup_keypair(r: ResolvedConfig) -> tuple[str, str, str]:
     os.chmod(priv, 0o600)
     with open(priv + ".pub", encoding="utf-8") as fh:
         pub = fh.read().strip()
-    key_name = f"ohbs-image-probe-{int(_time.time())}-{secrets.token_hex(2)}"
+    run_id = r.run_id or ohbs_image._new_run_id()
+    r.run_id = run_id
+    key_name = f"ohbs-image-probe-{run_id}-{secrets.token_hex(2)}"
     resp = ohbs_image._tc3_api("cvm", "ImportKeyPair", "2017-03-12", r.region,
                     {"KeyName": key_name, "ProjectId": 0, "PublicKey": pub},
                     sid, skey, tok or None)
@@ -378,6 +379,8 @@ def _probe_launch(r: ResolvedConfig, image_id: str, instance_name: str,
     injection (root) is not a usable login channel on a hardened image.
     """
     import base64
+    if not r.run_id:
+        r.run_id = ohbs_image._new_run_id()
     sid, skey, tok = _creds(r.secret_id_env, r.secret_key_env, r.security_token_env)
     if not sid or not skey:
         raise ConfigError(
@@ -401,6 +404,7 @@ def _probe_launch(r: ResolvedConfig, image_id: str, instance_name: str,
         "TagSpecification": [{"ResourceType": "instance",
                               "Tags": [{"Key": "managed_by", "Value": "ohbs-image"},
                                        {"Key": "purpose", "Value": "ohbs-image-verify"},
+                                       {"Key": "run_id", "Value": r.run_id},
                                        {"Key": "ephemeral", "Value": "true"}]}]}
     if key_ids:
         params["LoginSettings"] = {"KeyIds": key_ids}
