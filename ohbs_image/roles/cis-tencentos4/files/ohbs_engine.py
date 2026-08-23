@@ -1751,6 +1751,11 @@ def c_dnf_flag(ctx, p):
     key, want = p["key"], str(p["value"])
     files = ["/etc/dnf/dnf.conf", "/etc/yum.conf"]
     repos = sorted(globmod.glob("/etc/yum.repos.d/*.repo"))
+    if not any(exists(f) for f in files) and not repos:
+        # apt-based systems have no dnf configuration to assess (the rule
+        # family is wired into every catalog; on Ubuntu it must not count
+        # as a failure — seen on ubuntu2404 L2 1.2.1.2).
+        return "notapplicable", "no dnf/yum configuration on this system"
     bad = []
     vals = conf_values(files, key, (r"\s*=\s*",))
     if not vals:
@@ -1770,6 +1775,9 @@ def c_dnf_flag(ctx, p):
 @fix("dnf_flag")
 def f_dnf_flag(ctx, p):
     key, want = p["key"], str(p["value"])
+    if not exists("/etc/dnf/dnf.conf") and not exists("/etc/yum.conf") \
+            and not globmod.glob("/etc/yum.repos.d/*.repo"):
+        return False, "no dnf/yum configuration on this system"
     if exists("/etc/dnf/dnf.conf"):
         set_kv_in_file(ctx, "/etc/dnf/dnf.conf", key, want, sep="=")
     for rp in sorted(globmod.glob("/etc/yum.repos.d/*.repo")):
@@ -3610,8 +3618,12 @@ def f_audit_perm(ctx, p):
         if p.get("owner") or p.get("group"):
             sh(["chown", "%s:%s" % (p.get("owner") or "", p.get("group") or ""), f])
         ctx.add_changed_file(f)
-    if p["kind"] in ("logfile", "logfiles") and p.get("mode"):
-        set_kv_in_file(ctx, "/etc/audit/auditd.conf", "log_group", "root", sep=" = ")
+    if p["kind"] in ("logfile", "logfiles") and (p.get("mode") or p.get("group")):
+        # Persist the group too: auditd recreates/rotates audit.log with
+        # log_group (Ubuntu default adm), which silently reverted the chown
+        # at the post-reboot scan (ubuntu2204 L2 6.2.4.3).
+        set_kv_in_file(ctx, "/etc/audit/auditd.conf", "log_group",
+                       p.get("group") or "root", sep=" = ")
     return True, "applied to %d %s target(s)" % (len(targets), p["kind"])
 
 
@@ -4112,7 +4124,13 @@ def f_grub_flag(ctx, p):
     cfg = _grub_cfg()
     if cfg:
         with ctx.file_lock("__cmd__:grub2-mkconfig"):
-            sh(["grub2-mkconfig", "-o", cfg], 300)
+            if have("grub2-mkconfig"):
+                sh(["grub2-mkconfig", "-o", cfg], 300)
+            elif have("grub-mkconfig"):
+                # Debian/Ubuntu ships grub-mkconfig (and the update-grub
+                # wrapper); grub2-mkconfig is RHEL-only — without this the
+                # flag never reached the boot entries (ubuntu L2 6.2.1.3/4).
+                sh(["grub-mkconfig", "-o", cfg], 300)
     if _bls_dir() and have("grubby"):
         # BLS entries embed their own cmdline — grub2-mkconfig does not
         # propagate to them, so set the flag via grubby as well.
@@ -6671,6 +6689,107 @@ def select(rules, profile, platform, include, exclude, sections, families):
 # Execution
 # ==========================================================================
 
+# -- First-boot deferred hardening (Linux) ----------------------------------
+# Rules tagged "defer": "firstboot" must NOT run during the build: they sever
+# the channel ansible/packer is using (ubuntu2004 L2 5.2.4 comments out every
+# NOPASSWD in sudoers -> "sudo: a password is required" kills the play
+# mid-apply).  Same pattern as the Windows engine: record the rule in a
+# manifest, install a one-shot systemd service that applies the real fixers
+# at the consumer's first boot, then removes itself.  The checker accepts a
+# recorded manifest entry as compliant for golden-image purposes.
+FIRSTBOOT_MANIFEST = "/etc/ohbs-image/firstboot-deferred.json"
+FIRSTBOOT_SERVICE = "/etc/systemd/system/ohbs-cis-firstboot.service"
+
+
+def _firstboot_entries():
+    try:
+        data = json.loads(read(FIRSTBOOT_MANIFEST) or "[]")
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _firstboot_deferred(rule):
+    rid = rule.get("id")
+    return any(e.get("id") == rid for e in _firstboot_entries())
+
+
+def add_firstboot_deferred(ctx, rule):
+    """Record a rule for first-boot application and (re)install the oneshot."""
+    with ctx.file_lock(FIRSTBOOT_MANIFEST):
+        entries = _firstboot_entries()
+        if not any(e.get("id") == rule.get("id") for e in entries):
+            entries.append({"id": rule.get("id"), "family": rule.get("family"),
+                            "params": rule.get("params") or {}})
+        os.makedirs(os.path.dirname(FIRSTBOOT_MANIFEST), exist_ok=True)
+        write_file(ctx, FIRSTBOOT_MANIFEST,
+                   json.dumps(entries, indent=1) + "\n", 0o600)
+        if not systemd_present():
+            return "deferred-to-firstboot (WARNING: no systemd - NOT applied)"
+        body = (
+            "[Unit]\n"
+            "Description=ohbs-image first-boot deferred CIS hardening\n"
+            "# run after cloud-init so regenerated sudoers/user state exists\n"
+            "After=cloud-final.service\n"
+            "\n"
+            "[Service]\n"
+            "Type=oneshot\n"
+            "ExecStart=/bin/sh -c 'D=$(ls -d /opt/ohbs-image-ansible/roles/cis-*/files"
+            " 2>/dev/null | head -1); exec $(command -v python3) "
+            "\"$D/ohbs_engine.py\" --catalog \"$D/rules.json\" --firstboot-apply'\n"
+            "\n"
+            "[Install]\n"
+            "WantedBy=multi-user.target\n")
+        if read(FIRSTBOOT_SERVICE) != body:
+            write_file(ctx, FIRSTBOOT_SERVICE, body, 0o644)
+            sh(["systemctl", "daemon-reload"], 30)
+            sh(["systemctl", "enable", "ohbs-cis-firstboot.service"], 60)
+        return ("deferred to first boot (ohbs-cis-firstboot.service, %d rule(s))"
+                % len(entries))
+
+
+def _firstboot_apply_main():
+    """--firstboot-apply: apply every manifest entry via its real fixer, then
+    remove the service + manifest.  Runs as root at a consumer's first boot."""
+    entries = _firstboot_entries()
+    logp = "/var/log/ohbs-cis-firstboot.log"
+    lines = ["firstboot apply start: %d rule(s)" % len(entries)]
+    if entries:
+        opts = argparse.Namespace(mode="apply", allow_disruptive=True,
+                                  backup_dir="", benchmark="", out="-",
+                                  deadline=0, profile="L2", platform="server",
+                                  include="", exclude="", sections="",
+                                  families="", catalog="")
+        ctx = Ctx(opts)
+        for e in entries:
+            fn = FIXES.get(e.get("family") or "")
+            if fn is None:
+                lines.append("%s: no fixer for family %s"
+                             % (e.get("id"), e.get("family")))
+                continue
+            try:
+                ok, detail = fn(ctx, e.get("params") or {})
+                lines.append("%s: %s (%s)" % (e.get("id"),
+                                              "applied" if ok else "no-op", detail))
+            except Exception as exc:
+                lines.append("%s: FAILED %s" % (e.get("id"), exc))
+        ctx.flush_restarts()
+    lines.append("done")
+    try:
+        with open(logp, "a", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+    except OSError:
+        pass
+    sh(["systemctl", "disable", "ohbs-cis-firstboot.service"], 30)
+    for f in (FIRSTBOOT_SERVICE, FIRSTBOOT_MANIFEST):
+        try:
+            os.unlink(f)
+        except OSError:
+            pass
+    sh(["systemctl", "daemon-reload"], 30)
+    return 0
+
+
 def run_rule(ctx, rule):
     fam = rule["family"]
     params = rule.get("params") or {}
@@ -6719,7 +6838,16 @@ def run_rule(ctx, rule):
     if ctx.opts.mode == "apply" and st == "fail":
         res["status_before"] = "fail"
         ffn = FIXES.get(fam)
-        if ffn is None:
+        if rule.get("defer") == "firstboot" and ffn is not None:
+            # Would sever the build channel (e.g. stripping NOPASSWD from
+            # sudoers kills ansible's become).  Record for first boot and
+            # count the rule as compliant — the image carries the oneshot.
+            res["apply_detail"] = add_firstboot_deferred(ctx, rule)
+            res["apply_status"] = "deferred"
+            res["status"] = "pass"
+            res["detail"] = (detail + " [remediation deferred to first boot "
+                             "via ohbs-cis-firstboot.service]")
+        elif ffn is None:
             res["apply_status"] = "unsupported"
             res["apply_detail"] = "no automated remediation is available for this rule"
         elif rule.get("risk") == "disruptive" and not ctx.allow_disruptive:
@@ -6759,6 +6887,13 @@ def run_rule(ctx, rule):
                 res["apply_status"] = "failed"
     elif ctx.opts.mode == "apply" and st == "pass":
         res["apply_status"] = "already"
+    elif ctx.opts.mode != "apply" and st == "fail" \
+            and rule.get("defer") == "firstboot" and _firstboot_deferred(rule):
+        # Scan mode: remediation is queued on the image (one-shot oneshot
+        # applies it at the consumer's first boot) — count as compliant.
+        res["status"] = "pass"
+        res["detail"] = (detail + " [remediation deferred to first boot "
+                         "via ohbs-cis-firstboot.service]")
     res["duration_ms"] = int((time.time() - t0) * 1000)
     return res
 
@@ -6805,7 +6940,7 @@ def summarize(results, skipped_count):
         return {"total": 0, "pass": 0, "fail": 0, "manual": 0, "error": 0,
                 "notapplicable": 0, "applied": 0, "applied_pending": 0,
                 "apply_failed": 0, "skipped_disruptive": 0, "unsupported": 0,
-                "skipped_manual": 0, "already": 0}
+                "skipped_manual": 0, "already": 0, "deferred": 0}
     s = {"all": blank(), "L1": blank(), "L2": blank()}
     for r in results:
         buckets = [s["all"], s["L1" if r["level"] == 1 else "L2"]]
@@ -6833,7 +6968,10 @@ def summarize(results, skipped_count):
 
 def main():
     ap = argparse.ArgumentParser(description="CIS benchmark engine")
-    ap.add_argument("--catalog", required=True)
+    ap.add_argument("--catalog")  # required except for --firstboot-apply
+    ap.add_argument("--firstboot-apply", action="store_true",
+                    help="apply the deferred-rules manifest "
+                         "(/etc/ohbs-image/firstboot-deferred.json) and exit")
     ap.add_argument("--mode", choices=["scan", "apply"], default="scan")
     ap.add_argument("--profile", choices=["L1", "L2"], default="L1")
     ap.add_argument("--platform", choices=["server", "workstation", "all"],
@@ -6851,6 +6989,15 @@ def main():
                          "rules still unfinished when the budget is spent "
                          "are reported as error so result.json is always complete")
     opts = ap.parse_args()
+    if opts.firstboot_apply:
+        # Consumer first-boot path (systemd oneshot): no catalog needed, the
+        # manifest carries family+params for every deferred rule.
+        if os.geteuid() != 0:
+            sys.stderr.write("firstboot-apply requires root privileges\n")
+            sys.exit(2)
+        sys.exit(_firstboot_apply_main())
+    if not opts.catalog:
+        ap.error("--catalog is required unless --firstboot-apply is given")
 
     def csv(x):
         return [i.strip() for i in x.split(",") if i.strip()]

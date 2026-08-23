@@ -4278,7 +4278,8 @@
       "op": "absent_tag"
     },
     "risk": "safe",
-    "page": 669
+    "page": 669,
+    "defer": "firstboot"
   },
   {
     "id": "5.2.5",
