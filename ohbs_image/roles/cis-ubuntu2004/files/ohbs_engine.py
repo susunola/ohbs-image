@@ -34,7 +34,7 @@ import tempfile
 import threading
 import time
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 # --------------------------------------------------------------------------
 # Result vocabulary
@@ -1542,9 +1542,9 @@ def _install_pkgs(ctx, pkgs, timeout=900):
     """Platform-aware package install (dnf / apt-get).
 
     Serialised on ctx._pkg_lock: pkg_* families already hold it inside
-    _apply_one (RLock, so re-entry is safe), but svc_enabled fixes and the
-    journal-upload bootstrap call this directly — without the lock they
-    raced parallel dnf runs for the rpmdb lock.
+    _apply_one (RLock, so re-entry is safe), but svc_enabled fixes call this
+    directly — without the lock they raced parallel dnf runs for the rpmdb
+    lock.
     """
     with ctx._pkg_lock:
         if have("dnf"):
@@ -1552,8 +1552,11 @@ def _install_pkgs(ctx, pkgs, timeout=900):
         elif have("apt-get"):
             # DEBIAN_FRONTEND=noninteractive or debconf prompts can stall
             # the (timeout-bounded) install on fresh cloud images.
+            # --no-install-recommends keeps helper packages from dragging in
+            # services CIS then flags — aide-common Recommends bsd-mailx,
+            # which pulls in postfix listening on :25 (ubuntu2204 2.1.21/22).
             cmd = ["env", "DEBIAN_FRONTEND=noninteractive",
-                   "apt-get", "-y", "install"] + pkgs
+                   "apt-get", "-y", "install", "--no-install-recommends"] + pkgs
         else:
             return False, "no supported package manager found"
         rc, o, e = sh(cmd, timeout)
@@ -1582,81 +1585,6 @@ def _remove_pkgs(ctx, pkgs, timeout=600):
         return True, None
 
 
-def _bootstrap_journal_upload(ctx):
-    """CIS 6.2.1.2.3 — journal-upload cannot stay active without an HTTP
-    endpoint, so run systemd-journal-remote as a LOOPBACK receiver on
-    127.0.0.1:19532 and point journal-upload at it (self -> self).
-
-    This avoids needing an external log server while making the service
-    genuinely active, and leaves a local archived copy of the journal in
-    /var/log/journal-remote/.  Pitfalls handled (all seen live on RHEL8):
-      1. journal-upload.conf knows ONLY the URL= lvalue, on every systemd
-         version — the imagined legacy 'UploadServer=' is rejected by
-         RHEL8's systemd 239 ("Unknown lvalue") and kills the service.
-      2. the receiver must stay SOCKET-ACTIVATED: masking the socket makes
-         the service unstartable (Requires=systemd-journal-remote.socket,
-         and 'Sockets=' cannot be cleared from a drop-in — "Unknown
-         lvalue").  Instead the socket is pinned to loopback and the
-         service speaks plain HTTP on the activation fd (--listen-http=-3;
-         the stock unit uses --listen-https=-3 which demands TLS).
-      3. the remote archive grows unbounded — a logrotate rule caps it.
-      4. no upload loop: remote stores into /var/log/journal-remote,
-         which journal-upload never reads.
-      5. the stock remote unit runs PrivateNetwork=yes — a 127.0.0.1
-         listener inside that netns is unreachable from journal-upload,
-         so the drop-in turns it off.
-      6. after CIS hardening /var/log/journal is 2740 root:systemd-journal,
-         so the systemd-journal-remote user cannot traverse into
-         /var/log/journal/remote and the service dies with "output must be
-         a directory" — the archive lives in a top-level LogsDirectory
-         (/var/log/journal-remote) instead, which systemd creates with the
-         right ownership.
-    """
-    missing = [p for p in ("systemd-journal-remote",) if not pkg_installed(p)]
-    if missing:
-        ok, err = _install_pkgs(ctx, missing)
-        if not ok:
-            ctx.add_note("journal-upload: cannot install %s: %s"
-                         % (", ".join(missing), err))
-            return False, "cannot install systemd-journal-remote: %s" % err
-    # 1. Loopback receiver: socket pinned to 127.0.0.1 + service speaking
-    #    plain HTTP on the activation fd.
-    rem = out("command -v systemd-journal-remote 2>/dev/null || "
-              "echo /usr/lib/systemd/systemd-journal-remote", 20).strip()
-    os.makedirs("/var/log/journal-remote", exist_ok=True)
-    write_file(ctx,
-               "/etc/systemd/system/systemd-journal-remote.socket.d/ohbs_image.conf",
-               "[Socket]\nListenStream=\nListenStream=127.0.0.1:19532\n", 0o644)
-    write_file(ctx,
-               "/etc/systemd/system/systemd-journal-remote.service.d/ohbs_image.conf",
-               "[Service]\nPrivateNetwork=no\nLogsDirectory=\n"
-               "LogsDirectory=journal-remote\nExecStart=\n"
-               "ExecStart=%s --listen-http=-3 "
-               "--output=/var/log/journal-remote/\n" % rem, 0o644)
-    sh(["systemctl", "daemon-reload"], 30)
-    # Older images masked the socket (a dead end — see pitfall 2); undo it.
-    sh(["systemctl", "unmask", "systemd-journal-remote.socket"], 60)
-    sh(["systemctl", "enable", "--now", "systemd-journal-remote.socket"], 120)
-    # 2. journal-upload target (URL= is the only valid lvalue).
-    upload_cfg = "[Upload]\nURL=http://127.0.0.1:19532\n"
-    # NB: world-readable on purpose — systemd-journal-upload runs as the
-    # systemd-journal user and must be able to READ this file; 0600 made
-    # the service fail with "Permission denied" on Ubuntu.
-    write_file(ctx, "/etc/systemd/journal-upload.conf", upload_cfg, 0o644)
-    # 3. Cap the archived-copy growth (journald does NOT rotate
-    #    /var/log/journal-remote — this is on us).
-    write_file(ctx, "/etc/logrotate.d/ohbs-image-journal-remote",
-               "/var/log/journal-remote/*.journal {\n"
-               "    daily\n    rotate 7\n    maxsize 100M\n    compress\n"
-               "    missingok\n    notifempty\n"
-               "    postrotate\n"
-               "        systemctl restart systemd-journal-remote.service "
-               "2>/dev/null || true\n"
-               "    endscript\n}\n", 0o644)
-    ctx.defer_restart("systemd-journal-upload")
-    return True, None
-
-
 @fix("svc_enabled")
 def f_svc_enabled(ctx, p):
     # Conditional rule not in use on this host (see c_svc_enabled): do NOT
@@ -1675,22 +1603,8 @@ def f_svc_enabled(ctx, p):
     missing = [x for x in pkgs if not pkg_installed(x)]
     if missing:
         ok, err = _install_pkgs(ctx, missing)
-        if not ok and have("apt-get"):
-            # Debian/Ubuntu ship the journal-upload BINARY (and unit) in the
-            # systemd-journal-remote package — there is no standalone
-            # systemd-journal-upload package ("Unable to locate package").
-            alt = {"systemd-journal-upload": "systemd-journal-remote"}
-            mapped = [alt.get(x, x) for x in missing]
-            if mapped != missing:
-                ok, err = _install_pkgs(ctx, mapped)
         if not ok:
             return False, "cannot install %s: %s" % (", ".join(missing), err)
-    # CIS 6.2.1.2.3 special case: journal-upload needs a receiver to be
-    # active — bootstrap the loopback self-upload first.
-    if any("systemd-journal-upload.service" == u for u in (p.get("units") or [])):
-        ok, err = _bootstrap_journal_upload(ctx)
-        if not ok:
-            return False, "journal-upload bootstrap failed: %s" % err
     acts = []
     for u in p.get("units") or []:
         if u == "aidecheck.timer" and not unit_exists("aidecheck.timer"):
@@ -2461,9 +2375,21 @@ def f_kv_conf(ctx, p):
 
 def sshd_effective(ctx):
     def load():
-        rc, o, _ = sh(["sshd", "-T"], 60)
+        # Ubuntu 24.04 runs sshd socket-activated: /run/sshd (the privsep
+        # dir that `sshd -t`/`-T` require) may be absent exactly when the
+        # engine probes, and a minimal PATH may lack /usr/sbin — without
+        # this, EVERY sshd rule errors out and the fixer never runs (seen
+        # on the 2026-08-23 ubuntu2404 build).
+        sshd = shutil.which("sshd") or next(
+            (p for p in ("/usr/sbin/sshd", "/usr/bin/sshd", "/sbin/sshd")
+             if os.path.exists(p)), "sshd")
+        try:
+            os.makedirs("/run/sshd", exist_ok=True)
+        except OSError:
+            pass
+        rc, o, _ = sh([sshd, "-T"], 60)
         if rc != 0:
-            rc, o, _ = sh("sshd -T -C user=root,host=localhost,addr=127.0.0.1", 60)
+            rc, o, _ = sh("%s -T -C user=root,host=localhost,addr=127.0.0.1" % sshd, 60)
         if rc != 0:
             return {}
         d = {}
@@ -3400,9 +3326,13 @@ def _fix_sshd_crypto(ctx, kind):
     with ctx.file_lock(SSH_CRYPTO_DROPIN):
         macs, ciphers = _sshd_crypto_dropin_current()
         if macs is None:
-            macs = list(_SSH_BASE_MACS)
+            # Compose from the EFFECTIVE running config, never the hardcoded
+            # base list: the base list includes aes*-cbc, so writing it into
+            # the drop-in turned a CIS-clean default (Ubuntu 22.04 ships no
+            # CBC) into an explicit CBC permit (round-2 5.1.6 regression).
+            macs = _sshd_algos(ctx, "macs") or list(_SSH_BASE_MACS)
         if ciphers is None:
-            ciphers = list(_SSH_BASE_CIPHERS)
+            ciphers = _sshd_algos(ctx, "ciphers") or list(_SSH_BASE_CIPHERS)
         if kind == "no_weak_mac":
             macs = [m for m in macs
                     if not (m.lower().startswith("hmac-md5")
@@ -3480,6 +3410,16 @@ def c_crypto_policy(ctx, p):
         for f in ("openssl.config", "gnutls.config", "opensshserver.config",
                   "openssh.config", "nss.config", "java.config"):
             txt = backend(f)
+            if f == "java.config":
+                # Java expresses disables by LISTING the algorithm under
+                # jdk.*.disabledAlgorithms (no "-SHA1" marker) — SHA1 there
+                # means disabled, not permitted.
+                sha1_lines = [ln for ln in txt.splitlines()
+                              if re.search(r"(?<![A-Za-z0-9-])SHA1", ln)]
+                if sha1_lines and not all("disabledAlgorithms" in ln
+                                          for ln in sha1_lines):
+                    bad.append(f)
+                continue
             if re.search(r"(?<![A-Za-z0-9-])SHA1(?![0-9])", txt, re.I) and \
                     not re.search(r"-SHA1", txt):
                 bad.append(f)
@@ -3549,19 +3489,30 @@ def f_crypto_policy(ctx, p):
     name, body = CRYPTO_MODULES[kind]
     modpath = "/etc/crypto-policies/policies/modules/%s.pmod" % name
     vendor = "/usr/share/crypto-policies/policies/modules/%s.pmod" % name
-    if exists(vendor):
-        # The OS-shipped module is authoritative — a locally written shadow
-        # wins over /usr/share, and ours once lacked mac=-HMAC-SHA1, leaving
-        # SHA1 in the gnutls/java backends after --set (rhel9 1.6.3).
+    mods_extra = []
+    if exists(vendor) and kind == "no_sha1":
+        # Compose, not replace: the vendor NO-SHA1 module alone leaves SHA1
+        # in the gnutls/java back-ends (rhel9 1.6.3 / rhel10 1.6.2), while
+        # our own module carries the sign/hash removals.  Apply vendor +
+        # ours together under a distinct name so neither shadows the other.
+        mods_extra.append(name)
+        name = "OHBS-NOSHA1"
+        modpath = "/etc/crypto-policies/policies/modules/%s.pmod" % name
+    elif exists(vendor):
+        # The OS-shipped module is authoritative for the other kinds — a
+        # locally written shadow wins over /usr/share, and ours once lacked
+        # mac=-HMAC-SHA1.
         if exists(modpath):
             os.unlink(modpath)
-    else:
+        body = None
+    if body is not None:
         write_file(ctx, modpath, "# CIS hardening\n" + body)
     cur = crypto_policy_now(ctx) or "DEFAULT"
     base = cur.split(":")[0]
     mods = [m for m in cur.split(":")[1:] if m]
-    if name not in mods:
-        mods.append(name)
+    for m in mods_extra + [name]:
+        if m not in mods:
+            mods.append(m)
     newpol = ":".join([base] + mods)
     rc, o, e = sh(["update-crypto-policies", "--set", newpol], 120)
     if rc != 0:
@@ -6317,23 +6268,32 @@ def _ensure_custom_profile(ctx):
     # with-faillock / with-pwhistory ("Unknown profile feature", then
     # "Unable to activate profile"), so CIS 5.4.x fails forever.  Base the
     # custom profile on sssd (full feature set) whenever it is available.
-    if base == "minimal":
-        rc, o, _ = sh(["authselect", "list"], 30)
-        if re.search(r"^-?\s*sssd\b", o or "", re.M):
-            base = "sssd"
-    rc, o, e = sh(["authselect", "create-profile", CIS_AUTHSELECT_PROFILE,
-                   "-b", base, "--symlink-meta"], 60)
-    if rc != 0 and "already exists" not in (o + e):
-        ctx.add_note("authselect create-profile: %s" % (e or o)[:160])
-        return None
-    d = "/etc/authselect/custom/%s" % CIS_AUTHSELECT_PROFILE
-    if not os.path.isdir(d):
-        return None
-    rc, o, e = sh(["authselect", "select", "custom/%s" % CIS_AUTHSELECT_PROFILE]
-                  + feats + ["--force"], 120)
-    if rc != 0:
-        ctx.add_note("authselect select: %s" % (e or o)[:160])
-    return d
+    # Parallel apply workers can race here: two threads running
+    # create-profile concurrently make the FIRST one fail ("unable to
+    # create"), which then poisons every authselect-based fixer.  Serialize
+    # the whole create/select block on a per-path lock.
+    with ctx.file_lock("/etc/authselect"):
+        # Another worker may have finished while we waited on the lock.
+        prof, feats = _authselect_current(ctx)
+        if prof and prof.startswith("custom/"):
+            return "/etc/authselect/%s" % prof
+        if base == "minimal":
+            rc, o, _ = sh(["authselect", "list"], 30)
+            if re.search(r"^-?\s*sssd\b", o or "", re.M):
+                base = "sssd"
+        rc, o, e = sh(["authselect", "create-profile", CIS_AUTHSELECT_PROFILE,
+                       "-b", base, "--symlink-meta"], 60)
+        if rc != 0 and "already exists" not in (o + e):
+            ctx.add_note("authselect create-profile: %s" % (e or o)[:160])
+            return None
+        d = "/etc/authselect/custom/%s" % CIS_AUTHSELECT_PROFILE
+        if not os.path.isdir(d):
+            return None
+        rc, o, e = sh(["authselect", "select", "custom/%s" % CIS_AUTHSELECT_PROFILE]
+                      + feats + ["--force"], 120)
+        if rc != 0:
+            ctx.add_note("authselect select: %s" % (e or o)[:160])
+        return d
 
 
 def _pam_edit_targets(ctx):
@@ -6350,6 +6310,12 @@ def _pam_edit_targets(ctx):
             # "unexpected content" (seen live on RHEL8/9: with-faillock
             # could never be enabled again).
             return targets
+    if have("authselect"):
+        # authselect IS in use but no writable custom profile: editing
+        # /etc/pam.d directly would write into authselect's state store
+        # (/etc/authselect/system-auth via the symlink) and poison every
+        # later apply-changes with "unexpected content".  Refuse instead.
+        return []
     # No authselect: edit the live stack files directly.
     targets = []
     for f in PAM_FILES:
@@ -6493,7 +6459,12 @@ def f_pam_arg(ctx, p):
         res, hit = [], False
         for l in lines:
             if mod in l and not l.lstrip().startswith("#"):
-                base = re.sub(r"\s+%s(=\S+)?" % re.escape(arg), "", l).rstrip()
+                # authselect template form: {if not "without-nullok":nullok}
+                # — the plain `\s+nullok` substitution cannot see the arg
+                # inside the macro, so strip the macro itself (rhel9
+                # 5.3.3.4.1 kept failing with nullok rendered from it).
+                base = re.sub(r"\s*\{if [^}]*?:%s\}" % re.escape(arg), "", l)
+                base = re.sub(r"\s+%s(=\S+)?" % re.escape(arg), "", base).rstrip()
                 if newarg:
                     base = base + " " + newarg
                 if base != l:
@@ -6950,6 +6921,20 @@ def main():
                 if not ok:
                     sys.stderr.write("batch install warning: %s\n" % err)
 
+        # ── Phase 1.5: full-system update, strictly serial ──
+        # dnf/apt updates reinstall or refresh packages, which can RESTORE
+        # files another rule just remediated — observed: /etc/at.deny came
+        # back with the rpm's original mtime after cron_allow unlinked it
+        # (rhel9 2.4.1.8, parallel phase 2 raced dnf -y update).
+        upd_rules = [r for r in ordered if r.get("family") == "updates_applied"]
+        upd_results = []
+        if upd_rules:
+            sys.stderr.write("ohbs-engine: phase 1.5 system update (%d rule(s))\n"
+                             % len(upd_rules))
+            for r in upd_rules:
+                upd_results.append(run_rule(ctx, r))
+            ordered = [r for r in ordered if r.get("family") != "updates_applied"]
+
         # ── Phase 2: Parallel apply ──
         # Rules that touch the package manager are serialised via ctx._pkg_lock;
         # all others (config writes, file perms, kernel params, etc.) run in
@@ -6999,9 +6984,9 @@ def main():
                 pool.shutdown(wait=False)
 
         if opts.deadline:
-            results = _apply_with_deadline()
+            results = upd_results + _apply_with_deadline()
         else:
-            results = _in_pool(lambda r: _apply_one(ctx, r), ordered)
+            results = upd_results + _in_pool(lambda r: _apply_one(ctx, r), ordered)
 
         # ── Phase 3: Batch restart queued services ──
         sys.stderr.write("ohbs-engine: phase 3 flushing %d service restart(s)\n"
@@ -7016,24 +7001,65 @@ def main():
         # caches and could mask the fixes.
         to_recheck = [r for r in results
                       if r.get("apply_status") in ("applied", "applied_pending")]
+
+        def _recheck(r):
+            fn = CHECKS.get(r["family"])
+            if fn:
+                try:
+                    st, detail = fn(ctx, r.get("params") or {})
+                    r["status"], r["detail"] = st, detail
+                except Exception as exc:                        # pragma: no cover
+                    ctx.add_note("re-check %s: %s" % (r["id"], exc))
+            return r
+
         if to_recheck:
             sys.stderr.write("ohbs-engine: phase 4 re-checking %d rule(s)\n"
                              % len(to_recheck))
             # Invalidate caches that may be stale after service restarts.
             ctx.invalidate("modprobe_showconfig", "lsmod")
-
-            def _recheck(r):
-                fn = CHECKS.get(r["family"])
-                if fn:
-                    try:
-                        st, detail = fn(ctx, r.get("params") or {})
-                        r["status"], r["detail"] = st, detail
-                    except Exception as exc:                    # pragma: no cover
-                        ctx.add_note("re-check %s: %s" % (r["id"], exc))
-                return r
-
             results = _in_pool(_recheck, to_recheck) + \
                       [r for r in results if r.get("apply_status") not in ("applied", "applied_pending")]
+
+        # ── Phase 4.5: reconcile regressions (serial) ──
+        # A fix can be silently undone AFTER its own re-check: package
+        # updates/reinstalls restore shipped files (/etc/at.deny came back
+        # with the rpm's original mtime when a later dnf transaction
+        # upgraded "at" — rhel9 2.4.1.8/2.4.2.1, rhel10 2.4.1.9), vendor
+        # tooling rewrites configs, etc.  And rules that PASSED the pre-scan
+        # can be invalidated by work during the apply itself — installing
+        # aide pulls in postfix (2.1.21), the sshd crypto drop-in can pin
+        # algorithms another family had already cleared (5.1.6).  So:
+        # first re-check every "already"-pass rule, then give anything now
+        # failing ONE serial re-fix + re-check, after ALL parallel work and
+        # restarts settled.
+        stale_ok = [r for r in results
+                    if r.get("status") == "pass"
+                    and r.get("apply_status") == "already"
+                    and r.get("family") in CHECKS]
+        if stale_ok:
+            sys.stderr.write("ohbs-engine: phase 4.5 re-checking %d untouched rule(s)\n"
+                             % len(stale_ok))
+            _in_pool(_recheck, stale_ok)
+        regressed = [r for r in results
+                     if r.get("status") == "fail"
+                     and r.get("apply_status") in ("applied", "applied_pending", "already")
+                     and r.get("family") in FIXES]
+        if regressed:
+            sys.stderr.write("ohbs-engine: phase 4.5 reconciling %d regressed rule(s): %s\n"
+                             % (len(regressed), ", ".join(r["id"] for r in regressed)))
+            for r in regressed:
+                try:
+                    applied, detail = FIXES[r["family"]](ctx, r.get("params") or {})
+                    r["apply_status"] = "applied" if applied else r.get("apply_status")
+                    r["apply_detail"] = detail
+                except Exception as exc:                        # pragma: no cover
+                    ctx.add_note("reconcile fix %s: %s" % (r["id"], exc))
+                    continue
+                try:
+                    st, cdetail = CHECKS[r["family"]](ctx, r.get("params") or {})
+                    r["status"], r["detail"] = st, cdetail
+                except Exception as exc:                        # pragma: no cover
+                    ctx.add_note("reconcile check %s: %s" % (r["id"], exc))
 
     else:
         # scan/audit mode: already parallel

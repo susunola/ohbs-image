@@ -480,6 +480,10 @@ build {
       "sudo mkdir -p /etc/systemd/system/rc-local.service.d",
       "printf '[Service]\\nTimeoutStopSec=15s\\n' | sudo tee /etc/systemd/system/rc-local.service.d/10-ohbs-image-stop-timeout.conf > /dev/null",
       "sudo systemctl daemon-reload || true",
+      "# Drop dracut's leaked temp dirs: a kernel update during the build",
+      "# leaves /var/tmp/dracut.*/ behind, and its files land outside the",
+      "# SUID baseline recorded by CIS 7.1.13 (rhel10 build 2026-08-22).",
+      "sudo rm -rf /var/tmp/dracut.* /tmp/dracut.* 2>/dev/null || true",
       "rm -rf /tmp/ansible /opt/ohbs-image-ansible/staging /opt/ohbs-image-ansible/reboot.sh /opt/ohbs-image-ansible/ssh-guard.sh /opt/ohbs-image-ansible/reconnected.sh /opt/ohbs-image-ansible/fix-logperms.sh /opt/ohbs-image-ansible/cleanup.sh ~/.ansible/roles 2>/dev/null || true"
     ]
   }

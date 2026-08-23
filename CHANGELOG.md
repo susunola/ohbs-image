@@ -7,6 +7,63 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Fixed (round-3 re-audit, all 8 Linux roles share the byte-identical engine)
+- **`sshd_effective`: create `/run/sshd` + absolute sshd path** — Ubuntu
+  24.04 runs sshd socket-activated, so the privsep dir `/run/sshd` may not
+  exist when the engine probes and a minimal PATH lacks `/usr/sbin`;
+  `sshd -T` then failed and EVERY sshd rule errored out at apply time
+  (ubuntu2404 shipped with default Banner/ClientAlive/MACs/MaxAuthTries —
+  7 false failures in the final scan).
+- **journal-upload honesty** — the local loopback "remote sink" bootstrap
+  was removed: it enabled `systemd-journal-remote.socket` on the image,
+  which the sibling "journal-remote not in use" rule (correctly) flags.
+  The upload enabled/active rules (rhel8 6.2.1.2.3, rhel9/rhel10 6.2.2.1.3,
+  tencentos3 6.2.1.2.3, ubuntu2004 6.2.2.1.3, ubuntu2204 6.1.1.2.3) are
+  now `family=manual` — the upload destination is site-specific by design.
+- **phase 1.5: full-system update runs strictly serial, before parallel
+  apply** — a `dnf -y update` racing phase 2 restored remediated files
+  (`/etc/at.deny` came back with the rpm's original mtime when the `at`
+  package upgraded mid-apply — rhel9 2.4.1.8/2.4.2.1, rhel10 2.4.1.9).
+- **phase 4.5: reconcile regressions** — after the phase-4 re-check, every
+  untouched "already pass" rule is re-checked (package installs during
+  apply can create NEW violations: `aide-common` Recommends `bsd-mailx`
+  which pulls in postfix listening on :25), and anything now failing gets
+  one serial re-fix + re-check.
+- **`f_pam_arg`: strip authselect template macros when removing args** —
+  `nullok` hides in `{if not "without-nullok":nullok}` which a plain-text
+  regex cannot see (nullok survived on rhel8/9/10 + tencentos3 5.3.x.4.1).
+- **`_pam_edit_targets`: never fall back to /etc/pam.d when the custom
+  profile cannot be created** — a direct write would land in authselect's
+  state store and wedge every later `authselect apply-changes`; fail the
+  rule instead. `authselect create-profile`/`select` are now serialised on
+  a file lock (parallel workers raced the first create).
+- **`crypto_policy no_sha1`: always compose OHBS-NOSHA1 (+ vendor module
+  when present)** — the vendor `NO-SHA1.pmod` alone leaves SHA1 in the
+  gnutls/java back-ends (rhel9 1.6.3, rhel10 1.6.2); the checker reads
+  `java.config` correctly (SHA1 under `disabledAlgorithms` = disabled).
+- **`_fix_sshd_crypto` composes from the EFFECTIVE sshd algorithm lists**,
+  not the hardcoded base list — the base includes `aes*-cbc`, so writing
+  it into the drop-in turned Ubuntu 22.04's CBC-free default into an
+  explicit CBC permit (round-2 5.1.6 regression).
+- **`_install_pkgs` (apt): `--no-install-recommends`** — keeps helper
+  packages from dragging in services CIS then flags (aide → bsd-mailx →
+  postfix, ubuntu2204 2.1.21/2.1.22).
+- **catalog: `su` restriction rule rewired to `user_audit`/`su_wheel`**
+  (rhel8/9/10, ubuntu2004/2204/2404) — the `pam_module` wiring injected
+  `pam_wheel.so` into `system-auth` instead of `/etc/pam.d/su`.
+- **catalog: tencentos3 6.2.1.1.4 removed** (its `ForwardToSyslog=no`
+  contradicts 6.2.2.3's `yes`); 6.2.2.3 promoted to risk=safe.
+- **cleanup drops `/var/tmp/dracut.*`** — kernel updates during the build
+  leak dracut temp dirs whose files land outside the SUID baseline
+  (rhel10 7.1.13).
+- **Windows: defer `SeDenyNetworkLogonRight` (S-1-5-114) to first boot** —
+  "deny network logon for local accounts in Administrators" kills the
+  pywinrm channel mid-apply (401 on every re-authentication), same as the
+  WinRM Service lockdown.  The firstboot defer machinery now also covers
+  `user-right` rules (secedit export/edit/import), and a
+  `Reset-BuiltinAdminLockout` step unlocks the built-in Administrator
+  after lockout-policy changes.  Engine 1.3.0-windows.
+
 ### Fixed (fleet re-audit round, all 8 Linux roles)
 - **role bundling: purge stale roles from the shared workdir** — the build
   workdir is reused across runs, so `workdir/ansible/roles/` accumulated
@@ -30,13 +87,10 @@ can be traced across rebuilds.
   `/etc/pam.d` re-apply loop runs only for non-custom profiles, and
   `f_authselect_feature` creates the custom profile (based on `sssd`)
   before enabling features.
-- **journald upload: socket-activated remote sink** —
-  `_bootstrap_journal_upload` rewritten: a socket drop-in re-points
-  `systemd-journal-remote.socket` at 127.0.0.1:19532, the service drop-in
-  drops PrivateNetwork and writes to `/var/log/journal-remote/`, the
-  masked unit from older images is unmasked, and `journal-upload.conf`
-  always uses `URL=http://127.0.0.1:19532` (`UploadServer=` is not a
-  valid lvalue on systemd 239).
+- **journald upload: socket-activated remote sink** — superseded before
+  release: the loopback sink enabled `systemd-journal-remote.socket` on
+  the image, tripping the "journal-remote not in use" rule; see the
+  round-3 "journal-upload honesty" entry above.
 - **`crypto_policy` fixes** — SSH crypto rules (`no_weak_mac`, …) no
   longer require `update-crypto-policies` (absent on Ubuntu, so 5.1.15
   never fixed); a post-fix hook restores `/etc/sysconfig/sshd` to

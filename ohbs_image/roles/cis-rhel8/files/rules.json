@@ -4270,11 +4270,9 @@
       "Server",
       "Workstation"
     ],
-    "family": "pam_module",
+    "family": "user_audit",
     "params": {
-      "module": "pam_wheel.so",
-      "arg": "use_uid",
-      "mode": "flag"
+      "kind": "su_wheel"
     },
     "risk": "safe",
     "page": 675,
@@ -5398,16 +5396,10 @@
       "Server",
       "Workstation"
     ],
-    "family": "svc_enabled",
-    "params": {
-      "units": [
-        "systemd-journal-upload.service"
-      ],
-      "packages": []
-    },
-    "risk": "safe",
+    "family": "manual",
+    "risk": "none",
     "page": 841,
-    "note": "manual: enabling journal-upload requires a site-specific remote log receiver (URL/cert); configure at deployment time, not during image build",
+    "note": "Needs a site-specific remote log destination (URL + optional TLS material); a golden image cannot know it. CIS intends upload-to-remote for clients and journal-remote NOT in use locally.",
     "assessment": "Automated"
   },
   {

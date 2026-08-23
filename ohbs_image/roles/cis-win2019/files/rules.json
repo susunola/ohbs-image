@@ -620,7 +620,8 @@
     "params": {
       "privilege": "SeDenyNetworkLogonRight",
       "expected_sid": "S-1-5-32-546,S-1-5-114"
-    }
+    },
+    "defer": "firstboot"
   },
   {
     "id": "2.2.22",
