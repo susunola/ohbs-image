@@ -760,8 +760,9 @@ distribute pipeline):
 - **Vendor image refresh** — when the upstream OS image is updated, the
   golden image should be rebuilt. `ohbs-image check-source` compares the
   source image's `CreatedTime` against the last build's lineage record
-  (exit 0 = unchanged, 1 = refreshed); schedule it on a timer ahead of
-  `build --skip-if-unchanged`:
+  (exit 0 = unchanged, 1 = refreshed, 2 = API state unknown); schedule it
+  on a timer ahead of `build --skip-if-unchanged`. Treat exit 2 as a failed
+  check rather than silently skipping a rebuild:
 
   ```bash
   ohbs-image check-source && echo "source unchanged" || ohbs-image build -y

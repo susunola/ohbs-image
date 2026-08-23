@@ -28,6 +28,7 @@ from ._packer import (
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES, SAMPLE_CONFIG
 from ._reports import (
     _find_provenance,
+    _missing_build_evidence,
     _save_build_report,
     _send_notification,
 )
@@ -210,16 +211,9 @@ def cmd_build(args: argparse.Namespace) -> int:
         # An exit code alone is not enough evidence to distribute a hardened
         # image.  A real build must identify the snapshot and archive its
         # structured audit result before it is recorded as successful.
-        verifiable = (not isinstance(r, ResolvedConfig)
-                      or (bool(image_ids) and score is not None and rep is not None))
+        missing = _missing_build_evidence(image_ids, score, rep)
+        verifiable = not isinstance(r, ResolvedConfig) or not missing
         if not verifiable:
-            missing = []
-            if not image_ids:
-                missing.append("image ID")
-            if score is None:
-                missing.append("re-audit score")
-            if rep is None:
-                missing.append("structured audit report")
             fail("packer exited successfully but build output is not verifiable: "
                  + ", ".join(missing))
             ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
@@ -332,8 +326,9 @@ def cmd_check_source(args: argparse.Namespace) -> int:
     """ohbs-image check-source — vendor image refresh detection (#20).
 
     Queries the source image's CreatedTime and compares it with the last
-    build's lineage record.  Exit 0 = source unchanged (no rebuild needed);
-    exit 1 = source image has been refreshed → rebuild the golden image.
+    build's lineage record. Exit 0 = source unchanged (no rebuild needed);
+    exit 1 = source image has been refreshed → rebuild; exit 2 = the source
+    state could not be determined.
     Schedule it on a timer alongside 'build --skip-if-unchanged' so a
     vendor OS image update automatically triggers a rebuild.
     """
@@ -345,7 +340,7 @@ def cmd_check_source(args: argparse.Namespace) -> int:
     if not now_created:
         warn("Could not query the source image's CreatedTime — cannot "
              "detect a vendor refresh (check credentials/API access)")
-        return 0  # fail open: don't force a rebuild on a transient API issue
+        return 2  # unknown is never the same as unchanged for schedulers
 
     prev: str | None = None
     path = ohbs_image._lineage_path()
@@ -362,7 +357,10 @@ def cmd_check_source(args: argparse.Namespace) -> int:
                 if (rec.get("status") == "ok"
                         and rec.get("mode", "build") == "build"
                         and rec.get("profile") == r.profile_name
-                        and rec.get("region") == r.region):
+                        and rec.get("cis_level") == r.level
+                        and rec.get("region") == r.region
+                        and rec.get("source_image_id") == r.source_image_id
+                        and rec.get("benchmark") == r.image_benchmark):
                     prev = rec.get("source_image_created") or None
 
     banner("check-source")
@@ -954,13 +952,18 @@ def cmd_scan(args: argparse.Namespace) -> int:
         _send_notification(r, False, image_ids, score, image_name)
         return 1
 
-    if image_ids:
-        ok(f"Output image ID(s): {', '.join(image_ids)}")
+    rep = _save_build_report(r, image_name, result.stdout_lines, workdir)
+    missing = _missing_build_evidence(image_ids, score, rep)
+    if missing:
+        fail("scan output is not verifiable: " + ", ".join(missing))
+        ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False, mode="scan")
+        _send_notification(r, False, image_ids, score, image_name)
+        return 1
+
+    ok(f"Output image ID(s): {', '.join(image_ids)}")
     ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True, mode="scan")
     ohbs_image._write_provenance(r, image_ids, image_name, score)
-    rep = _save_build_report(r, image_name, result.stdout_lines, workdir)
-    if rep:
-        info(f"Audit report archived -> {rep}")
+    info(f"Audit report archived -> {rep}")
     _send_notification(r, True, image_ids, score, image_name)
     return 0
 

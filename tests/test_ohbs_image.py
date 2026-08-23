@@ -2608,6 +2608,7 @@ class TestScanListRules:
                        return_value=PackerResult(exit_code=0, stdout_lines=[
                            "Tencentcloud images(ap-guangzhou: img-scan2) were created.",
                            "Score: 92.0%"])),
+            mock.patch("ohbs_image._commands._save_build_report", return_value=tmp_path / "audit.json"),
             mock.patch("ohbs_image._record_lineage") as lin,
             mock.patch("ohbs_image._write_provenance") as prov,
         ):
@@ -2616,6 +2617,25 @@ class TestScanListRules:
         assert rc == 0
         assert lin.call_args.kwargs["ok"] is True
         prov.assert_called_once()
+
+    def test_cmd_scan_requires_structured_audit_evidence(self, valid_toml, tmp_path):
+        from ohbs_image import PackerResult, cmd_scan
+        r = resolve(valid_toml)
+        with (
+            mock.patch("ohbs_image._load_resolve_preflight", return_value=(r, tmp_path / "b")),
+            mock.patch("ohbs_image.render_all"),
+            mock.patch("ohbs_image.run_packer", return_value=PackerResult(
+                exit_code=0, stdout_lines=[
+                    "Tencentcloud images(ap-guangzhou: img-scan3) were created.",
+                    "Score: 92.0%"])),
+            mock.patch("ohbs_image._record_lineage") as lin,
+            mock.patch("ohbs_image._write_provenance") as prov,
+        ):
+            rc = cmd_scan(mock.MagicMock(config="x", workdir="b", yes=True, quiet=True,
+                                         debug=False, min_score=85.0))
+        assert rc == 1
+        assert lin.call_args.kwargs["ok"] is False
+        prov.assert_not_called()
 
 
 class TestCleanupImages:
@@ -2948,7 +2968,10 @@ class TestIdempotencyAndSarif:
             mock.patch("ohbs_image.render_all"),
             mock.patch("ohbs_image.run_packer",
                        return_value=PackerResult(exit_code=0, stdout_lines=[
+                           "Tencentcloud images(ap-guangzhou: img-scan-sarif) were created.",
                            "Score: 92.0%", "✗ 1.1.1.9 | squashfs disabled"])),
+            mock.patch("ohbs_image._commands._save_build_report",
+                       return_value=tmp_path / "audit.json"),
             mock.patch("ohbs_image._record_lineage"),
             mock.patch("ohbs_image._write_provenance"),
         ):
@@ -3489,6 +3512,20 @@ class TestIndependentAudit:
         assert a["error"] == 1
         assert a["score"] is None
 
+    def test_parse_inspec_error_is_not_counted_as_a_failure(self):
+        from ohbs_image import _parse_inspec_json
+        a = _parse_inspec_json({"controls": [{"id": "broken", "status": "error"}]})
+        assert a["error"] == 1
+        assert a["fail"] == 0
+        assert a["score"] is None
+
+    def test_audit_gate_fails_closed_on_error(self):
+        from ohbs_image._audit import _audit_render
+        audit = {"tool": "inspec", "pass": 99, "fail": 0, "notselected": 0,
+                 "error": 1, "score": 100.0,
+                 "results": [{"id": "broken", "status": "error"}]}
+        assert _audit_render(audit, 85.0) == 1
+
     def test_audit_oscap_requires_datastream(self):
         from ohbs_image import cmd_audit
         args = mock.MagicMock(tool="oscap", host="1.2.3.4", datastream=None)
@@ -3566,6 +3603,15 @@ class TestIndependentAudit:
             lambda *a, **k: subprocess.CompletedProcess(
                 [], 0, stdout=json.dumps(report), stderr=""))
         assert _audit_inspec("1.2.3.4", "root", 22, None, "dev-sec/linux-baseline") == report
+
+    def test_audit_inspec_passes_ssh_key(self, monkeypatch):
+        from ohbs_image import _audit_inspec
+        run = mock.MagicMock(return_value=subprocess.CompletedProcess(
+            [], 0, stdout=json.dumps({"controls": []}), stderr=""))
+        monkeypatch.setattr("ohbs_image.subprocess.run", run)
+        _audit_inspec("1.2.3.4", "root", 22, "/tmp/key.pem", "baseline")
+        assert "--key-files" in run.call_args.args[0]
+        assert "/tmp/key.pem" in run.call_args.args[0]
 
     def test_audit_inspec_not_installed(self, monkeypatch):
         from ohbs_image import _audit_inspec
@@ -4702,7 +4748,9 @@ class TestCheckSource:
         (home / ".ohbs-image").mkdir(parents=True)
         (home / ".ohbs-image" / "lineage.jsonl").write_text(
             json.dumps({"ts": "2026-08-01T00:00:00Z", "status": "ok",
-                        "profile": r.profile_name, "region": r.region,
+                        "profile": r.profile_name, "cis_level": r.level,
+                        "region": r.region, "source_image_id": r.source_image_id,
+                        "benchmark": r.image_benchmark,
                         "source_image_created": "2026-08-01T00:00:00Z"}) + "\n",
             encoding="utf-8")
         monkeypatch.setattr("ohbs_image._lineage_path",
@@ -4720,7 +4768,9 @@ class TestCheckSource:
         (home / ".ohbs-image").mkdir(parents=True)
         (home / ".ohbs-image" / "lineage.jsonl").write_text(
             json.dumps({"ts": "2026-08-01T00:00:00Z", "status": "ok",
-                        "profile": r.profile_name, "region": r.region,
+                        "profile": r.profile_name, "cis_level": r.level,
+                        "region": r.region, "source_image_id": r.source_image_id,
+                        "benchmark": r.image_benchmark,
                         "source_image_created": "2026-07-01T00:00:00Z"}) + "\n",
             encoding="utf-8")
         monkeypatch.setattr("ohbs_image._lineage_path",
@@ -4741,7 +4791,36 @@ class TestCheckSource:
         (home / ".ohbs-image" / "lineage.jsonl").write_text(
             json.dumps({"ts": "2026-08-01T00:00:00Z", "status": "ok",
                         "mode": "scan",
-                        "profile": r.profile_name, "region": r.region,
+                        "profile": r.profile_name, "cis_level": r.level,
+                        "region": r.region, "source_image_id": r.source_image_id,
+                        "benchmark": r.image_benchmark,
+                        "source_image_created": "2026-08-01T00:00:00Z"}) + "\n",
+            encoding="utf-8")
+        monkeypatch.setattr("ohbs_image._lineage_path",
+                            lambda: home / ".ohbs-image" / "lineage.jsonl")
+        monkeypatch.setattr("ohbs_image._source_image_created",
+                            lambda r_: "2026-08-01T00:00:00Z")
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight",
+                            lambda c, w: (r, tmp_path / "w"))
+        assert cmd_check_source(mock.MagicMock(config="c", workdir="w")) == 1
+
+    def test_check_source_query_failure_is_unknown(self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import cmd_check_source, resolve
+        r = resolve(valid_toml)
+        monkeypatch.setattr("ohbs_image._source_image_created", lambda r_: None)
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight",
+                            lambda c, w: (r, tmp_path / "w"))
+        assert cmd_check_source(mock.MagicMock(config="c", workdir="w")) == 2
+
+    def test_check_source_ignores_different_source_image(self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import cmd_check_source, resolve
+        r = resolve(valid_toml)
+        home = tmp_path / "home"
+        (home / ".ohbs-image").mkdir(parents=True)
+        (home / ".ohbs-image" / "lineage.jsonl").write_text(
+            json.dumps({"status": "ok", "mode": "build", "profile": r.profile_name,
+                        "cis_level": r.level, "region": r.region,
+                        "source_image_id": "img-other", "benchmark": r.image_benchmark,
                         "source_image_created": "2026-08-01T00:00:00Z"}) + "\n",
             encoding="utf-8")
         monkeypatch.setattr("ohbs_image._lineage_path",

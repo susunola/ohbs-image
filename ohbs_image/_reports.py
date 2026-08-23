@@ -14,6 +14,19 @@ from ._config import ResolvedConfig
 from ._logging import VERSION, info, ok, warn
 
 
+def _missing_build_evidence(image_ids: list[str], score: float | None,
+                            report: Path | None) -> list[str]:
+    """Return the evidence missing from a successful Packer run."""
+    missing: list[str] = []
+    if not image_ids:
+        missing.append("image ID")
+    if score is None:
+        missing.append("re-audit score")
+    if report is None:
+        missing.append("structured audit report")
+    return missing
+
+
 def _save_build_report(r: ResolvedConfig, image_name: str,
                        stdout_lines: list[str], workdir: Path) -> Path | None:
     """Archive the per-rule audit JSON on the BUILD machine (P-next).

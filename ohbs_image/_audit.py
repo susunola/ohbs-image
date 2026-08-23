@@ -213,7 +213,10 @@ def _audit_inspec(host: str, ssh_user: str, ssh_port: int, ssh_key: str | None,
     target = f"ssh://{ssh_user}@{host}"
     if ssh_port:
         target += f":{ssh_port}"
-    cmd = ["inspec", "exec", baseline, "-t", target, "--reporter", "json"]
+    cmd = ["inspec", "exec", baseline, "-t", target]
+    if ssh_key:
+        cmd += ["--key-files", ssh_key]
+    cmd += ["--reporter", "json"]
     try:
         cp = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     except FileNotFoundError:
@@ -310,9 +313,11 @@ def _parse_inspec_json(data: dict[str, Any] | None) -> dict[str, Any]:
         if st == "passed":
             out["pass"] += 1
             st = "pass"
-        elif st in ("failed", "error"):
+        elif st == "failed":
             out["fail"] += 1
-            st = "fail" if st == "failed" else "error"
+            st = "fail"
+        elif st == "error":
+            out["error"] += 1
         else:
             out["notselected"] += 1
             st = "notselected"
@@ -337,7 +342,9 @@ def _audit_render(audit: dict[str, Any], min_score: float) -> int:
     for r in audit["results"]:
         if r["status"] in ("fail", "error"):
             fail(f"{r['id']:s} | {r.get('detail') or r.get('title') or r['status']}")
-    gate_ok = audit.get("score") is not None and audit["score"] >= min_score
+    gate_ok = (audit.get("score") is not None
+               and audit["score"] >= min_score
+               and audit["error"] == 0)
     if gate_ok:
         ok(f"audit gate PASSED ({audit['score']:g}% >= {min_score:g}%)")
         return 0
