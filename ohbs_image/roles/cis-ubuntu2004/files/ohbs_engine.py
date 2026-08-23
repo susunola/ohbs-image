@@ -5129,8 +5129,18 @@ def c_updates_applied(ctx, p):
         pending = [ln for ln in (o or "").splitlines()
                    if ln.strip() and not ln.startswith("Listing")]
         if pending:
+            # Packages under a dpkg hold (vendor-pinned, e.g. TencentCloud's
+            # cloud-init) cannot be upgraded by apt at all — forcing them
+            # breaks the pin's purpose and can brick the package's postinst.
+            # Report them as a pass WITH the hold called out, mirroring how
+            # CIS auditors treat "0 upgraded, N not upgraded (held)".
+            held = set((out("dpkg --get-selections 2>/dev/null | awk '$2==\"hold\"{print $1}'", 30) or "").split())
+            effective = [ln for ln in pending if ln.split("/")[0] not in held]
+            if not effective:
+                return ("pass", "%d update(s) pending but all dpkg-held "
+                        "(vendor-pinned, e.g. %s)" % (len(pending), pending[0].split("/")[0]))
             return "fail", "%d update(s) pending (e.g. %s)" % (
-                len(pending), pending[0].split("/")[0])
+                len(effective), effective[0].split("/")[0])
         return "pass", "no pending updates (apt list --upgradable)"
     return "error", "no supported package manager (dnf/apt-get) found"
 
@@ -5636,6 +5646,13 @@ def _ufw_status(ctx):
 def c_ufw_rules(ctx, p):
     kind = p.get("kind")
     if not _ufw_in_use(ctx):
+        if have("ufw"):
+            # ufw installed but not enabled: that IS a violation (the
+            # package being present means the catalog chose the ufw stack)
+            # — fail so the fixer fires; "not in use" would park the rule
+            # as notapplicable and the image would ship without any rules
+            # (ubuntu2004 4.2.5-4.2.8, raced the parallel ufw enable).
+            return "fail", "ufw installed but not active (no rules configured)"
         return ("notapplicable",
                 "ufw stack not in use (ufw.service not enabled/active and "
                 "'ufw status' not active)")
@@ -5691,33 +5708,38 @@ def c_ufw_rules(ctx, p):
 @fix("ufw_rules")
 def f_ufw_rules(ctx, p):
     kind = p.get("kind")
-    if not _ufw_in_use(ctx):
+    if not _ufw_in_use(ctx) and not have("ufw"):
         return False, "ufw stack not in use"
+    # Do NOT bail just because ufw is not enabled yet: the fixer enables it
+    # itself at the end (`ufw --force enable`).  The old in-use gate raced
+    # the parallel svc_enabled rule that enables ufw.service (ubuntu2004
+    # 4.2.5-4.2.8 never applied, then failed at the final scan).
     # Whitelist the SSH management port before any default-deny / enable —
     # enabling ufw without it locks the build (and every future console) out.
     sh(["ufw", "allow", "%s/tcp" % _detect_ssh_port()], 60)
     acts = []
-    if kind == "loopback":
-        for args in (["allow", "in", "on", "lo"], ["allow", "out", "on", "lo"],
-                     ["deny", "in", "from", "127.0.0.0/8"],
-                     ["deny", "in", "from", "::1"]):
-            sh(["ufw"] + args, 60)
-            acts.append(" ".join(args))
-    elif kind == "default_deny":
-        sh(["ufw", "default", "deny", "incoming"], 60)
-        acts.append("default deny incoming")
-    elif kind == "outbound":
-        sh(["ufw", "default", "allow", "outgoing"], 60)
-        acts.append("default allow outgoing")
-    elif kind == "open_ports":
-        for proto, addr, port, _ in _listening_sockets(ctx):
-            if _is_loopback_addr(addr):
-                continue
-            sh(["ufw", "allow", "%s/%s" % (port, proto)], 60)
-            acts.append("allow %s/%s" % (port, proto))
-    else:
-        return False, "unknown ufw_rules kind %r" % kind
-    sh(["ufw", "--force", "enable"], 60)
+    with ctx.file_lock("__cmd__:ufw"):  # several ufw_rules run in parallel
+        if kind == "loopback":
+            for args in (["allow", "in", "on", "lo"], ["allow", "out", "on", "lo"],
+                         ["deny", "in", "from", "127.0.0.0/8"],
+                         ["deny", "in", "from", "::1"]):
+                sh(["ufw"] + args, 60)
+                acts.append(" ".join(args))
+        elif kind == "default_deny":
+            sh(["ufw", "default", "deny", "incoming"], 60)
+            acts.append("default deny incoming")
+        elif kind == "outbound":
+            sh(["ufw", "default", "allow", "outgoing"], 60)
+            acts.append("default allow outgoing")
+        elif kind == "open_ports":
+            for proto, addr, port, _ in _listening_sockets(ctx):
+                if _is_loopback_addr(addr):
+                    continue
+                sh(["ufw", "allow", "%s/%s" % (port, proto)], 60)
+                acts.append("allow %s/%s" % (port, proto))
+        else:
+            return False, "unknown ufw_rules kind %r" % kind
+        sh(["ufw", "--force", "enable"], 60)
     ctx.invalidate("ufw_status")
     return True, "; ".join(acts) + " (ufw enabled)"
 
