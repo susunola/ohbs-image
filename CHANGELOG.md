@@ -7,6 +7,29 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added
+- **Linux firstboot defer** — rules tagged `"defer": "firstboot"` are
+  recorded in `/etc/ohbs-image/firstboot-deferred.json` and applied by a
+  one-shot `ohbs-cis-firstboot.service` at the consumer's first boot
+  (engine `--firstboot-apply` mode), mirroring the Windows mechanism.
+  Wired for the NOPASSWD-stripping sudo rules (ubuntu2004 5.2.4,
+  tencentos3 5.2.4, tencentos4 5.3.4): commenting NOPASSWD mid-apply cut
+  ansible's sudo channel and killed the L2 build.
+
+### Fixed (L2 first pass)
+- **`dnf_flag` notapplicable on apt systems** (ubuntu2404 L2 1.2.1.2
+  failed on a dnf.conf that can never exist).
+- **`grub_flag` regenerates with `grub-mkconfig` when `grub2-mkconfig` is
+  absent** — the RHEL-only name silently no-op'd on Ubuntu, so
+  audit=1/audit_backlog_limit=8192 never reached the boot entries
+  (ubuntu L2 6.2.1.3/6.2.1.4).
+- **`audit_perm` persists `log_group` for logfiles rules even without a
+  mode param** — auditd recreated audit.log with group adm at rotation,
+  reverting the chown (ubuntu2204 L2 6.2.4.3).
+- **catalogs: `aide_audit_tools` risk none→safe** (ubuntu2204/2404 6.3.3)
+  — the fixer existed; the rule was parked as manual.
+
+
 ### Fixed (post-round-3 verification)
 - **Windows firstboot hardening: survive the WinRM startup race** — a
   consumer-VM TAT audit of the win2022 image found two deferred values

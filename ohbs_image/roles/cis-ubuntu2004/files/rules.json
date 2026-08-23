@@ -3573,7 +3573,8 @@
       "op": "absent_tag"
     },
     "risk": "disruptive",
-    "page": 554
+    "page": 554,
+    "defer": "firstboot"
   },
   {
     "id": "5.2.5",

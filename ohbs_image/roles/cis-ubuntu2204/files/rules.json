@@ -6174,7 +6174,7 @@
     "assessment": "Automated",
     "family": "aide_audit_tools",
     "params": {},
-    "risk": "none",
+    "risk": "safe",
     "page": 848
   },
   {
