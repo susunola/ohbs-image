@@ -1461,12 +1461,14 @@ def c_svc_disabled(ctx, p):
         # Report it as an error instead of a silent pass (which would inflate
         # the score for catalogs with incomplete data).
         return "error", "rule has no units/packages configured (incomplete catalog)"
-    if pkgs and not any(pkg_installed(x) for x in pkgs):
+    # The package short-circuit must not excuse UNITS that do exist:
+    # ubuntu2004 4.2.2 bundles nftables+firewalld; with the nftables package
+    # absent the old check passed vacuously and firewalld stayed enabled.
+    existing = [u for u in units if unit_exists(u)]
+    if pkgs and not any(pkg_installed(x) for x in pkgs) and not existing:
         return "pass", "provider package not installed (%s)" % ", ".join(pkgs)
     bad, seen = [], []
-    for u in units:
-        if not unit_exists(u):
-            continue
+    for u in existing:
         seen.append(u)
         en, ac = _unit_state(u)
         if en in ("enabled", "enabled-runtime", "static", "indirect", "alias"):
@@ -1485,7 +1487,7 @@ def c_svc_disabled(ctx, p):
 def f_svc_disabled(ctx, p):
     units = [u for u in (p.get("units") or []) if unit_exists(u)]
     pkgs = p.get("packages") or []
-    if pkgs and not any(pkg_installed(x) for x in pkgs):
+    if pkgs and not any(pkg_installed(x) for x in pkgs) and not units:
         return False, "provider package not installed"
     if not units:
         return False, "no matching units present"
