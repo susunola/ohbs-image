@@ -157,6 +157,15 @@ function Add-FirstbootDeferred($Rule) {
 
         # Regenerate the boot script from the full manifest (idempotent).
         $lines = @("# ohbs-image first-boot hardening (auto-generated - do not edit)")
+        # The WinRM service rewrites values under Policies\...\WinRM\Service
+        # while IT starts up; an AtStartup task that writes them too early
+        # gets silently reverted (observed on a win2022 consumer boot:
+        # AllowAutoConfig and WinRS\AllowRemoteShell lost while AllowBasic
+        # survived).  Wait for WinRM to be running before touching them,
+        # then verify every write and retry once.
+        $lines += "`$wt = Get-Date; while ((Get-Service WinRM -ErrorAction SilentlyContinue).Status -ne 'Running' -and ((Get-Date) - `$wt).TotalSeconds -lt 90) { Start-Sleep -Seconds 2 }"
+        $writes = @()
+        $verifies = @()
         foreach ($e in $entries) {
             if ($e.type -eq "userright") {
                 # User rights go through secedit: export, replace the
@@ -174,16 +183,29 @@ function Add-FirstbootDeferred($Rule) {
             }
             $p = "$($e.path)".Replace("'", "''")
             $n = "$($e.name)".Replace("'", "''")
-            $lines += "if (-not (Test-Path '$p')) { New-Item -Path '$p' -Force | Out-Null }"
+            $mkpath = "if (-not (Test-Path '$p')) { New-Item -Path '$p' -Force | Out-Null }"
             if ($e.type -eq "MultiString") {
                 $vals = (@($e.value) | ForEach-Object { "'$("$($_)".Replace("'", "''"))'" }) -join ", "
-                $lines += "Set-ItemProperty -Path '$p' -Name '$n' -Value ([string[]]@($vals)) -Type MultiString -Force"
+                $write = "Set-ItemProperty -Path '$p' -Name '$n' -Value ([string[]]@($vals)) -Type MultiString -Force"
+                $verify = $null  # MultiString compare not worth it; single write suffices post-wait
             } elseif ($e.type -eq "DWord") {
-                $lines += "Set-ItemProperty -Path '$p' -Name '$n' -Value $([int]$e.value) -Type DWord -Force"
+                $write = "Set-ItemProperty -Path '$p' -Name '$n' -Value $([int]$e.value) -Type DWord -Force"
+                $verify = "if (""`$((Get-ItemProperty -Path '$p' -Name '$n' -ErrorAction SilentlyContinue).$n)"" -ne ""$($e.value)"") { $write }"
             } else {
                 $v = "$($e.value)".Replace("'", "''")
-                $lines += "Set-ItemProperty -Path '$p' -Name '$n' -Value '$v' -Type String -Force"
+                $write = "Set-ItemProperty -Path '$p' -Name '$n' -Value '$v' -Type String -Force"
+                $verify = "if (""`$((Get-ItemProperty -Path '$p' -Name '$n' -ErrorAction SilentlyContinue).$n)"" -ne ""$($e.value)"") { $write }"
             }
+            $writes += $mkpath
+            $writes += $write
+            if ($verify) { $verifies += $verify }
+        }
+        $lines += $writes
+        # Post-write verification pass: re-apply anything the WinRM service
+        # startup reverted (registry service-side races are silent).
+        if ($verifies.Count -gt 0) {
+            $lines += "Start-Sleep -Seconds 5"
+            $lines += $verifies
         }
         # One-shot: unregister the task and remove both files after applying.
         $lines += "Unregister-ScheduledTask -TaskName '$script:FirstbootTask' -Confirm:`$false -ErrorAction SilentlyContinue"
@@ -193,6 +215,9 @@ function Add-FirstbootDeferred($Rule) {
         $action = New-ScheduledTaskAction -Execute "powershell.exe" `
             -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script:FirstbootScript`""
         $trigger = New-ScheduledTaskTrigger -AtStartup
+        # 45s delay: get past the early-boot window where the WinRM service
+        # itself is still initializing its policy values.
+        $trigger.Delay = "PT45S"
         $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
         Register-ScheduledTask -TaskName $script:FirstbootTask -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
         return "applied"
