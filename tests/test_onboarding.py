@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ohbs_image import build_parser
 from ohbs_image._onboarding import cmd_configure, cmd_doctor, cmd_plan
-from ohbs_image._state import LocalStateBackend
+from ohbs_image._state import CosStateBackend, LocalStateBackend
 
 
 def _configure_args(target: Path) -> argparse.Namespace:
@@ -98,6 +98,20 @@ def test_local_state_backend_round_trip(tmp_path):
     backend.pull(restored)
     assert (restored / "lineage.jsonl").read_text(encoding="utf-8") == '{"id":1}\n'
     assert (restored / "reports" / "one.json").is_file()
+
+
+def test_cos_backend_uses_explicit_temp_config(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr("ohbs_image._state.shutil.which", lambda name: "/usr/bin/coscli")
+    monkeypatch.setenv("OHBS_IMAGE_COSCLI_CONFIG", str(tmp_path / "cos.yaml"))
+    monkeypatch.setattr("ohbs_image._state.subprocess.run",
+                        lambda command, timeout: calls.append(command) or
+                        argparse.Namespace(returncode=0))
+    source = tmp_path / "state"
+    source.mkdir()
+    CosStateBackend("cos://bucket/prefix").push(source)
+    assert calls == [["coscli", "sync", "--recursive", "-c", str(tmp_path / "cos.yaml"),
+                      str(source.resolve()) + "/", "cos://bucket/prefix/"]]
 
 
 def test_parser_exposes_first_wave_commands():

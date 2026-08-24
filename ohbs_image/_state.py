@@ -79,7 +79,12 @@ class CosStateBackend:
             raise OSError("coscli not found; install the official Tencent Cloud COS CLI")
 
     def _sync(self, source: str, destination: str) -> None:
-        result = subprocess.run(["coscli", "sync", source, destination],
+        command = ["coscli", "sync", "--recursive"]
+        config_path = os.environ.get("OHBS_IMAGE_COSCLI_CONFIG", "").strip()
+        if config_path:
+            command += ["-c", str(Path(config_path).expanduser())]
+        command += [source, destination]
+        result = subprocess.run(command,
                                 timeout=3600)
         if result.returncode != 0:
             raise OSError(f"coscli sync failed with exit code {result.returncode}")

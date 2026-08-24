@@ -247,7 +247,8 @@ CVM, placement, maximum duration, release gates, distribution and cost caveat.
 `~/.ohbs-image`) to/from a local team directory or Tencent COS. The COS backend
 uses the official `coscli` binary and its credential/config mechanism, so
 secrets are never passed on the command line. Orchestration should pull before
-a state-aware operation and push afterwards.
+a state-aware operation and push afterwards. Set `OHBS_IMAGE_COSCLI_CONFIG`
+when CI uses a non-default coscli configuration file.
 
 The opt-in `.github/workflows/cloud-canary.yml` runs a weekly real-cloud
 TencentOS 3 L1 acceptance only when repository variable

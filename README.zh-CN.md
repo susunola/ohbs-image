@@ -201,6 +201,7 @@ ohbs-image clean
 `configure` 生成最小配置；`doctor` 一次返回全部阻断项与修复建议；
 `plan` 保证只读，不创建云资源。`state sync` 可将证据目录同步到团队目录
 或腾讯云 COS，COS 模式使用官方 `coscli` 的凭据机制，不把密钥放入命令行。
+CI 使用非默认配置文件时设置 `OHBS_IMAGE_COSCLI_CONFIG`。
 
 `.github/workflows/cloud-canary.yml` 提供真实云 Canary，默认关闭。只有仓库变量
 `OHBS_ENABLE_CLOUD_CANARY=true` 时才会定时创建收费 CVM；手动执行也必须显式确认成本。
