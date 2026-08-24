@@ -3258,10 +3258,25 @@ def f_selinux(ctx, p):
         if cur_l == "disabled":
             return True, ("SELINUX=%s written; reboot required "
                           "(no relabel needed)" % target)
-        if target == "enforcing":
-            sh(["setenforce", "1"], 30)
-        return True, ("SELINUX=%s written and setenforce %s applied" %
-                      (target, "1" if target == "enforcing" else "0"))
+        if target == "enforcing" and cur_l != "disabled":
+            # NEVER setenforce 1 mid-apply: the base image's filesystem has
+            # trees that were created SELinux-disabled (build user's home,
+            # /opt/ohbs-image-ansible) and are unlabeled; flipping enforcing
+            # live kills sshd pubkey auth on the spot — the rhel-family L2
+            # builds all died here (2h of packer 'i/o timeout', no reboot
+            # ever reached).  Label the critical paths inline, then let
+            # /.autorelabel run the FULL relabel in early boot; the
+            # post-reboot audit sees runtime=enforcing + config=enforcing.
+            sh(["restorecon", "-R", "/etc/ssh", "/home", "/root", "/opt",
+                "/var/log"], 600)
+            try:
+                open("/.autorelabel", "w").close()
+            except OSError:
+                pass
+            return True, ("SELINUX=enforcing written; full relabel scheduled "
+                          "for next boot (/.autorelabel), no live setenforce")
+        return True, ("SELINUX=%s written; reboot required "
+                      "(no relabel needed)" % target)
     return False, "no automated remediation for %s" % kind
 
 
