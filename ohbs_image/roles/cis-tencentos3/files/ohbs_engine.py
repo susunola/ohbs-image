@@ -111,8 +111,13 @@ class Ctx(object):
             try:
                 val = producer()
             except Exception as exc:            # pragma: no cover
+                # Do NOT cache the failure: a transient error (timeout,
+                # lock contention) would otherwise be frozen as None for
+                # the whole run and every downstream consumer would
+                # silently see bogus "empty" data.
                 val = None
                 self.add_note("cache %s: %s" % (key, exc))
+                return None
             with self._cache_lock:
                 self._cache[key] = val
             return val
@@ -165,19 +170,28 @@ class Ctx(object):
         with self._svc_lock:
             if not self._svc_queue:
                 return
-            sh(["systemctl", "daemon-reload"], 30)
             svc_list = sorted(self._svc_queue)
             self._svc_queue.clear()
+        failed = []
+        rc, _, err = sh(["systemctl", "daemon-reload"], 30)
+        if rc != 0:
+            failed.append("daemon-reload: %s" % (err or "")[:120])
         # Restart services in parallel — each is independent and has its
         # own 120s timeout inside sh().  Parallel cuts ~6s of serial
         # systemctl wait time when 3-4 services are queued.
+        def _rst(s):
+            return s, sh(["systemctl", "restart", s], 120)
         try:
             from concurrent.futures import ThreadPoolExecutor as _TPE
             with _TPE(max_workers=len(svc_list)) as _pool:
-                list(_pool.map(lambda s: sh(["systemctl", "restart", s], 120), svc_list))
+                results = list(_pool.map(_rst, svc_list))
         except Exception:                     # pragma: no cover
-            for svc in svc_list:
-                sh(["systemctl", "restart", svc], 120)
+            results = [_rst(svc) for svc in svc_list]
+        for svc, (rc, _, err) in results:
+            if rc != 0:
+                failed.append("%s: %s" % (svc, (err or "")[:120]))
+        if failed:
+            raise RuntimeError("service restart failed: " + "; ".join(failed))
 
 
 # --------------------------------------------------------------------------
@@ -215,6 +229,19 @@ def sh(cmd, timeout=60):
         return 127, "", "not found"
     except Exception as exc:                    # pragma: no cover
         return 126, "", str(exc)
+
+
+def must_sh(cmd, timeout=60):
+    """sh() that raises on failure.  Use for commands whose failure MUST NOT
+    be reported as success (grub regeneration, account locks, audit reloads
+    — each previously claimed "applied" on error).  run_rule's try/except
+    converts the RuntimeError into an honest apply_status=failed."""
+    rc, o, e = sh(cmd, timeout)
+    if rc != 0:
+        raise RuntimeError("%s failed (rc=%d): %s" % (
+            " ".join(cmd) if isinstance(cmd, list) else cmd, rc,
+            (e or o)[:200]))
+    return o
 
 
 def out(cmd, timeout=60):
@@ -943,7 +970,7 @@ def f_sysctl(ctx, p):
             continue
         v = _concrete_sysctl_value(v)
         set_kv_in_file(ctx, path, k, v, sep=" = ")
-        sh(["sysctl", "-w", "%s=%s" % (k, v)])
+        must_sh(["sysctl", "-w", "%s=%s" % (k, v)])
         done.append(k)
     # flush route cache for net.* changes
     if any(kv["key"].startswith("net.ipv") for kv in p["params"]):
@@ -987,6 +1014,38 @@ def ensure_cis_sysctl_service(ctx):
     sh(["systemctl", "enable", "cis-sysctl-apply.service"], 30)
 
 
+def _perm_findings(path, mode=None, owner=None, group=None):
+    """Shared mode/owner/group evaluation for one path.
+
+    Returns a list of (field, actual, expected) findings — empty when fully
+    compliant.  All the perm-style checkers (file_perm / path_perm_glob /
+    audit_perm / perm_glob) funnel through this so an exemption change
+    (e.g. a new mode tolerance) lands in exactly one place; message wording
+    stays per-checker."""
+    u, g, st = owner_of(path)
+    out = []
+    if mode is not None and not mode_ok(st.st_mode, mode):
+        out.append(("mode", fmt_mode(st.st_mode), str(mode)))
+    if owner and u != owner:
+        out.append(("owner", u, owner))
+    if group and g != group:
+        out.append(("group", g, group))
+    return out
+
+
+def _apply_perm_fix(ctx, path, mode=None, owner=None, group=None):
+    """Shared chmod/chown for the perm-style fixers."""
+    acts = []
+    if mode is not None:
+        os.chmod(path, int(mode, 8))
+        acts.append("chmod %s" % mode)
+    if owner or group:
+        sh(["chown", "%s:%s" % (owner or "", group or ""), path])
+        acts.append("chown %s:%s" % (owner or "", group or ""))
+    ctx.add_changed_file(path)
+    return acts
+
+
 @check("file_perm")
 def c_file_perm(ctx, p):
     path = p["path"]
@@ -994,16 +1053,16 @@ def c_file_perm(ctx, p):
         if p.get("kind") == "dir":
             return "fail", "%s does not exist" % path
         return "notapplicable", "%s does not exist" % path
-    u, g, st = owner_of(path)
     bad = []
-    if p.get("mode") is not None and not mode_ok(st.st_mode, p["mode"]):
-        bad.append("mode %s (max %s)" % (fmt_mode(st.st_mode), p["mode"]))
-    if p.get("owner") and u != p["owner"]:
-        bad.append("owner %s (expected %s)" % (u, p["owner"]))
-    if p.get("group") and g != p["group"]:
-        bad.append("group %s (expected %s)" % (g, p["group"]))
+    for fld, act, exp in _perm_findings(path, p.get("mode"),
+                                        p.get("owner"), p.get("group")):
+        if fld == "mode":
+            bad.append("mode %s (max %s)" % (act, exp))
+        else:
+            bad.append("%s %s (expected %s)" % (fld, act, exp))
     if bad:
         return "fail", "%s: %s" % (path, "; ".join(bad))
+    u, g, st = owner_of(path)
     return "pass", "%s mode=%s owner=%s:%s" % (path, fmt_mode(st.st_mode), u, g)
 
 
@@ -1016,14 +1075,8 @@ def f_file_perm(ctx, p):
             ctx.add_changed_file(path)
         else:
             return False, "%s does not exist" % path
-    acts = []
-    if p.get("mode") is not None:
-        os.chmod(path, int(p["mode"], 8))
-        acts.append("chmod %s" % p["mode"])
-    if p.get("owner") or p.get("group"):
-        sh(["chown", "%s:%s" % (p.get("owner") or "", p.get("group") or ""), path])
-        acts.append("chown %s:%s" % (p.get("owner") or "", p.get("group") or ""))
-    ctx.add_changed_file(path)
+    acts = _apply_perm_fix(ctx, path, p.get("mode"),
+                           p.get("owner"), p.get("group"))
     return True, "%s -> %s" % (path, ", ".join(acts))
 
 
@@ -1492,9 +1545,9 @@ def f_svc_disabled(ctx, p):
     if not units:
         return False, "no matching units present"
     for u in units:
-        sh(["systemctl", "stop", u], 120)
-        sh(["systemctl", "--now", "disable", u], 120)
-        sh(["systemctl", "mask", u], 120)
+        must_sh(["systemctl", "stop", u], 120)
+        must_sh(["systemctl", "--now", "disable", u], 120)
+        must_sh(["systemctl", "mask", u], 120)
     _unit_db_invalidate()
     return True, "stopped, disabled and masked: " + ", ".join(units)
 
@@ -3229,13 +3282,13 @@ def f_selinux(ctx, p):
                 if new != txt:
                     write_file(ctx, "/etc/default/grub", new)
         with ctx.file_lock("__cmd__:grub2-mkconfig"):
-            sh("grub2-mkconfig -o \"$(dirname \"$(find /boot -name grub.cfg "
-               "-print -quit 2>/dev/null)\")/grub.cfg\" >/dev/null 2>&1", 300)
+            must_sh("grub2-mkconfig -o \"$(dirname \"$(find /boot -name grub.cfg "
+                    "-print -quit 2>/dev/null)\")/grub.cfg\" >/dev/null 2>&1", 300)
         if _bls_dir() and have("grubby"):
             # BLS entries embed their own cmdline — grub2-mkconfig does not
             # propagate to them, so strip the args via grubby as well.
-            sh(["grubby", "--update-kernel=ALL",
-                "--remove-args=selinux enforcing"], 120)
+            must_sh(["grubby", "--update-kernel=ALL",
+                     "--remove-args=selinux enforcing"], 120)
         return True, "removed selinux=0/enforcing=0 and regenerated grub.cfg (reboot required)"
     if kind == "policy":
         set_kv_in_file(ctx, "/etc/selinux/config", "SELINUXTYPE",
@@ -3607,13 +3660,9 @@ def c_audit_perm(ctx, p):
         return "notapplicable", "no %s targets found (auditd installed?)" % kind
     bad = []
     for f in targets:
-        u, g, st = owner_of(f)
-        if p.get("mode") and not mode_ok(st.st_mode, p["mode"]):
-            bad.append("%s mode %s" % (f, fmt_mode(st.st_mode)))
-        if p.get("owner") and u != p["owner"]:
-            bad.append("%s owner %s" % (f, u))
-        if p.get("group") and g != p["group"]:
-            bad.append("%s group %s" % (f, g))
+        for fld, act, _exp in _perm_findings(f, p.get("mode"),
+                                             p.get("owner"), p.get("group")):
+            bad.append("%s %s %s" % (f, fld, act))
     if bad:
         return "fail", "%d/%d non-compliant: %s" % (
             len(bad), len(targets), "; ".join(bad[:4]))
@@ -3903,7 +3952,7 @@ def f_audit_immutable(ctx, p):
             lines.append("-e 2")
             write_file(ctx, path, "\n".join(lines) + "\n", 0o640)
     with ctx.file_lock("__cmd__:augenrules"):
-        sh(["augenrules", "--load"], 120)
+        must_sh(["augenrules", "--load"], 120)
     ctx.invalidate("auditctl_l", "rulesd")
     return True, ("wrote /etc/audit/rules.d/99-finalize.rules with '-e 2'; "
                   "a reboot is required for it to take effect")
@@ -3941,7 +3990,7 @@ def f_audit_failure_mode(ctx, p):
             body = "\n".join(lines) + "\n"
             write_file(ctx, path, body, 0o640)
     with ctx.file_lock("__cmd__:augenrules"):
-        sh(["augenrules", "--load"], 120)
+        must_sh(["augenrules", "--load"], 120)
     ctx.invalidate("auditctl_l", "rulesd")
     return True, "set audit failure mode to 1 in %s" % path
 
@@ -4187,15 +4236,11 @@ def c_bootloader_password(ctx, p):
     return "fail", "; ".join(miss)
 
 
-@fix("bootloader_password")
-def f_bootloader_password(ctx, p):
-    """Set a GRUB superuser with a per-image random pbkdf2 password.
-
-    The password is generated at build time, stored root-only in
-    /root/ohbs-image-grub-password (and noted in the image report) — only
-    the hash lands in the GRUB config.  Normal booting is unaffected; the
-    password is only required to edit menu entries / use the GRUB shell.
-    """
+def _grub_set_password(ctx):
+    """Generate a fresh GRUB superuser password and install it (user.cfg on
+    RHEL/TencentOS, 01_users + update-grub on Debian/Ubuntu), then record the
+    cleartext root-only in /root/ohbs-image-grub-password.  Used both for the
+    build-time initial set and the per-instance first-boot rotation."""
     import secrets
     pw = secrets.token_urlsafe(18)
     salt = secrets.token_hex(32)
@@ -4207,6 +4252,37 @@ def f_bootloader_password(ctx, p):
         write_file(ctx, "/boot/grub2/user.cfg",
                    "GRUB2_PASSWORD=%s\n" % grub_pw, 0o600)
         where = "/boot/grub2/user.cfg"
+    else:
+        body = ('#!/bin/sh\n'
+                'exec tail -n +3 $0\n'
+                '# CIS hardening: GRUB superuser (ohbs-image)\n'
+                'set superusers="root"\n'
+                'password_pbkdf2 root %s\n' % grub_pw)
+        write_file(ctx, "/etc/grub.d/01_users", body, 0o755)
+        rc, o, e = sh(["update-grub"], 120)
+        if rc != 0:
+            raise RuntimeError("update-grub failed: %s" % (e or o)[:160])
+        where = "/etc/grub.d/01_users"
+    write_file(ctx, "/root/ohbs-image-grub-password",
+               "# GRUB superuser password (rotated at this instance's first"
+               " boot by ohbs-image).\n# Rotate per site policy; the hash"
+               " lives in %s.\nroot %s\n" % (where, pw), 0o600)
+    return where
+
+
+@fix("bootloader_password")
+def f_bootloader_password(ctx, p):
+    """Set a GRUB superuser with a random pbkdf2 password.
+
+    The initial password is generated at build time, stored root-only in
+    /root/ohbs-image-grub-password — only the hash lands in the GRUB config.
+    A per-instance ROTATION runs at each consumer's first boot (via the
+    ohbs-cis-firstboot oneshot), so instances launched from the same image
+    do NOT share one GRUB password.  Normal booting is unaffected; the
+    password is only required to edit menu entries / use the GRUB shell.
+    """
+    if have("grub2-mkconfig") or exists("/boot/grub2"):
+        where = _grub_set_password(ctx)
     else:
         # Debian/Ubuntu path: a grub.d drop-in + update-grub.  01_users is
         # one of the files the check inspects.  Unlike RHEL (whose 10_linux
@@ -4250,15 +4326,7 @@ def f_bootloader_password(ctx, p):
             write_file(ctx, dg,
                        re.sub(r"(?m)^(\s*)GRUB_DEFAULT=[1-9][0-9]*\s*$",
                               r"\1GRUB_DEFAULT=0", dg_txt), 0o644)
-        body = ('#!/bin/sh\n'
-                'exec tail -n +3 $0\n'
-                '# CIS hardening: GRUB superuser (ohbs-image)\n'
-                'set superusers="root"\n'
-                'password_pbkdf2 root %s\n' % grub_pw)
-        write_file(ctx, "/etc/grub.d/01_users", body, 0o755)
-        rc, o, e = sh(["update-grub"], 120)
-        if rc != 0:
-            return False, "update-grub failed: %s" % (e or o)[:160]
+        where = _grub_set_password(ctx)
         bootable = not patched  # nothing to patch -> nothing to verify
         try:
             with open("/boot/grub/grub.cfg") as fh:
@@ -4274,12 +4342,13 @@ def f_bootloader_password(ctx, p):
             return (False, "grub.cfg menu entries lack --unrestricted; "
                            "rolled back /etc/grub.d/01_users to keep the "
                            "image bootable")
-        where = "/etc/grub.d/01_users"
-    write_file(ctx, "/root/ohbs-image-grub-password",
-               "# GRUB superuser password generated by ohbs-image at build"
-               " time.\n# Rotate per site policy; the hash lives in %s.\n"
-               "root %s\n" % (where, pw), 0o600)
-    return True, "set GRUB superuser 'root' with a random pbkdf2 password (%s)" % where
+    if systemd_present():
+        # Rotate the GRUB password at every consumer's first boot so all
+        # instances from this image do not share one password.
+        add_firstboot_deferred(ctx, {"id": "__grub_rotate__",
+                                     "family": "grub_rotate", "params": {}})
+    return True, ("set GRUB superuser 'root' with a random pbkdf2 password "
+                  "(%s); per-instance rotation runs at first boot" % where)
 
 
 @check("bootloader_perm")
@@ -4872,7 +4941,7 @@ def f_user_audit(ctx, p):
                 continue
             pw = shadow.get(name, "")
             if pw and not pw.startswith(("!", "*")):
-                sh(["usermod", "-L", name], 30)
+                must_sh(["usermod", "-L", name], 30)
                 done.append(name)
         if not done:
             return False, "nothing to change"
@@ -4887,7 +4956,7 @@ def f_user_audit(ctx, p):
             if shell.rstrip("/").split("/")[-1] in ("nologin", "false", "sync",
                                                     "shutdown", "halt", ""):
                 continue
-            sh(["usermod", "-s", "/usr/sbin/nologin", name], 30)
+            must_sh(["usermod", "-s", "/usr/sbin/nologin", name], 30)
             done.append(name)
         if not done:
             return False, "nothing to change"
@@ -4898,7 +4967,7 @@ def f_user_audit(ctx, p):
             if not os.path.isdir(e.pw_dir):
                 continue
             os.chmod(e.pw_dir, 0o750)
-            sh(["chown", "%d:%d" % (e.pw_uid, e.pw_gid), e.pw_dir], 30)
+            must_sh(["chown", "%d:%d" % (e.pw_uid, e.pw_gid), e.pw_dir], 30)
             done.append(e.pw_name)
         if not done:
             return False, "nothing to change"
@@ -5982,13 +6051,12 @@ def c_perm_glob(ctx, p):
         if p.get("kind") == "dir" and not os.path.isdir(path):
             bad.append("%s: not a directory" % path)
             continue
-        u, g, st = owner_of(path)
-        if p.get("mode") is not None and not mode_ok(st.st_mode, p["mode"]):
-            bad.append("%s: mode %s (max %s)" % (path, fmt_mode(st.st_mode), p["mode"]))
-        if p.get("owner") and u != p["owner"]:
-            bad.append("%s: owner %s (expected %s)" % (path, u, p["owner"]))
-        if p.get("group") and g != p["group"]:
-            bad.append("%s: group %s (expected %s)" % (path, g, p["group"]))
+        for fld, act, exp in _perm_findings(path, p.get("mode"),
+                                            p.get("owner"), p.get("group")):
+            if fld == "mode":
+                bad.append("%s: mode %s (max %s)" % (path, act, exp))
+            else:
+                bad.append("%s: %s %s (expected %s)" % (path, fld, act, exp))
     if bad:
         return "fail", "; ".join(bad[:6])
     return "pass", "%d path(s) compliant" % len(matches)
@@ -6002,11 +6070,8 @@ def f_perm_glob(ctx, p):
     if not matches:
         return False, "no path matches"
     for path in matches:
-        if p.get("mode") is not None:
-            os.chmod(path, int(p["mode"], 8))
-        if p.get("owner") or p.get("group"):
-            sh(["chown", "%s:%s" % (p.get("owner") or "", p.get("group") or ""), path])
-        ctx.add_changed_file(path)
+        _apply_perm_fix(ctx, path, p.get("mode"),
+                        p.get("owner"), p.get("group"))
     return True, "fixed %d path(s)" % len(matches)
 
 
@@ -6811,10 +6876,21 @@ def _firstboot_apply_main():
                                   families="", catalog="")
         ctx = Ctx(opts)
         for e in entries:
-            fn = FIXES.get(e.get("family") or "")
+            fam = e.get("family") or ""
+            if fam == "grub_rotate":
+                # Not a catalog rule: rotate the build-time GRUB password so
+                # instances from one image do not share it.
+                try:
+                    w = _grub_set_password(ctx)
+                    lines.append("%s: applied (GRUB password rotated, %s)"
+                                 % (e.get("id"), w))
+                except Exception as exc:
+                    lines.append("%s: FAILED %s" % (e.get("id"), exc))
+                continue
+            fn = FIXES.get(fam)
             if fn is None:
                 lines.append("%s: no fixer for family %s"
-                             % (e.get("id"), e.get("family")))
+                             % (e.get("id"), fam))
                 continue
             try:
                 ok, detail = fn(ctx, e.get("params") or {})
@@ -7015,6 +7091,22 @@ def summarize(results, skipped_count):
     return s
 
 
+# -- main() apply-mode orchestration contract --------------------------------
+# Phases: 0 pre-scan → 1 batch package install → 1.5 serial system update →
+# 2 parallel apply → 3 deferred service restarts → 4 re-check applied rules
+# → 4.5 re-check untouched "already" rules + one serial re-fix for
+# regressions.  The concurrency rules every fixer must respect:
+#   - Package management (dnf/apt) serialises on ctx._pkg_lock.
+#   - Shared-file read-modify-write serialises on ctx.file_lock(path); whole
+#     commands use pseudo-paths ("__cmd__:augenrules", "__cmd__:ufw", ...).
+#   - ctx.cached() memoises expensive probes for the whole run; failures are
+#     NOT cached (transient errors must be retried), and fixers that mutate
+#     state must ctx.invalidate() the related keys.
+#   - Service restarts are queued via ctx.defer_restart() and flushed once in
+#     phase 3 — never restart mid-apply.
+#   - Rules that would sever the build channel are tagged defer=firstboot in
+#     the catalog and applied by ohbs-cis-firstboot.service at the consumer's
+#     first boot (see add_firstboot_deferred).
 def main():
     ap = argparse.ArgumentParser(description="CIS benchmark engine")
     ap.add_argument("--catalog")  # required except for --firstboot-apply

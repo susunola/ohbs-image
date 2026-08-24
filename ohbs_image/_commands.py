@@ -225,6 +225,9 @@ def _open_build_log(args: argparse.Namespace) -> logging.FileHandler | None:
     if not args.log_file:
         return None
     fh = logging.FileHandler(args.log_file, mode="w", encoding="utf-8")
+    # Build logs can carry sensitive build details (userdata scripts,
+    # credentials-adjacent debug output) — never world-readable.
+    os.chmod(args.log_file, 0o600)
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter("%(asctime)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%S"))
     logger.addHandler(fh)

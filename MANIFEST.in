@@ -1,4 +1,9 @@
 # sdist: include the bundled CIS roles (engine, rules.json, etc.)
 recursive-include ohbs_image/roles *
 include ohbs_image/py.typed
+<<<<<<< HEAD
 recursive-exclude ohbs_image/roles __pycache__ *.py[cod]
+=======
+# never ship stale bytecode captured by a local py_compile run
+global-exclude __pycache__ *.pyc
+>>>>>>> c81fbef (fix(engine): round-4 review — honest failures, perm convergence, GRUB rotation, install/test hygiene)

@@ -253,6 +253,28 @@ Then register the profile in `PROFILES` in `ohbs_image/__init__.py` (family,
 Linux the SSH username/port defaults come from the `_ubuntu_profile` /
 `_rhel_profile` / `_tlinux_profile` helpers).
 
+### Engine copies must stay byte-identical
+
+`ohbs_engine.py` ships as **8 byte-identical copies** (all `cis-<linux>`
+roles) and `ohbs_engine.ps1` as **4 byte-identical copies** (all
+`cis-win*` roles). Always edit the `cis-tencentos4` (Linux) or
+`cis-win2019` (Windows) copy and then `cp` to the rest — the pytest
+suite enforces this: `test_all_linux_engines_in_sync`,
+`TestEnginePy38Compat.test_all_engines_in_sync`, and
+`TestWindowsEngineSync` fail if any copy drifts.
+
+### Firstboot-deferred rules
+
+Some rules must never run during the build because they sever the very
+channel it uses (sudo NOPASSWD stripping kills ansible's become, the
+WinRM lockdown and `SeDenyNetworkLogonRight` kill pywinrm, the FUTURE
+crypto policy makes sshd refuse the build's own RSA-2048 key). Tag them
+`"defer": "firstboot"` in `rules.json`: the engine records them in a
+manifest and a one-shot service (`ohbs-cis-firstboot.service` on Linux,
+the `ohbs-cis-firstboot-hardening` scheduled task on Windows) applies
+the real fix at the consumer's first boot and removes itself. Checkers
+trust a recorded manifest entry for golden-image scoring.
+
 Rule entries in `rules.json` follow this shape:
 
 ```json
