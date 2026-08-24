@@ -9,8 +9,8 @@ name: build-golden-image
 #      TC_BUILD_SOURCE_IMAGE_ID / TC_BUILD_VPC_ID / TC_BUILD_SUBNET_ID /
 #      TC_BUILD_SG_ID — placement for the temporary build CVM, used to
 #      generate the gitignored ohbs-image.toml from ohbs-image.toml.example.
-#      The security group must allow inbound TCP/22 from the public internet
-#      (a GitHub-hosted runner SSHes into the build CVM over its public IP).
+#      The runner must be deployed in this VPC (or have private connectivity
+#      to it). The build security group must never expose SSH to the internet.
 on:
   workflow_dispatch:          # manual trigger
   schedule:
@@ -26,7 +26,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # This label is intentionally private: a golden-image build has cloud
+    # credentials and must not require a public SSH listener on the build CVM.
+    runs-on: [self-hosted, linux, ohbs-image-private]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -74,16 +76,13 @@ jobs:
               "(region/zone/image/VPC/subnet/security-group for the build CVM)."
             exit 1
           fi
-          # associate_public_ip=true: a GitHub-hosted runner is outside the
-          # VPC, so packer reaches the build CVM over the public internet.
-          # The TC_BUILD_SG_ID security group must allow inbound TCP/22.
+          # The private runner reaches the temporary CVM through the VPC.
           sed -e "s/region              = \"ap-guangzhou\"/region              = \"$TC_BUILD_REGION\"/" \
               -e "s/zone                = \"ap-guangzhou-3\"/zone                = \"$TC_BUILD_ZONE\"/" \
               -e "s/\"img-xxxxxxxx\"/\"$TC_BUILD_SOURCE_IMAGE_ID\"/" \
               -e "s/\"vpc-xxxxxxxx\"/\"$TC_BUILD_VPC_ID\"/" \
               -e "s/\"subnet-xxxxxxxx\"/\"$TC_BUILD_SUBNET_ID\"/" \
               -e "s/\"sg-xxxxxxxx\"/\"$TC_BUILD_SG_ID\"/" \
-              -e "s/associate_public_ip = false/associate_public_ip = true/" \
               ohbs-image.toml.example > ohbs-image.toml
 
       - name: Build golden image

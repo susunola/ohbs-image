@@ -241,7 +241,7 @@ source_image_id     = "img-xxxxxxxx"
 vpc_id              = "vpc-xxxxxxxx"
 subnet_id           = "subnet-xxxxxxxx"
 security_group_id   = "sg-xxxxxxxx"
-associate_public_ip = true
+associate_public_ip = false              # use a private VPC runner or bastion for builds
 # spot = true                             # use a spot instance for the build VM (up to ~90% cheaper)
 # instance_name = "my-build-cvm"          # optional explicit name for the temporary build CVM ("" = plugin auto)
 # # [build.packer] — passthrough of arbitrary tencentcloud-cvm Packer builder
@@ -298,6 +298,7 @@ benchmark = "CIS-v1.0.0"
 # smoke_test = true           # instance-level checks before the image snapshot
 # cve_scan   = false          # optional: trivy vulnerability gate before the snapshot
 # sbom       = false          # optional: emit an SBOM into the image + provenance
+# delivery_report_required = false  # optional: fail release if the HTML delivery report cannot be written
 # verify_boot = false         # optional: boot a probe from the produced image and re-audit
 # test_components = ["scripts/app-check.sh"]  # optional: user test scripts run before snapshot
 ```
@@ -345,6 +346,7 @@ benchmark = "CIS-v1.0.0"
 | | `smoke_test` | bool | Instance-level checks before snapshot (default `true`) |
 | | `cve_scan` | bool | Trivy CRITICAL-severity vulnerability gate before the snapshot (default `false`) |
 | | `sbom` | bool | Emit an SBOM (`/opt/ohbs-image-SBOM.jsonl`) into the image, hash it and pin it in lineage + provenance (default `false`) |
+| | `delivery_report_required` | bool | Fail release when the HTML delivery report cannot be archived (default `false`) |
 | | `verify_boot` | bool | After the snapshot, boot a probe instance from the produced image, re-audit on fresh boot and gate (Linux only, default `false`) |
 | | `test_components` | []string | User-defined test scripts run sequentially before the snapshot (Image Builder test-component style); non-zero exit aborts the build (empty = off) |
 | `[notify]` | `webhook` | string | WeCom group-robot webhook URL (empty = off) |
@@ -603,6 +605,11 @@ and ohbs-image hands the session token straight to Packer.
          region: ap-guangzhou
      - run: ohbs-image build --config ohbs-image.toml
    ```
+
+   Run the workflow from a self-hosted runner with private connectivity to the
+   build VPC. Keep `associate_public_ip = false` and restrict the build
+   security group to the runner or bastion security group; do not open SSH or
+   WinRM to the public internet for a golden-image build.
 
 3. **ohbs-image side**: nothing to configure — the default
    `security_token_env = "TENCENTCLOUD_SECURITY_TOKEN"` is picked up

@@ -36,3 +36,4 @@ secret_key_env = "TENCENTCLOUD_SECRET_KEY"
 [meta]
 os_tag    = "tencentos-3"
 benchmark = "CIS-v1.0.0"
+# delivery_report_required = true  # fail release if the HTML delivery report cannot be archived

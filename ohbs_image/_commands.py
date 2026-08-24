@@ -363,6 +363,17 @@ def cmd_build(args: argparse.Namespace) -> int:
             r, image_ids, image_name, score, rep, prov, signed)
         if html_rep:
             info(f"Delivery report -> {html_rep}")
+        elif getattr(r, "delivery_report_required", False) is True:
+            fail("required HTML delivery report could not be written — release is blocked")
+            ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
+                                        sbom_sha=sbom_sha, sbom_count=sbom_count)
+            _write_build_result(args, r, status="failed", image_name=image_name,
+                                image_ids=image_ids, score=score, report=rep, provenance=prov,
+                                signed=signed, reason="required HTML delivery report missing")
+            ohbs_image._write_run_manifest(r, status="failed", phase="delivery-report")
+            _send_notification(r, False, image_ids, score, image_name)
+            _close_build_log(_fh)
+            return 1
         if not _write_build_result(args, r, status="approved", image_name=image_name,
                                    image_ids=image_ids, score=score, report=rep,
                                    provenance=prov, html_report=html_rep, signed=signed):

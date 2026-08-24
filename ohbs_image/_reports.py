@@ -142,6 +142,32 @@ def _missing_build_evidence(image_ids: list[str], score: float | None,
     return missing
 
 
+def _cis_rule_order_key(rule_id: object) -> tuple[int, ...]:
+    """Sort dotted CIS identifiers numerically (1.2 before 1.10)."""
+    text_id = str(rule_id)
+    try:
+        return tuple(int(part) for part in text_id.split("."))
+    except ValueError:
+        return (10**9,)
+
+
+def _load_report_catalog(r: ResolvedConfig) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Load the active catalog and optional CIS guidance for delivery output."""
+    try:
+        catalog_path = ohbs_image._catalog_path(r.role_dir, r.image_benchmark)
+        raw_catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+        catalog = [rule for rule in raw_catalog if isinstance(rule, dict)] if isinstance(raw_catalog, list) else []
+        try:
+            raw_guidance = json.loads((catalog_path.parent / "guidance.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            raw_guidance = {}
+        guidance = {str(rule_id): entry for rule_id, entry in raw_guidance.items()
+                    if isinstance(entry, dict)} if isinstance(raw_guidance, dict) else {}
+        return catalog, guidance
+    except (OSError, json.JSONDecodeError):
+        return [], {}
+
+
 def _save_build_report(r: ResolvedConfig, image_name: str,
                        stdout_lines: list[str], workdir: Path) -> Path | None:
     """Archive the per-rule audit JSON on the BUILD machine (P-next).
@@ -206,6 +232,7 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
         except (OSError, json.JSONDecodeError):
             pass
     summary = audit.get("summary", {}).get("all", {}) if isinstance(audit.get("summary"), dict) else {}
+    catalog_rules, guidance_by_id = _load_report_catalog(r)
     def text(value: object) -> str:
         return html.escape(str(value if value not in (None, "") else "Not available"))
 
@@ -251,10 +278,12 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
             if rule_status not in ("fail", "manual", "error") and apply_status not in ("apply_failed", "applied_pending", "skipped_manual"):
                 continue
             findings.append(f"<tr><td>{text(rule_id)}</td><td>{text(rule_status or 'Not available')}</td><td>{text(apply_status or 'Not available')}</td><td>{text(title)}</td></tr>")
-            detail_fields = [("Assessment", item.get("assessment", rule_status or "Not available")),
-                             ("Remediation", item.get("remediation", apply_status or "Not available")),
-                             ("Rationale", item.get("rationale", "Not available")),
-                             ("Impact", item.get("impact", "Not available"))]
+            guidance = guidance_by_id.get(str(rule_id), {})
+            detail_fields = [("Assessment", item.get("detail", rule_status or "Not available")),
+                             ("Remediation", item.get("remediation") or guidance.get("remediation")
+                              or item.get("apply_detail") or apply_status or "Not available"),
+                             ("Rationale", item.get("rationale") or guidance.get("rationale", "Not available")),
+                             ("Impact", item.get("impact") or guidance.get("impact", "Not available"))]
             detail_text = "".join(
                 f"<dt>{text(label)}</dt><dd>{text(value)}</dd>"
                 for label, value in detail_fields)
@@ -264,23 +293,15 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
     # The engine emits every *selected* rule. The report, like CIS-CAT, is a
     # catalog document: retain every benchmark recommendation and make rules
     # outside a scoped run explicit instead of silently omitting them.
-    catalog_rules: list[dict[str, Any]] = []
-    try:
-        catalog_doc = json.loads(
-            ohbs_image._catalog_path(r.role_dir, r.image_benchmark).read_text(encoding="utf-8"))
-        if isinstance(catalog_doc, list):
-            catalog_rules = [rule for rule in catalog_doc if isinstance(rule, dict)]
-    except (OSError, json.JSONDecodeError):
-        pass
     display_rules = catalog_rules or list(results_by_id.values())
     assessment_rows.clear()
     category_stats.clear()
-    for rule in sorted(display_rules, key=lambda value: str(value.get("id", ""))):
+    for rule in sorted(display_rules, key=lambda value: _cis_rule_order_key(value.get("id", ""))):
         rule_id = str(rule.get("id", "Not available"))
         result = results_by_id.get(rule_id, {})
         rule_status = str(result.get("status", ""))
         assessment_type = rule.get("assessment", result.get("assessment", "Automated"))
-        display_status = rule_status or ("manual" if assessment_type == "Manual" else "not selected")
+        display_status = rule_status or ("manual" if assessment_type == "Manual" else "not evaluated (scope)")
         remediation = result.get("apply_status", "Not run")
         levels = rule.get("levels", result.get("levels", []))
         profiles = ", ".join(f"L{level}" for level in levels) if isinstance(levels, list) else "Not available"
@@ -304,7 +325,7 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
                     f"{len(assessment_details)} item{'s' if len(assessment_details) != 1 else ''}</strong></div>"
                     + "".join(assessment_details[:200]) + "</section>") if assessment_details else ""
     category_rows: list[str] = []
-    for category, stats in sorted(category_stats.items(), key=lambda entry: entry[0]):
+    for category, stats in sorted(category_stats.items(), key=lambda entry: _cis_rule_order_key(entry[0])):
         scored = stats["pass"] + stats["fail"] + stats["error"]
         category_score = f"{(100 * stats['pass'] / scored):.0f}%" if scored else "Not scored"
         category_rows.append(

@@ -151,6 +151,7 @@ class TestLoadConfig:
         ("meta", "smoke_test"),
         ("meta", "cve_scan"),
         ("meta", "sbom"),
+        ("meta", "delivery_report_required"),
         ("meta", "verify_boot"),
     ])
     def test_optional_booleans_reject_strings(self, valid_toml, section, key):
@@ -1667,6 +1668,7 @@ class TestCmdBuildOutput:
         r.image_share_org_units = []
         r.image_benchmark = "CIS-v1.0.0"
         r.sbom = False
+        r.delivery_report_required = False
         r.cve_scan = False
         r.rules_overrides = {}
         return r, tmp_path / "build"
@@ -4398,7 +4400,7 @@ class TestProvenanceSbom:
             "pass": 91, "fail": 2, "manual": 3, "error": 1,
             "applied": 8, "applied_pending": 2, "apply_failed": 1,
             "skipped_disruptive": 4}}, "results": [{
-                "id": "1.2.3", "status": "fail", "apply_status": "apply_failed",
+            "id": "1.1.1.1", "status": "fail", "apply_status": "apply_failed",
                 "title": "Example failed rule"}, {
                 "id": "1.2.4", "status": "manual", "apply_status": "skipped_manual",
                 "title": "Example manual rule"}]}), encoding="utf-8")
@@ -4420,7 +4422,8 @@ class TestProvenanceSbom:
         assert "Scores by recommendation group" in text
         assert "Group 1" in text
         assert "Ensure cramfs kernel module is not available" in text
-        assert "not selected" in text
+        assert "Removing support for unneeded filesystem types reduces the local attack surface" in text
+        assert "not evaluated (scope)" in text
         assert "Rules requiring attention" in text
         assert "Example failed rule" in text
 

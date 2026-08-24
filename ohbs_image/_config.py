@@ -67,6 +67,7 @@ class ResolvedConfig:
     smoke_test: bool                    # [meta].smoke_test — run instance-level smoke checks before snapshot (default true)
     cve_scan: bool                      # [meta].cve_scan — trivy vulnerability scan gate before snapshot (default false)
     sbom: bool                          # [meta].sbom — emit SBOM into image + provenance (default false)
+    delivery_report_required: bool       # [meta].delivery_report_required — fail release if HTML delivery report cannot be written
     rules_include: list[str]            # [ohbs].rules_include — rule-id filter (empty = all)
     rules_exclude: list[str]            # [ohbs].rules_exclude — rule-id filter (wins over include)
     rules_overrides: dict[str, dict[str, Any]]    # [ohbs.overrides] — per-rule param deep-merge (rule_id -> {param: value})
@@ -471,6 +472,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
     # [meta].cve_scan / [meta].sbom — optional supply-chain gates.
     cve_scan = _read_bool(data, "meta", "cve_scan", False)
     sbom = _read_bool(data, "meta", "sbom", False)
+    delivery_report_required = _read_bool(data, "meta", "delivery_report_required", False)
 
     # [image].share_accounts — cross-account image sharing (empty = off).
     share_accounts = _read_str_list(data, "image", "share_accounts")
@@ -563,6 +565,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         smoke_test=smoke_test,
         cve_scan=cve_scan,
         sbom=sbom,
+        delivery_report_required=delivery_report_required,
         rules_include=rules_include,
         rules_exclude=rules_exclude,
         rules_overrides=rules_overrides,
