@@ -879,33 +879,7 @@ build {
     destination = "C:\\ProgramData\\ohbs-image\\rules.json"
   }
 __SMOKE_TEST_BLOCK____TEST_COMPONENTS_BLOCK__
-  # Re-lock WinRM before the snapshot: the build's userdata enabled Basic
-  # auth + unencrypted HTTP so the communicator could get in; the shipped
-  # image must not carry that weakening.  Runs last — nothing after this
-  # needs the communicator.
-  provisioner "powershell" {
-    inline = [
-      "Set-Item -Path WSMan:\\localhost\\Service\\Auth\\Basic -Value $false",
-      "Set-Item -Path WSMan:\\localhost\\Service\\AllowUnencrypted -Value $false",
-      "# Randomize the Administrator password before snapshot: userdata set it",
-      "# to winrm_password for the build; without this every instance launched",
-      "# from the image would share that build-time password. Build a 16-char",
-      "# password that guarantees one of each complexity class (upper/lower/",
-      "# digit/symbol) so Windows complexity rules can never reject it.",
-      "$u = 1..4 | ForEach-Object { [char](Get-Random -Minimum 65 -Maximum 91) }",
-      "$l = 1..4 | ForEach-Object { [char](Get-Random -Minimum 97 -Maximum 123) }",
-      "$d = 1..4 | ForEach-Object { [char](Get-Random -Minimum 48 -Maximum 58) }",
-      "$s = 1..4 | ForEach-Object { [char]@(33,35,36,37,38,42,43,45,61,63,64,95)[(Get-Random -Maximum 12)] }",
-      "$newpass = -join (($u + $l + $d + $s) | Sort-Object { Get-Random })",
-      "net user Administrator $newpass | Out-Null",
-      "if ($LASTEXITCODE -ne 0) { Write-Error '[ohbs-image] FAILED to set Administrator password (exit ' + $LASTEXITCODE + ')'; exit 1 }",
-      "# Remove the build-time WinRM firewall guard rule (image ships hardened).",
-      "Remove-NetFirewallRule -DisplayName 'ohbs-image-winrm-build-5985' -ErrorAction SilentlyContinue",
-__WINRM_NETWORK_LOGON_LOCK_BLOCK__
-__WINRM_REMOTE_SHELL_LOCK_BLOCK__
-      "Write-Host '[ohbs-image] winrm re-locked: basic auth + unencrypted HTTP off; Administrator password randomized; guard rule removed'"
-    ]
-  }
+__WINDOWS_FINAL_HARDENING_PROVISIONER__
 }
 """
 

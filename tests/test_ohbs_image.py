@@ -905,17 +905,18 @@ class TestRenderAll:
         assert "net user Administrator" in hcl
         assert "winrm_use_ntlm" not in hcl
         assert "ansible_winrm_transport=ntlm" not in hcl
-        assert "winrm re-locked" in hcl
+        assert "final Windows hardening scheduled for first boot" in hcl
         assert "AllowRemoteShell -Type DWord -Value 0" not in hcl
-        assert "SeDenyNetworkLogonRight = *S-1-5-32-546,*S-1-5-114" in hcl
+        assert "ohbs-image-finalize-hardening" in hcl
         assert "\\\\s" not in hcl
 
         r_l2 = resolve(_make_win_toml("win2022"))
         r_l2.level = 2
         wd_l2 = tmp_path / "build-l2"
         render_all(wd_l2, r_l2)
-        assert "AllowRemoteShell -Type DWord -Value 0" in (
-            wd_l2 / "packer" / "main.pkr.hcl").read_text()
+        l2_hcl = (wd_l2 / "packer" / "main.pkr.hcl").read_text()
+        assert "final Windows hardening scheduled for first boot" in l2_hcl
+        assert "ohbs-image-finalize-hardening" in l2_hcl
         # The fresh-boot probe must re-run the exact engine/catalog that
         # produced the image, not merely test whether port 5985 is open.
         assert r"C:\\ProgramData\\ohbs-image\\ohbs_engine.ps1" in hcl

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -344,6 +345,58 @@ def _yaml_list(items: list[str]) -> str:
         return "[]"
     return "[" + ", ".join(json.dumps(x, ensure_ascii=False) for x in items) + "]"
 
+
+def _render_windows_final_hardening(level: int) -> str:
+    """Schedule final WinRM-sensitive CIS controls for the image's first boot."""
+    remote_shell = ""
+    if level == 2:
+        remote_shell = (
+            "New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service\\WinRS' -Force | Out-Null\n"
+            "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service\\WinRS' -Name AllowRemoteShell -Type DWord -Value 0\n"
+        )
+    script = f"""$ErrorActionPreference = 'Stop'
+$taskName = 'ohbs-image-finalize-hardening'
+try {{
+  $u = 1..4 | ForEach-Object {{ [char](Get-Random -Minimum 65 -Maximum 91) }}
+  $l = 1..4 | ForEach-Object {{ [char](Get-Random -Minimum 97 -Maximum 123) }}
+  $d = 1..4 | ForEach-Object {{ [char](Get-Random -Minimum 48 -Maximum 58) }}
+  $s = 1..4 | ForEach-Object {{ [char]@(33,35,36,37,38,42,43,45,61,63,64,95)[(Get-Random -Maximum 12)] }}
+  $newpass = -join (($u + $l + $d + $s) | Sort-Object {{ Get-Random }})
+  net user Administrator $newpass | Out-Null
+  if ($LASTEXITCODE -ne 0) {{ throw 'failed to randomize the Administrator password' }}
+  Remove-NetFirewallRule -DisplayName 'ohbs-image-winrm-build-5985' -ErrorAction SilentlyContinue
+  $inf = Join-Path $env:TEMP ('ohbs-network-logon-' + [guid]::NewGuid() + '.inf')
+  $db = Join-Path $env:TEMP ('ohbs-network-logon-' + [guid]::NewGuid() + '.sdb')
+  secedit /export /cfg $inf /areas USER_RIGHTS | Out-Null
+  $content = Get-Content $inf -Raw
+  $line = 'SeDenyNetworkLogonRight = *S-1-5-32-546,*S-1-5-114'
+  if ($content.Contains('SeDenyNetworkLogonRight')) {{ $content = $content -replace '(?m)^SeDenyNetworkLogonRight.*$', $line }} else {{ $content = $content.Replace('[Privilege Rights]', ('[Privilege Rights]' + [Environment]::NewLine + $line)) }}
+  [IO.File]::WriteAllText($inf, $content)
+  secedit /configure /db $db /cfg $inf /areas USER_RIGHTS | Out-Null
+  if ($LASTEXITCODE -ne 0) {{ throw 'failed to apply CIS 2.2.22' }}
+  Remove-Item $inf,$db -Force -ErrorAction SilentlyContinue
+{remote_shell}  Set-Item -Path WSMan:\\localhost\\Service\\Auth\\Basic -Value $false
+  Set-Item -Path WSMan:\\localhost\\Service\\AllowUnencrypted -Value $false
+}} finally {{
+  Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
+}}
+"""
+    encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+    return (
+        "  # A one-shot SYSTEM task avoids breaking Packer's final WinRM response.\n"
+        "  provisioner \"powershell\" {\n"
+        "    inline = [\n"
+        f"      \"$encoded = '{encoded}'\",\n"
+        "      \"$path = 'C:\\\\ProgramData\\\\ohbs-image\\\\finalize-hardening.ps1'\",\n"
+        "      \"[IO.File]::WriteAllText($path, [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($encoded)), [Text.UTF8Encoding]::new($false))\",\n"
+        "      \"$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -File C:\\\\ProgramData\\\\ohbs-image\\\\finalize-hardening.ps1'\",\n"
+        "      \"Register-ScheduledTask -TaskName 'ohbs-image-finalize-hardening' -Action $action -Trigger (New-ScheduledTaskTrigger -AtStartup) -User 'SYSTEM' -RunLevel Highest -Force | Out-Null\",\n"
+        "      \"Write-Host '[ohbs-image] final Windows hardening scheduled for first boot'\"\n"
+        "    ]\n"
+        "  }\n"
+    )
+
 def render_site_audit(p: dict[str, Any], level: int, min_score: int = 85,
                       allow_disruptive: bool = True) -> str:
     """Generate ansible/site-audit.yml for post-reboot re-evaluation."""
@@ -534,37 +587,14 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
             warn("[meta].ssh_debug_password is ignored for Windows profiles "
                  "(it only applies to Linux user_data).")
         _validate_env_var_name(r.winrm_password_env, "[cloud].winrm_password_env")
-        network_logon_lock = (
-            "      \"# Apply CIS 2.2.22 last. It denies local Administrators network logon,\",\n"
-            "      \"# which includes the Packer WinRM build account.\",\n"
-            "      \"$inf = Join-Path $env:TEMP ('ohbs-network-logon-' + [guid]::NewGuid() + '.inf')\",\n"
-            "      \"$db = Join-Path $env:TEMP ('ohbs-network-logon-' + [guid]::NewGuid() + '.sdb')\",\n"
-            "      \"secedit /export /cfg $inf /areas USER_RIGHTS | Out-Null\",\n"
-            "      \"$content = Get-Content $inf -Raw\",\n"
-            "      \"$line = 'SeDenyNetworkLogonRight = *S-1-5-32-546,*S-1-5-114'\",\n"
-            "      \"if ($content.Contains('SeDenyNetworkLogonRight')) { $content = $content -replace '(?m)^SeDenyNetworkLogonRight.*$', $line } else { $content = $content.Replace('[Privilege Rights]', ('[Privilege Rights]' + [Environment]::NewLine + $line)) }\",\n"
-            "      \"[IO.File]::WriteAllText($inf, $content)\",\n"
-            "      \"secedit /configure /db $db /cfg $inf /areas USER_RIGHTS | Out-Null\",\n"
-            "      \"if ($LASTEXITCODE -ne 0) { throw 'failed to apply CIS 2.2.22' }\",\n"
-            "      \"Remove-Item $inf,$db -Force -ErrorAction SilentlyContinue\",\n"
-        )
-        remote_shell_lock = ""
-        if r.level == 2:
-            remote_shell_lock = (
-                "      \"# Apply the L2 Remote Shell Access control last.  Applying it during the\",\n"
-                "      \"# Ansible engine run breaks the active WinRM channel before the result can\",\n"
-                "      \"# be fetched.  Nothing after this provisioner needs remote management.\",\n"
-                "      \"New-Item -Path 'HKLM:\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows\\\\WinRM\\\\Service\\\\WinRS' -Force | Out-Null\",\n"
-                "      \"Set-ItemProperty -Path 'HKLM:\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows\\\\WinRM\\\\Service\\\\WinRS' -Name AllowRemoteShell -Type DWord -Value 0\",\n"
-            )
+        final_hardening = _render_windows_final_hardening(r.level)
         hcl = (HCL_WIN_TEMPLATE
                .replace("__WINRM_PASSWORD_ENV__", r.winrm_password_env)
                .replace("__SECRET_ID_ENV__", r.secret_id_env)
                .replace("__SECRET_KEY_ENV__", r.secret_key_env)
                .replace("__SECURITY_TOKEN_ENV__", r.security_token_env)
                .replace("__ROLE_DIR__", r.role_dir)
-               .replace("__WINRM_NETWORK_LOGON_LOCK_BLOCK__", network_logon_lock)
-               .replace("__WINRM_REMOTE_SHELL_LOCK_BLOCK__", remote_shell_lock)
+               .replace("__WINDOWS_FINAL_HARDENING_PROVISIONER__", final_hardening)
                .replace("__SMOKE_TEST_BLOCK__", smoke_block)
                .replace("__TEST_COMPONENTS_BLOCK__", test_block)
                .replace("__SPOT_BLOCK__", spot_block)
