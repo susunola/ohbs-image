@@ -3253,19 +3253,14 @@ def f_selinux(ctx, p):
         # L1 anyway; when it does run we still write enforcing.
         target = "permissive" if kind == "mode_not_disabled" else "enforcing"
         set_kv_in_file(ctx, "/etc/selinux/config", "SELINUX", target, sep="=")
-        rc, cur, _ = sh(["getenforce"], 30)
-        cur_l = (cur or "").strip().lower()
-        if cur_l == "disabled":
-            return True, ("SELINUX=%s written; reboot required "
-                          "(no relabel needed)" % target)
-        if target == "enforcing" and cur_l != "disabled":
-            # NEVER setenforce 1 mid-apply: the base image's filesystem has
-            # trees that were created SELinux-disabled (build user's home,
-            # /opt/ohbs-image-ansible) and are unlabeled; flipping enforcing
-            # live kills sshd pubkey auth on the spot — the rhel-family L2
-            # builds all died here (2h of packer 'i/o timeout', no reboot
-            # ever reached).  Label the critical paths inline, then let
-            # /.autorelabel run the FULL relabel in early boot; the
+        if target == "enforcing":
+            # NEVER setenforce 1 mid-apply, and NEVER boot enforcing with an
+            # unlabeled filesystem: the base image's trees (build user
+            # homes, /opt, ssh keys) were created SELinux-disabled, so both
+            # a live flip AND a plain enforcing reboot kill sshd pubkey auth
+            # — the rhel-family L2 builds all died on exactly this (2h of
+            # packer 'i/o timeout').  Label the critical paths inline, then
+            # let /.autorelabel run the FULL relabel in early boot; the
             # post-reboot audit sees runtime=enforcing + config=enforcing.
             sh(["restorecon", "-R", "/etc/ssh", "/home", "/root", "/opt",
                 "/var/log"], 600)
