@@ -104,6 +104,7 @@ vpc_id              = "vpc-xxxxxxxx"
 subnet_id           = "subnet-xxxxxxxx"
 security_group_id   = "sg-xxxxxxxx"
 associate_public_ip = false               # set to true only if a public IP is required
+# max_build_minutes = 120                 # hard Packer wall-clock limit; stops stalled builds and caps cloud cost (15-1440)
 # spot = true                             # use a spot instance for the build VM — up to ~90% cheaper, may be repossessed mid-build (default false)
 # instance_name = "my-build-cvm"          # optional explicit name for the temporary build CVM ("" = plugin auto)
 # # [build.packer] — passthrough of arbitrary packer tencentcloud-cvm builder

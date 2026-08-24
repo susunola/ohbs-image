@@ -242,6 +242,7 @@ vpc_id              = "vpc-xxxxxxxx"
 subnet_id           = "subnet-xxxxxxxx"
 security_group_id   = "sg-xxxxxxxx"
 associate_public_ip = false              # use a private VPC runner or bastion for builds
+# max_build_minutes = 120                # hard Packer wall-clock limit; stops stalled builds and caps cloud cost (15-1440)
 # spot = true                             # use a spot instance for the build VM (up to ~90% cheaper)
 # instance_name = "my-build-cvm"          # optional explicit name for the temporary build CVM ("" = plugin auto)
 # # [build.packer] — passthrough of arbitrary tencentcloud-cvm Packer builder
@@ -316,6 +317,7 @@ benchmark = "CIS-v1.0.0"
 | | `subnet_id` | string | Subnet identifier |
 | | `security_group_id` | string | Must start with `sg-` |
 | | `associate_public_ip` | bool | Assign public IP |
+| | `max_build_minutes` | int | Hard wall-clock limit for Packer build, test, and scan runs (default `120`, range `15`–`1440`); timed-out Packer is terminated and the normal failure/cleanup path runs |
 | | `spot` | bool | Use a spot instance for the build VM (`instance_charge_type=SPOTPAID`; up to ~90% cheaper, may be repossessed mid-build, default `false`) |
 | | `instance_name` | string | Optional explicit name for the temporary build CVM (empty = Packer auto-generates) |
 | | `packer` | table | Passthrough of arbitrary `tencentcloud-cvm` Packer builder args (e.g. `disk_type`, `disk_size`, `data_disks`), injected verbatim into the generated HCL source block |

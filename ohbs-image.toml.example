@@ -14,6 +14,7 @@ vpc_id              = "vpc-xxxxxxxx"
 subnet_id           = "subnet-xxxxxxxx"
 security_group_id   = "sg-xxxxxxxx"
 associate_public_ip = false               # set to true only if a public IP is required
+# max_build_minutes = 120                 # hard Packer wall-clock limit; stops stalled builds and caps cloud cost (15-1440)
 
 [image]
 name_prefix  = "tencentos3-cis"

@@ -159,6 +159,15 @@ class TestLoadConfig:
         with pytest.raises(ConfigError, match=rf"\[{section}\].{key} must be a boolean"):
             resolve(valid_toml)
 
+    def test_max_build_minutes_defaults_to_two_hours(self, valid_toml):
+        assert resolve(valid_toml).max_build_minutes == 120
+
+    @pytest.mark.parametrize("value", [True, 14, 1441, 120.0])
+    def test_max_build_minutes_requires_safe_integer_budget(self, valid_toml, value):
+        valid_toml["build"]["max_build_minutes"] = value
+        with pytest.raises(ConfigError, match=r"\[build\].max_build_minutes"):
+            resolve(valid_toml)
+
 
 # ---------------------------------------------------------------------------
 # Helper functions
@@ -1671,6 +1680,7 @@ class TestCmdBuildOutput:
         r.delivery_report_required = False
         r.cve_scan = False
         r.rules_overrides = {}
+        r.max_build_minutes = 120
         return r, tmp_path / "build"
 
     def test_build_does_not_reprint_output(self, tmp_path, capsys):
@@ -1723,6 +1733,7 @@ class TestCmdBuildOutput:
         def fake_run_packer(workdir, subcmd, quiet=False, capture=False, timeout=None, debug=False, log_file=None):
             captured_quiet["quiet"] = quiet
             captured_quiet["capture"] = capture
+            captured_quiet["timeout"] = timeout
             return PackerResult(exit_code=0, stdout_lines=packer_lines)
 
         with (
@@ -1733,7 +1744,7 @@ class TestCmdBuildOutput:
             rc = cmd_build(mock.MagicMock(config="x", workdir=str(wd), yes=True, quiet=True, log_file=None))
         assert rc == 0
         # cmd_build must forward quiet=True and still capture (for image-ID parsing).
-        assert captured_quiet == {"quiet": True, "capture": True}
+        assert captured_quiet == {"quiet": True, "capture": True, "timeout": 7200}
         out = capsys.readouterr().out
         assert "==> building" not in out
         assert "done" not in out
@@ -4162,6 +4173,7 @@ class TestBuildNewFeatures:
         r.sbom = False
         r.cve_scan = False
         r.rules_overrides = {}
+        r.max_build_minutes = 120
         return r, tmp_path / "build"
 
     def test_build_skips_when_unchanged(self, tmp_path, monkeypatch):

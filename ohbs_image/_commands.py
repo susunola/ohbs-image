@@ -259,13 +259,14 @@ def cmd_build(args: argparse.Namespace) -> int:
     banner("build")
     info(f"Rendered working directory: {workdir}")
     info(f"Running packer build (CIS Level {r.level}, profile={r.profile_name}) ...")
+    info(f"Build time budget: {r.max_build_minutes} minutes")
     ohbs_image._write_run_manifest(r, status="active", phase="packer-build")
 
     _fh: logging.FileHandler | None = _open_build_log(args)
     heartbeat_stop, heartbeat_worker = _start_run_lease_heartbeat(r)
     try:
         result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
-                            log_file=args.log_file)
+                            log_file=args.log_file, timeout=r.max_build_minutes * 60)
     finally:
         heartbeat_stop.set()
         heartbeat_worker.join(timeout=5)
@@ -1014,7 +1015,8 @@ def cmd_test(args: argparse.Namespace) -> int:
     info(f"Idempotency — re-running apply must make 0 changes "
          f"({r.profile_name} L{r.level}, region {r.region})")
 
-    result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug)
+    result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
+                                   timeout=r.max_build_minutes * 60)
     if result.exit_code != 0:
         fail("build failed during idempotency test")
         return result.exit_code
@@ -1118,7 +1120,8 @@ def cmd_scan(args: argparse.Namespace) -> int:
     info(f"Audit-only (no remediation) — {r.profile_name} L{r.level}, region {r.region}")
     info(f"Gate: score >= {args.min_score:g}%")
 
-    result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug)
+    result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
+                                   timeout=r.max_build_minutes * 60)
     image_ids = _extract_image_ids(result.stdout_lines)
     score = _extract_score(result.stdout_lines)
 

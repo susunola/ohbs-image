@@ -49,6 +49,7 @@ class ResolvedConfig:
     image_share_accounts: list[str]     # [image].share_accounts — share built image with other uins
     image_share_org_units: list[str]    # [image].share_org_units — parsed but skipped at build time (no org-unit share API)
     spot: bool                          # [build].spot — use a spot instance for the build VM (default false)
+    max_build_minutes: int              # [build].max_build_minutes — hard wall-clock limit for Packer runs (default 120)
     cis_level_tag: str
     secret_id_env: str
     secret_key_env: str
@@ -495,6 +496,15 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
     # [build].spot — spot instance for the build VM (up to ~90% cheaper).
     spot = _read_bool(data, "build", "spot", False)
 
+    # [build].max_build_minutes — a cloud build can otherwise remain alive
+    # indefinitely after a provider or communicator stall.  run_packer owns
+    # the termination/kill sequence; config owns the explicit budget.
+    max_build_minutes = _read_int(data, "build", "max_build_minutes", 120)
+    if not (15 <= max_build_minutes <= 1440):
+        raise ConfigError(
+            f"[build].max_build_minutes must be 15-1440, got {max_build_minutes}. "
+            "Use a value long enough for the profile and short enough to cap cost.")
+
     # [meta].test_components — user-defined test scripts run before snapshot.
     test_components = _read_str_list(data, "meta", "test_components")
 
@@ -550,6 +560,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         image_share_accounts=share_accounts,
         image_share_org_units=share_org_units,
         spot=spot,
+        max_build_minutes=max_build_minutes,
         cis_level_tag=f"level{level}-server",
         secret_id_env=_read_required_str(data, "cloud", "secret_id_env"),
         secret_key_env=_read_required_str(data, "cloud", "secret_key_env"),
