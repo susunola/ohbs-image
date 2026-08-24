@@ -1,0 +1,7 @@
+# Default owner: the maintainer reviews everything.
+* @susunola
+
+# Security-relevant paths get an explicit owner review.
+SECURITY.md @susunola
+.github/workflows/ @susunola
+ohbs_image/ @susunola
