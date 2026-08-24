@@ -4414,6 +4414,9 @@ class TestProvenanceSbom:
         assert "Manual" in text and ">3<" in text
         assert "Security release dossier" in text
         assert "Release decision" in text
+        assert "Profiles" in text
+        assert "Assessment Results" in text
+        assert "Assessment Details" in text
         assert "Rules requiring attention" in text
         assert "Example failed rule" in text
 

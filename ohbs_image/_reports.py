@@ -225,6 +225,8 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
         f'<div class="card {tone}"><div class="label">{text(label)}</div><div class="value">{text(value)}</div></div>'
         for label, value, tone in metrics)
     findings: list[str] = []
+    assessment_rows: list[str] = []
+    assessment_details: list[str] = []
     raw_results = audit.get("results", [])
     if isinstance(raw_results, list):
         for item in raw_results:
@@ -232,14 +234,36 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
                 continue
             rule_status = str(item.get("status", ""))
             apply_status = str(item.get("apply_status", ""))
-            if rule_status not in ("fail", "manual", "error") and apply_status not in ("apply_failed", "applied_pending", "skipped_manual"):
-                continue
             rule_id = item.get("id", item.get("rule_id", "Not available"))
             title = item.get("title", item.get("name", ""))
+            assessment_rows.append(
+                f"<tr><td>{text(rule_id)}</td><td>{text(title)}</td>"
+                f"<td>{text(rule_status or 'Not available')}</td>"
+                f"<td>{text(apply_status or 'Not available')}</td></tr>")
+            if rule_status not in ("fail", "manual", "error") and apply_status not in ("apply_failed", "applied_pending", "skipped_manual"):
+                continue
             findings.append(f"<tr><td>{text(rule_id)}</td><td>{text(rule_status or 'Not available')}</td><td>{text(apply_status or 'Not available')}</td><td>{text(title)}</td></tr>")
+            detail_fields = [("Assessment", item.get("assessment", rule_status or "Not available")),
+                             ("Remediation", item.get("remediation", apply_status or "Not available")),
+                             ("Rationale", item.get("rationale", "Not available")),
+                             ("Impact", item.get("impact", "Not available"))]
+            detail_text = "".join(
+                f"<dt>{text(label)}</dt><dd>{text(value)}</dd>"
+                for label, value in detail_fields)
+            assessment_details.append(
+                f'<article class="rule-detail"><h3>{text(rule_id)} · {text(title)}</h3>'
+                f"<dl>{detail_text}</dl></article>")
     findings_html = ("<section class=\"findings\"><div class=\"section-heading\"><div><p>EXCEPTIONS</p><h2>Rules requiring attention</h2></div><strong>"
                      f"{len(findings)} record{'s' if len(findings) != 1 else ''}</strong></div><table><tr><th>Rule</th><th>Audit</th><th>Remediation</th><th>Title</th></tr>"
                      + "".join(findings[:200]) + "</table></section>") if findings else ""
+    results_html = ("<section id=\"assessment-results\" class=\"results\"><div class=\"section-heading\"><div><p>ASSESSMENT RESULTS</p>"
+                    "<h2>Recommendation results</h2></div><strong>"
+                    f"{len(assessment_rows)} evaluated</strong></div><table><tr><th>Rule</th><th>Title</th><th>Audit</th><th>Remediation</th></tr>"
+                    + "".join(assessment_rows[:1000]) + "</table></section>") if assessment_rows else ""
+    details_html = ("<section id=\"assessment-details\" class=\"assessment-details\"><div class=\"section-heading\"><div><p>ASSESSMENT DETAILS</p>"
+                    "<h2>Exception review</h2></div><strong>"
+                    f"{len(assessment_details)} item{'s' if len(assessment_details) != 1 else ''}</strong></div>"
+                    + "".join(assessment_details[:200]) + "</section>") if assessment_details else ""
     rows = [("Profile", r.profile_name), ("CIS level", f"L{r.level}"),
             ("Region / zone", f"{r.region} / {r.zone}"), ("Source image", r.source_image_id),
             ("Output image IDs", ", ".join(image_ids) or "Not available"), ("Benchmark", r.image_benchmark),
@@ -248,7 +272,7 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
     detail_rows = "".join(f"<tr><th>{text(k)}</th><td>{text(v)}</td></tr>" for k, v in rows)
     html_doc = f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ohbs-image delivery report · {text(image_name)}</title><style>:root{{--ink:#15212c;--muted:#627487;--line:#dce4eb;--bg:#f3f6f8;--navy:#173a63;--ok:#06734d;--bad:#a12e2b}}*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}}main{{max-width:1000px;margin:auto;padding:32px 20px 64px}}header{{background:var(--navy);color:white;padding:30px;border-radius:15px 15px 0 0}}h1{{margin:0;font-size:27px}}.sub{{color:#cfdef0;margin-top:7px}}.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}}.card,table{{background:white;border:1px solid var(--line);border-radius:10px}}.card{{padding:17px}}.label{{font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--muted);text-transform:uppercase}}.value{{font-size:27px;font-weight:800;margin-top:5px}}.approved{{color:var(--ok)}}.blocked{{color:var(--bad)}}h2{{font-size:18px;margin:32px 0 12px}}table{{border-collapse:separate;border-spacing:0;width:100%;overflow:hidden}}th,td{{padding:12px 15px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;word-break:break-word}}th{{width:31%;color:var(--muted);font-size:13px}}tr:last-child th,tr:last-child td{{border-bottom:0}}footer{{color:var(--muted);font-size:12px;margin-top:22px}}@media(max-width:700px){{.grid{{grid-template-columns:repeat(2,1fr)}}header{{border-radius:10px}}}}</style><body><main><header><h1>Image delivery report</h1><div class="sub">{text(image_name)} · generated by ohbs-image</div></header><section class="grid"><div class="card"><div class="label">Release status</div><div class="value {status_class}">{status}</div></div><div class="card"><div class="label">Re-audit score</div><div class="value">{text(score_s)}</div></div><div class="card"><div class="label">Rules passed</div><div class="value">{text(summary.get("pass", "—"))}</div></div><div class="card"><div class="label">Rules failed</div><div class="value">{text(summary.get("fail", "—"))}</div></div></section><h2>Build identity</h2><table>{detail_rows}</table><h2>Evidence</h2><table><tr><th>Attestation</th><td>{"Signed" if signed else "Not signed"}</td></tr><tr><th>SBOM packages</th><td>{text(summary.get("sbom_packages", "—"))}</td></tr><tr><th>Audit mode</th><td>{text(audit.get("mode", "—"))}</td></tr></table><footer>This report is a human-readable view. Verify the referenced provenance signature and machine-readable result for release automation.</footer></main></body></html>'''
     html_doc = html_doc.replace("</section><h2>Build identity", metric_cards + "</section><h2>Build identity")
-    html_doc = html_doc.replace("<h2>Evidence", findings_html + "<h2>Evidence")
+    html_doc = html_doc.replace("<h2>Evidence", results_html + findings_html + details_html + "<h2>Evidence")
     html_doc = html_doc.replace('<div class="card"><div class="label">Rules passed',
                                 '<div class="card success"><div class="label">Pass')
     html_doc = html_doc.replace('<div class="card"><div class="label">Rules failed',
@@ -256,8 +280,10 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
     html_doc = html_doc.replace("<header>", '<header><p class="dossier">Security release dossier</p>')
     html_doc = html_doc.replace("</header>",
                                 f'<div class="release-stamp {status_class}"><span>Release decision</span><strong>{status}</strong></div></header>')
-    html_doc = html_doc.replace("<h2>Build identity", '<section class="identity"><div class="section-heading"><div><p>TRACEABILITY</p><h2>Build identity')
-    html_doc = html_doc.replace("</table><h2>Evidence", "</table></div></section><section class=\"evidence\"><div class=\"section-heading\"><div><p>EVIDENCE</p><h2>Evidence")
+    html_doc = html_doc.replace("</header><section class=\"grid\">",
+                                '<nav aria-label="Report sections"><a href="#summary">Summary</a><a href="#profiles">Profiles</a><a href="#assessment-results">Assessment Results</a><a href="#assessment-details">Assessment Details</a><a href="#evidence">Evidence</a></nav><section id="summary" class="grid">')
+    html_doc = html_doc.replace("<h2>Build identity", '<section id="profiles" class="identity"><div class="section-heading"><div><p>PROFILES</p><h2>Build target and profile')
+    html_doc = html_doc.replace("</table><h2>Evidence", "</table></div></section><section id=\"evidence\" class=\"evidence\"><div class=\"section-heading\"><div><p>EVIDENCE</p><h2>Evidence")
     html_doc = html_doc.replace("</table><footer>", "</table></div></section><footer>")
     html_doc = html_doc.replace("</style>", '''
 /* Release dossier visual system: static, high-contrast, and print-safe. */
@@ -265,9 +291,10 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
 body{background:var(--bg);color:var(--ink);font:14px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:1120px;padding:36px 24px 64px} header{position:relative;min-height:175px;padding:30px 32px;background:linear-gradient(122deg,#0c2744 0%,#123c5f 100%);border-radius:14px;box-shadow:0 18px 44px rgb(16 42 67/.14)}
 h1{font-size:30px;letter-spacing:-.035em;line-height:1.1}.dossier,.section-heading p{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.13em;color:#8fc1ce;text-transform:uppercase}.sub{color:#d5e4f0;margin-top:10px}.release-stamp{position:absolute;right:30px;top:30px;min-width:170px;padding:13px 15px;border:1px solid rgb(255 255 255/.24);border-radius:10px;background:rgb(255 255 255/.08)}.release-stamp span{display:block;color:#c2d8e8;font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:800}.release-stamp strong{display:block;margin-top:3px;font-size:17px}.release-stamp.approved strong{color:#83efc5}.release-stamp.blocked strong{color:#ffb5ab}
+nav{display:flex;gap:0;margin:0 1px;padding:0;background:#fff;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;overflow-x:auto}nav a{padding:11px 14px;color:#526a80;border-right:1px solid var(--line);font-size:12px;font-weight:750;text-decoration:none;white-space:nowrap}nav a:hover{color:var(--teal);background:#f7fafc}
 .grid{grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 28px}.card{min-height:104px;padding:15px;border-radius:10px;border:1px solid var(--line);border-top:3px solid #9fb3c8;box-shadow:0 2px 8px rgb(16 42 67/.035)}.label{font-size:11px;letter-spacing:.08em}.value{font-size:30px;letter-spacing:-.05em;line-height:1.1}.card.success{border-top-color:var(--ok)}.card.success .value{color:var(--ok)}.card.danger{border-top-color:#da5757}.card.danger .value{color:var(--bad)}.card.warning{border-top-color:#d4943b}.card.warning .value{color:var(--warn)}
-.identity,.evidence,.findings{margin-top:18px;padding:23px 24px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px rgb(16 42 67/.035)}.section-heading{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:16px}.section-heading h2{margin:0;font-size:20px;letter-spacing:-.025em}.section-heading p{color:var(--muted)}.section-heading strong{color:var(--muted);font-size:12px;white-space:nowrap}h2{font-size:18px;margin:0 0 12px}table{border:1px solid var(--line);border-radius:9px;overflow:hidden}th,td{padding:11px 13px}th{background:#f7fafc;color:#526a80;font-size:11px;letter-spacing:.08em;text-transform:uppercase}.identity th{width:31%;background:#f9fbfc}.findings td:first-child{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}footer{border-top:1px solid var(--line);padding-top:16px;margin-top:28px}
-@media(max-width:700px){main{padding:18px 14px 40px}header{min-height:0;padding:24px}.release-stamp{position:static;margin-top:18px}.grid{grid-template-columns:repeat(2,1fr)}.identity,.evidence,.findings{padding:19px}}@media print{body{background:#fff;font-size:11px}main{max-width:none;padding:0}header{box-shadow:none}.card,.identity,.evidence,.findings{box-shadow:none;break-inside:avoid}.grid{margin:10px 0 16px}}
+.identity,.evidence,.findings,.results,.assessment-details{margin-top:18px;padding:23px 24px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px rgb(16 42 67/.035)}.section-heading{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:16px}.section-heading h2{margin:0;font-size:20px;letter-spacing:-.025em}.section-heading p{color:var(--muted)}.section-heading strong{color:var(--muted);font-size:12px;white-space:nowrap}h2{font-size:18px;margin:0 0 12px}table{border:1px solid var(--line);border-radius:9px;overflow:hidden}th,td{padding:11px 13px}th{background:#f7fafc;color:#526a80;font-size:11px;letter-spacing:.08em;text-transform:uppercase}.identity th{width:31%;background:#f9fbfc}.findings td:first-child,.results td:first-child{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.rule-detail{border-top:1px solid var(--line);padding:17px 0}.rule-detail:first-of-type{border-top:0;padding-top:0}.rule-detail h3{margin:0 0 11px;font-size:14px}.rule-detail dl{display:grid;grid-template-columns:140px 1fr;gap:7px 15px;margin:0}.rule-detail dt{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.rule-detail dd{margin:0;word-break:break-word}footer{border-top:1px solid var(--line);padding-top:16px;margin-top:28px}
+@media(max-width:700px){main{padding:18px 14px 40px}header{min-height:0;padding:24px}.release-stamp{position:static;margin-top:18px}.grid{grid-template-columns:repeat(2,1fr)}.identity,.evidence,.findings,.results,.assessment-details{padding:19px}.rule-detail dl{grid-template-columns:1fr}.rule-detail dt{margin-top:8px}}@media print{body{background:#fff;font-size:11px}main{max-width:none;padding:0}header{box-shadow:none}nav{display:none}.card,.identity,.evidence,.findings,.results,.assessment-details{box-shadow:none;break-inside:avoid}.grid{margin:10px 0 16px}}
 </style>''')
     try:
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", image_name) or "image"
