@@ -3267,9 +3267,18 @@ def f_selinux(ctx, p):
             if exists(stamp):
                 return False, ("enforcing already configured and full relabel "
                                "completed (%s)" % stamp)
-            rc, o, e = sh(["restorecon", "-R", "/"], 3600)
+            ctx_file = "/etc/selinux/targeted/contexts/files/file_contexts"
+            if have("setfiles") and exists(ctx_file):
+                # restorecon NO-OPS when SELinux is disabled (0.001s, labels
+                # nothing — the enforcing reboot then hung, rhel10-L2).
+                # setfiles applies file_contexts from userspace regardless
+                # of kernel state: ~6s on a full build rootfs, and the
+                # enforcing boot then starts sshd normally (verified live).
+                rc, o, e = sh(["setfiles", "-F", ctx_file, "/"], 3600)
+            else:
+                rc, o, e = sh(["restorecon", "-R", "/"], 3600)
             if rc != 0:
-                return False, "restorecon -R / failed: %s" % (e or o)[:200]
+                return False, "full filesystem relabel failed: %s" % (e or o)[:200]
             write_file(ctx, stamp, "restorecon -R / completed at build time\n",
                        0o600)
             return True, ("SELINUX=enforcing written; FULL inline relabel "
