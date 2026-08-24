@@ -4419,6 +4419,8 @@ class TestProvenanceSbom:
         assert "Assessment Details" in text
         assert "Scores by recommendation group" in text
         assert "Group 1" in text
+        assert "Ensure cramfs kernel module is not available" in text
+        assert "not selected" in text
         assert "Rules requiring attention" in text
         assert "Example failed rule" in text
 

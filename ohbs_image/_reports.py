@@ -229,6 +229,7 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
     assessment_rows: list[str] = []
     assessment_details: list[str] = []
     category_stats: dict[str, dict[str, int]] = {}
+    results_by_id: dict[str, dict[str, Any]] = {}
     raw_results = audit.get("results", [])
     if isinstance(raw_results, list):
         for item in raw_results:
@@ -238,6 +239,7 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
             apply_status = str(item.get("apply_status", ""))
             rule_id = item.get("id", item.get("rule_id", "Not available"))
             title = item.get("title", item.get("name", ""))
+            results_by_id[str(rule_id)] = item
             category = str(item.get("section") or str(rule_id).split(".", 1)[0])
             stats = category_stats.setdefault(category, {"pass": 0, "fail": 0, "manual": 0, "error": 0})
             if rule_status in stats:
@@ -259,12 +261,43 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
             assessment_details.append(
                 f'<article class="rule-detail"><h3>{text(rule_id)} · {text(title)}</h3>'
                 f"<dl>{detail_text}</dl></article>")
+    # The engine emits every *selected* rule. The report, like CIS-CAT, is a
+    # catalog document: retain every benchmark recommendation and make rules
+    # outside a scoped run explicit instead of silently omitting them.
+    catalog_rules: list[dict[str, Any]] = []
+    try:
+        catalog_doc = json.loads(
+            ohbs_image._catalog_path(r.role_dir, r.image_benchmark).read_text(encoding="utf-8"))
+        if isinstance(catalog_doc, list):
+            catalog_rules = [rule for rule in catalog_doc if isinstance(rule, dict)]
+    except (OSError, json.JSONDecodeError):
+        pass
+    display_rules = catalog_rules or list(results_by_id.values())
+    assessment_rows.clear()
+    category_stats.clear()
+    for rule in sorted(display_rules, key=lambda value: str(value.get("id", ""))):
+        rule_id = str(rule.get("id", "Not available"))
+        result = results_by_id.get(rule_id, {})
+        rule_status = str(result.get("status", ""))
+        assessment_type = rule.get("assessment", result.get("assessment", "Automated"))
+        display_status = rule_status or ("manual" if assessment_type == "Manual" else "not selected")
+        remediation = result.get("apply_status", "Not run")
+        levels = rule.get("levels", result.get("levels", []))
+        profiles = ", ".join(f"L{level}" for level in levels) if isinstance(levels, list) else "Not available"
+        category = str(rule.get("section") or result.get("section") or rule_id.split(".", 1)[0])
+        stats = category_stats.setdefault(category, {"pass": 0, "fail": 0, "manual": 0, "error": 0})
+        if rule_status in stats:
+            stats[rule_status] += 1
+        assessment_rows.append(
+            f"<tr><td>{text(rule_id)}</td><td>{text(rule.get('title', result.get('title', '')))}</td>"
+            f"<td>{text(profiles)}</td><td>{text(assessment_type)}</td>"
+            f"<td>{text(display_status)}</td><td>{text(remediation)}</td></tr>")
     findings_html = ("<section class=\"findings\"><div class=\"section-heading\"><div><p>EXCEPTIONS</p><h2>Rules requiring attention</h2></div><strong>"
                      f"{len(findings)} record{'s' if len(findings) != 1 else ''}</strong></div><table><tr><th>Rule</th><th>Audit</th><th>Remediation</th><th>Title</th></tr>"
                      + "".join(findings[:200]) + "</table></section>") if findings else ""
     results_html = ("<section id=\"assessment-results\" class=\"results\"><div class=\"section-heading\"><div><p>ASSESSMENT RESULTS</p>"
                     "<h2>Recommendation results</h2></div><strong>"
-                    f"{len(assessment_rows)} evaluated</strong></div><table><tr><th>Rule</th><th>Title</th><th>Audit</th><th>Remediation</th></tr>"
+                    f"{len(assessment_rows)} recommendations</strong></div><table><tr><th>Rule</th><th>Recommendation</th><th>Profiles</th><th>Assessment</th><th>Audit</th><th>Remediation</th></tr>"
                     + "".join(assessment_rows[:1000]) + "</table></section>") if assessment_rows else ""
     details_html = ("<section id=\"assessment-details\" class=\"assessment-details\"><div class=\"section-heading\"><div><p>ASSESSMENT DETAILS</p>"
                     "<h2>Exception review</h2></div><strong>"
