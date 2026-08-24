@@ -4417,6 +4417,8 @@ class TestProvenanceSbom:
         assert "Profiles" in text
         assert "Assessment Results" in text
         assert "Assessment Details" in text
+        assert "Scores by recommendation group" in text
+        assert "Group 1" in text
         assert "Rules requiring attention" in text
         assert "Example failed rule" in text
 

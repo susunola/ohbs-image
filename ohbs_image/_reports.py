@@ -213,6 +213,7 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
         return summary.get(name, 0)
 
     score_s = f"{score:g}%" if isinstance(score, (int, float)) else "Not available"
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     status = "APPROVED" if signed or not r.attestation_required else "UNSIGNED"
     status_class = "approved" if status == "APPROVED" else "blocked"
     metrics = [("Manual", count("manual"), "warning"),
@@ -227,6 +228,7 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
     findings: list[str] = []
     assessment_rows: list[str] = []
     assessment_details: list[str] = []
+    category_stats: dict[str, dict[str, int]] = {}
     raw_results = audit.get("results", [])
     if isinstance(raw_results, list):
         for item in raw_results:
@@ -236,6 +238,10 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
             apply_status = str(item.get("apply_status", ""))
             rule_id = item.get("id", item.get("rule_id", "Not available"))
             title = item.get("title", item.get("name", ""))
+            category = str(item.get("section") or str(rule_id).split(".", 1)[0])
+            stats = category_stats.setdefault(category, {"pass": 0, "fail": 0, "manual": 0, "error": 0})
+            if rule_status in stats:
+                stats[rule_status] += 1
             assessment_rows.append(
                 f"<tr><td>{text(rule_id)}</td><td>{text(title)}</td>"
                 f"<td>{text(rule_status or 'Not available')}</td>"
@@ -264,6 +270,18 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
                     "<h2>Exception review</h2></div><strong>"
                     f"{len(assessment_details)} item{'s' if len(assessment_details) != 1 else ''}</strong></div>"
                     + "".join(assessment_details[:200]) + "</section>") if assessment_details else ""
+    category_rows: list[str] = []
+    for category, stats in sorted(category_stats.items(), key=lambda entry: entry[0]):
+        scored = stats["pass"] + stats["fail"] + stats["error"]
+        category_score = f"{(100 * stats['pass'] / scored):.0f}%" if scored else "Not scored"
+        category_rows.append(
+            f"<tr><td>Group {text(category)}</td><td>{text(category_score)}</td>"
+            f"<td>{text(stats['pass'])}</td><td>{text(stats['fail'])}</td>"
+            f"<td>{text(stats['manual'])}</td><td>{text(stats['error'])}</td></tr>")
+    category_html = ("<section class=\"recommendation-summary\"><div class=\"section-heading\"><div><p>COMPLIANCE SUMMARY</p>"
+                     "<h2>Scores by recommendation group</h2></div><strong>Pass / Fail / Manual / Error</strong></div>"
+                     "<table><tr><th>Group</th><th>Score</th><th>Pass</th><th>Fail</th><th>Manual</th><th>Error</th></tr>"
+                     + "".join(category_rows) + "</table></section>") if category_rows else ""
     rows = [("Profile", r.profile_name), ("CIS level", f"L{r.level}"),
             ("Region / zone", f"{r.region} / {r.zone}"), ("Source image", r.source_image_id),
             ("Output image IDs", ", ".join(image_ids) or "Not available"), ("Benchmark", r.image_benchmark),
@@ -279,9 +297,11 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
                                 '<div class="card danger"><div class="label">Fail')
     html_doc = html_doc.replace("<header>", '<header><p class="dossier">Security release dossier</p>')
     html_doc = html_doc.replace("</header>",
-                                f'<div class="release-stamp {status_class}"><span>Release decision</span><strong>{status}</strong></div></header>')
+                                f'<div class="release-stamp {status_class}"><span>Release decision</span><strong>{status}</strong></div><div class="cover-meta"><span>Assessment report</span><span>{text(generated_at)}</span><span>Run {text(r.run_id)}</span></div></header>')
     html_doc = html_doc.replace("</header><section class=\"grid\">",
-                                '<nav aria-label="Report sections"><a href="#summary">Summary</a><a href="#profiles">Profiles</a><a href="#assessment-results">Assessment Results</a><a href="#assessment-details">Assessment Details</a><a href="#evidence">Evidence</a></nav><section id="summary" class="grid">')
+                                '<nav aria-label="Report sections"><a href="#summary">Summary</a><a href="#profiles">Profiles</a><a href="#assessment-results">Assessment Results</a><a href="#assessment-details">Assessment Details</a><a href="#evidence">Evidence</a></nav><section id="summary" class="summary"><div class="grid">')
+    html_doc = html_doc.replace("</section><h2>Build identity",
+                                "</div></section>" + category_html + "<h2>Build identity")
     html_doc = html_doc.replace("<h2>Build identity", '<section id="profiles" class="identity"><div class="section-heading"><div><p>PROFILES</p><h2>Build target and profile')
     html_doc = html_doc.replace("</table><h2>Evidence", "</table></div></section><section id=\"evidence\" class=\"evidence\"><div class=\"section-heading\"><div><p>EVIDENCE</p><h2>Evidence")
     html_doc = html_doc.replace("</table><footer>", "</table></div></section><footer>")
@@ -295,6 +315,11 @@ nav{display:flex;gap:0;margin:0 1px;padding:0;background:#fff;border:1px solid v
 .grid{grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 28px}.card{min-height:104px;padding:15px;border-radius:10px;border:1px solid var(--line);border-top:3px solid #9fb3c8;box-shadow:0 2px 8px rgb(16 42 67/.035)}.label{font-size:11px;letter-spacing:.08em}.value{font-size:30px;letter-spacing:-.05em;line-height:1.1}.card.success{border-top-color:var(--ok)}.card.success .value{color:var(--ok)}.card.danger{border-top-color:#da5757}.card.danger .value{color:var(--bad)}.card.warning{border-top-color:#d4943b}.card.warning .value{color:var(--warn)}
 .identity,.evidence,.findings,.results,.assessment-details{margin-top:18px;padding:23px 24px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px rgb(16 42 67/.035)}.section-heading{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:16px}.section-heading h2{margin:0;font-size:20px;letter-spacing:-.025em}.section-heading p{color:var(--muted)}.section-heading strong{color:var(--muted);font-size:12px;white-space:nowrap}h2{font-size:18px;margin:0 0 12px}table{border:1px solid var(--line);border-radius:9px;overflow:hidden}th,td{padding:11px 13px}th{background:#f7fafc;color:#526a80;font-size:11px;letter-spacing:.08em;text-transform:uppercase}.identity th{width:31%;background:#f9fbfc}.findings td:first-child,.results td:first-child{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.rule-detail{border-top:1px solid var(--line);padding:17px 0}.rule-detail:first-of-type{border-top:0;padding-top:0}.rule-detail h3{margin:0 0 11px;font-size:14px}.rule-detail dl{display:grid;grid-template-columns:140px 1fr;gap:7px 15px;margin:0}.rule-detail dt{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.rule-detail dd{margin:0;word-break:break-word}footer{border-top:1px solid var(--line);padding-top:16px;margin-top:28px}
 @media(max-width:700px){main{padding:18px 14px 40px}header{min-height:0;padding:24px}.release-stamp{position:static;margin-top:18px}.grid{grid-template-columns:repeat(2,1fr)}.identity,.evidence,.findings,.results,.assessment-details{padding:19px}.rule-detail dl{grid-template-columns:1fr}.rule-detail dt{margin-top:8px}}@media print{body{background:#fff;font-size:11px}main{max-width:none;padding:0}header{box-shadow:none}nav{display:none}.card,.identity,.evidence,.findings,.results,.assessment-details{box-shadow:none;break-inside:avoid}.grid{margin:10px 0 16px}}
+</style>''')
+    html_doc = html_doc.replace("</style>", '''
+/* Assessment-report treatment: data-led, restrained, and export-safe. */
+:root{--ink:#1c2b36;--muted:#61727f;--line:#cfd8de;--bg:#f1f4f5;--navy:#17384f;--teal:#16756c;--ok:#287a4f;--bad:#b43d3d;--warn:#9a651e}
+body{background:var(--bg);font:14px/1.5 Arial,"Helvetica Neue",sans-serif}main{max-width:1180px;padding:42px 28px 72px}header{min-height:242px;padding:35px 38px 66px;border-radius:0;border-top:7px solid var(--teal);background:var(--navy);box-shadow:none}h1{font-size:33px;font-weight:650;letter-spacing:-.025em}.dossier{font-size:12px;letter-spacing:.11em}.sub{max-width:660px;font-size:16px}.release-stamp{right:38px;top:38px;border-radius:0;border-color:#88a2b3;background:transparent}.cover-meta{position:absolute;bottom:19px;left:38px;right:38px;display:flex;gap:24px;padding-top:12px;border-top:1px solid rgb(255 255 255/.24);color:#c2d2dc;font-size:11px}.cover-meta span:first-child{font-weight:750;letter-spacing:.08em;text-transform:uppercase}nav{border-radius:0;border:0;border-bottom:1px solid var(--line);background:transparent}nav a{padding:15px 16px;border-right:0;color:#425a6b}nav a:first-child{padding-left:0}nav a:hover{color:var(--teal);background:transparent}.summary{margin:30px 0 0;background:#fff;border:1px solid var(--line);padding:26px 28px}.grid{grid-template-columns:repeat(5,1fr);gap:0;margin:0}.card{min-height:94px;padding:10px 15px;border:0;border-left:1px solid var(--line);border-top:0;border-radius:0;box-shadow:none}.card:first-child{border-left:0;padding-left:0}.card:nth-child(1),.card:nth-child(2){grid-column:span 1}.card:nth-child(n+6){margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.label{font-size:10px;color:var(--muted);letter-spacing:.1em}.value{font-size:28px;font-weight:650}.card.success,.card.danger,.card.warning{border-top:0}.card.success .value{color:var(--ok)}.card.danger .value{color:var(--bad)}.card.warning .value{color:var(--warn)}.identity,.evidence,.findings,.results,.assessment-details,.recommendation-summary{margin-top:28px;padding:28px;background:#fff;border:1px solid var(--line);border-radius:0;box-shadow:none}.section-heading{align-items:baseline;margin-bottom:18px}.section-heading h2{font-size:20px;font-weight:650}.section-heading p{font-size:10px;letter-spacing:.12em}.section-heading strong{font-weight:600}table{border:0;border-radius:0}th,td{padding:10px 12px;border-bottom:1px solid #e2e7ea}th{background:#eaf0f2;color:#355063;font-size:10px;font-weight:750}.identity th{background:#f6f8f9}.recommendation-summary td:nth-child(2){font-weight:700;color:var(--teal)}.results tr:nth-child(even) td,.findings tr:nth-child(even) td{background:#fafcfc}.rule-detail{padding:20px 0}.rule-detail h3{font-size:15px;font-weight:650}.rule-detail dl{grid-template-columns:130px 1fr}.rule-detail dt{font-size:10px}.evidence tr:first-child td{font-weight:650}.identity,.evidence{break-inside:avoid}footer{font-size:11px;color:var(--muted)}@media(max-width:700px){main{padding:20px 14px 40px}header{min-height:0;padding:27px 22px 60px}.release-stamp{position:static;margin-top:24px}.cover-meta{left:22px;right:22px;bottom:17px;gap:8px;flex-direction:column}.summary,.identity,.evidence,.findings,.results,.assessment-details,.recommendation-summary{padding:20px}.grid{grid-template-columns:repeat(2,1fr)}.card:nth-child(odd){border-left:0;padding-left:0}.card:nth-child(n+3){margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}}@media print{body{background:#fff}main{padding:0}header{min-height:180px}.summary,.identity,.evidence,.findings,.results,.assessment-details,.recommendation-summary{border-color:#aebbc4}.cover-meta{bottom:12px}.grid{grid-template-columns:repeat(5,1fr)}}
 </style>''')
     try:
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", image_name) or "image"
