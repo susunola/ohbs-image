@@ -25,15 +25,14 @@ can be traced across rebuilds.
   relabel via `/.autorelabel`; the ssh-guard keeps the marker when
   SELINUX=enforcing (it previously deleted it unconditionally).
 
-- **`selinux` mode_enforcing: FULL inline restorecon instead of a
-  boot-time autorelabel** — the rhel10-L2 build hung 30+ min in the
-  unobservable no-SSH window of a boot-time `/.autorelabel` (packer only
-  sees i/o timeouts).  restorecon with SELinux still disabled only
-  writes xattrs, so the fixer now relabels the whole filesystem inline
-  (stamped, idempotent) and the enforcing boot starts sshd immediately;
-  the pipeline cleanup step restorecons the late-created artifacts
-  (/opt, /etc, /var, /home, /root) so nothing lands unlabeled at the
-  consumer's first boot.
+- **`selinux` mode_enforcing: inline relabel via `setfiles -F`** —
+  `restorecon` NO-OPS while SELinux is disabled (0.001s, labels
+  nothing), so every enforcing approach that relied on it (inline or
+  boot-time autorelabel) booted an unlabeled filesystem and hung.
+  `setfiles -F <file_contexts> /` applies labels from userspace
+  regardless of kernel state (~6s per rootfs); verified live: permissive
+  AND enforcing boots return SSH immediately.  The pipeline cleanup
+  relabels late-created artifacts the same way.
 
 ### Fixed (L2 first pass)
 - **`dnf_flag` notapplicable on apt systems** (ubuntu2404 L2 1.2.1.2
