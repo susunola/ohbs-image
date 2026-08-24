@@ -8,7 +8,7 @@ name = "ohbs-image"
 # Single source of truth: ohbs_image/_logging.py VERSION (read via AST, no import).
 dynamic = ["version"]
 description = "ohbs-hardened golden image builder for Tencent Cloud — config-driven CLI, 12 OS profiles, bundled ohbs-os engine"
-license = {text = "MIT"}
+license = "MIT"
 readme = "README.md"
 authors = [{name = "ohbs-image contributors"}]
 requires-python = ">=3.11"
@@ -17,7 +17,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -50,13 +49,18 @@ dev = [
 
 [tool.setuptools]
 packages = ["ohbs_image"]
-include-package-data = true
+# Roles are declared explicitly below; disabling implicit manifest-driven data
+# discovery keeps setuptools from treating role directories as Python packages.
+include-package-data = false
 
 [tool.setuptools.dynamic]
 version = {attr = "ohbs_image._logging.VERSION"}
 
 [tool.setuptools.package-data]
 ohbs_image = ["py.typed", "roles/**/*"]
+
+[tool.setuptools.exclude-package-data]
+ohbs_image = ["roles/**/__pycache__/*", "roles/**/*.pyc", "roles/**/*.pyo"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

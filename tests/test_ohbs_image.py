@@ -991,6 +991,21 @@ class TestPackaging:
         ]
         assert missing == [], f"Bundled roles missing: {missing}"
 
+    def test_generated_bytecode_is_excluded_from_distributions(self):
+        """Developer test runs must not leak local bytecode into releases."""
+        project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+        excluded = project["tool"]["setuptools"]["exclude-package-data"]["ohbs_image"]
+        assert "roles/**/__pycache__/*" in excluded
+        assert "roles/**/*.pyc" in excluded
+        manifest = Path("MANIFEST.in").read_text(encoding="utf-8")
+        assert "recursive-exclude ohbs_image/roles __pycache__ *.py[cod]" in manifest
+
+    def test_package_data_is_explicit(self):
+        project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+        setuptools = project["tool"]["setuptools"]
+        assert setuptools["include-package-data"] is False
+        assert "roles/**/*" in setuptools["package-data"]["ohbs_image"]
+
 
 # ---------------------------------------------------------------------------
 # Preflight
