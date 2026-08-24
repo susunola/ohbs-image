@@ -34,7 +34,7 @@ jobs:
       # refuses to run without this controller-side collection. Keep this
       # installation explicit: pywinrm alone cannot validate Windows roles.
       - name: Install Windows Ansible collection
-        run: ansible-galaxy collection install ansible.windows
+        run: ansible-galaxy collection install -r requirements-builder.yml
 
       # packer is needed by the real-HCL validate tests (TestRealPackerValidate*).
       # They render every profile and run `packer validate` against the actual

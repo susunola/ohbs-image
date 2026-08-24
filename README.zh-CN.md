@@ -40,6 +40,12 @@
 
 ## 安装
 
+Windows 构建使用仓库锁定的 collection 版本：
+
+```bash
+ansible-galaxy collection install -r requirements-builder.yml
+```
+
 **前置条件**
 
 | 条件 | 说明 |

@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -37,21 +38,36 @@ def _version(command: list[str]) -> str:
     return text[0] if text else Path(command[0]).name
 
 
+def _numeric_version(text: str) -> tuple[int, ...]:
+    match = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", text)
+    return tuple(int(value or 0) for value in match.groups()) if match else ()
+
+
 def collect_doctor_checks(config_path: str, *, cloud: bool = True) -> list[DoctorCheck]:
     checks: list[DoctorCheck] = []
-    checks.append(DoctorCheck("python", "pass", f"Python {platform.python_version()}", sys.executable))
+    python_version = tuple(sys.version_info[:3])
+    python_ok = (3, 11) <= python_version < (3, 15)
+    checks.append(DoctorCheck(
+        "python", "pass" if python_ok else "fail", f"Python {platform.python_version()}",
+        sys.executable, "Install a supported Python 3.11–3.14 release" if not python_ok else ""))
 
     packer = shutil.which("packer")
+    packer_version = _version([packer, "version"]) if packer else ""
+    packer_ok = bool(packer and _numeric_version(packer_version) >= (1, 12, 0))
     checks.append(DoctorCheck(
-        "packer", "pass" if packer else "fail",
-        _version([packer, "version"]) if packer else "Packer is not installed",
-        packer or "", "Install Packer 1.12+ from https://developer.hashicorp.com/packer/install" if not packer else ""))
+        "packer", "pass" if packer_ok else "fail",
+        packer_version if packer else "Packer is not installed",
+        packer or "", "Install Packer 1.12+ from https://developer.hashicorp.com/packer/install"
+        if not packer_ok else ""))
 
     ansible = shutil.which("ansible-playbook")
+    ansible_version = _version([ansible, "--version"]) if ansible else ""
+    ansible_ok = bool(ansible and _numeric_version(ansible_version) >= (2, 15, 0))
     checks.append(DoctorCheck(
-        "ansible", "pass" if ansible else "warn",
-        _version([ansible, "--version"]) if ansible else "ansible-playbook is not installed",
-        ansible or "", "Install ansible-core>=2.15 (required for Windows builds)" if not ansible else ""))
+        "ansible", "pass" if ansible_ok else "warn",
+        ansible_version if ansible else "ansible-playbook is not installed",
+        ansible or "", "Install ansible-core>=2.15 (required for Windows builds)"
+        if not ansible_ok else ""))
 
     path = Path(config_path)
     if not path.exists():
@@ -136,6 +152,15 @@ def collect_doctor_checks(config_path: str, *, cloud: bool = True) -> list[Docto
                 f"Security group {r.security_group_id} is accessible" if sg_found
                 else f"Security group {r.security_group_id} was not found",
                 fix="Select a security group in the configured region" if not sg_found else ""))
+            checks.append(DoctorCheck(
+                "cloud.write_permissions", "skip",
+                "Mutating CAM permissions were not probed by doctor",
+                "Required build permissions are validated by preflight/validate and the protected Canary.",
+                "Grant the documented least-privilege build role before running build"))
+            checks.append(DoctorCheck(
+                "cloud.quotas", "skip",
+                "Cloud quotas were not mutated or reserved by doctor",
+                "Confirm CVM, image, disk and public-IP quotas before large matrix runs."))
         except Exception as exc:
             checks.append(DoctorCheck("cloud.api", "fail", "Tencent Cloud API check failed", str(exc),
                                       "Verify credentials, STS token, region, clock and network access"))
@@ -184,8 +209,9 @@ def _toml_value(value: str, label: str) -> str:
     return cleaned
 
 
-def _choose_resource(kind: str, region: str, *, zone: str = "", profile: str = "") -> str:
-    rows = discover_resources(kind, region, zone=zone, profile=profile)
+def _choose_resource(kind: str, region: str, *, zone: str = "", profile: str = "",
+                     vpc_id: str = "") -> str:
+    rows = discover_resources(kind, region, zone=zone, profile=profile, vpc_id=vpc_id)
     if not rows:
         raise ConfigError(f"No matching {kind} found in {region}")
     if not sys.stdin.isatty():
@@ -216,7 +242,7 @@ def cmd_configure(args: argparse.Namespace) -> int:
                   if args.discover else _ask(args.source_image, "Source image ID"))
         vpc = (args.vpc or _choose_resource("vpcs", region)
                if args.discover else _ask(args.vpc, "VPC ID"))
-        subnet = (args.subnet or _choose_resource("subnets", region, zone=zone)
+        subnet = (args.subnet or _choose_resource("subnets", region, zone=zone, vpc_id=vpc)
                   if args.discover else _ask(args.subnet, "Subnet ID"))
         sg = (args.security_group or _choose_resource("security-groups", region)
               if args.discover else _ask(args.security_group, "Security group ID"))

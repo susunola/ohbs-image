@@ -19,6 +19,9 @@ can be traced across rebuilds.
   canonical source ownership explicit while retaining self-contained roles.
 - **Stronger SLSA provenance** — records source image and rules as resolved
   dependencies and no longer represents provider image IDs as fake SHA-256.
+- **Reproducible Windows validation toolchain** — CI remains pinned to Packer
+  1.16.0 and now installs `ansible.windows` 3.2.0 from
+  `requirements-builder.yml` instead of a floating collection release.
 - **`[ohbs].allow_disruptive` config option** (default `true`) — controls
   whether the engine applies disruptive remediations (mount options,
   service removals, SELinux enforcing, …) during the build. Previously

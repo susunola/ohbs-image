@@ -140,7 +140,7 @@ export WINRM_PASSWORD=xxxx   # Windows builds only
 | **Python** | 3.11+ (stdlib only — zero pip dependencies) |
 | **Packer** | 1.12+ |
 | **ansible-core** | 2.15+ (controller — required for Windows builds) |
-| **ansible.windows** | `ansible-galaxy collection install ansible.windows` (Windows builds only) |
+| **ansible.windows** | `ansible-galaxy collection install -r requirements-builder.yml` (Windows builds only; version locked) |
 | **Tencent Cloud** | Sub-account with `cvm:RunInstances`, `cvm:CreateImage`, `cvm:DescribeImages`; `cvm:CopyImage` for cross-region copy |
 | **Network** | Dedicated VPC + subnet + security group — SSH/22 (Linux) or WinRM/5985 (Windows, NTLM message encryption), source-restricted to build machine egress IP |
 | **Source Image** | Public image ID for the target OS |
@@ -801,7 +801,7 @@ distribute pipeline):
 
 ### Real cloud acceptance and cleanup drills
 
-Two manual GitHub workflows turn the operational checks into repeatable,
+Three protected GitHub workflows turn the operational checks into repeatable,
 reviewable runs without creating surprise cloud spend:
 
 - `real-cloud-acceptance` requires the protected `cloud-e2e` environment and
@@ -813,8 +813,14 @@ reviewable runs without creating surprise cloud spend:
 - `ephemeral-cleanup-drill` is dry-run by default. Its `apply` input is the
   only path that terminates tagged ephemeral CVMs; protect the same environment
   with reviewers and inspect the dry-run artifact first.
+- `cloud-canary` adds a weekly TencentOS 3 L1 acceptance, but its scheduled
+  job remains inert until repository variable
+  `OHBS_ENABLE_CLOUD_CANARY=true`. Manual runs require cost confirmation and
+  may select TencentOS 3 or Windows Server 2022. Configure
+  `TC_CANARY_TENCENTOS3_IMAGE_ID` and `TC_CANARY_WIN2022_IMAGE_ID` in the same
+  protected environment.
 
-Both workflows use short-lived OIDC credentials and keep their logs/evidence
+All workflows use short-lived OIDC credentials and keep their logs/evidence
 as 90-day artifacts. They are intentionally manual until the organization has
 accepted the associated cloud cost and change-control policy.
 

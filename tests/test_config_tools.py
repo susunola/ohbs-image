@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from ohbs_image._config_tools import cmd_config_migrate, cmd_config_schema
+from ohbs_image._config_tools import cmd_config_explain, cmd_config_migrate, cmd_config_schema
 
 
 def test_schema_is_machine_readable(capsys):
@@ -30,3 +30,9 @@ def test_migrate_apply_is_atomic(tmp_path):
     assert cmd_config_migrate(args) == 0
     assert config.read_text(encoding="utf-8").startswith("schema_version = 1")
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_explain_known_and_unknown(capsys):
+    assert cmd_config_explain(argparse.Namespace(key="state.backend")) == 0
+    assert "local or cos" in capsys.readouterr().out
+    assert cmd_config_explain(argparse.Namespace(key="unknown.key")) == 1

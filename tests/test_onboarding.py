@@ -55,6 +55,37 @@ def test_doctor_missing_config_json(tmp_path, capsys):
     assert any(c["id"] == "config" and c["status"] == "fail" for c in doc["checks"])
 
 
+def test_doctor_cloud_contract_and_relationships(tmp_path, monkeypatch, capsys):
+    target = tmp_path / "ohbs-image.toml"
+    assert cmd_configure(_configure_args(target)) == 0
+    capsys.readouterr()
+    monkeypatch.setenv("TENCENTCLOUD_SECRET_ID", "sid")
+    monkeypatch.setenv("TENCENTCLOUD_SECRET_KEY", "key")
+    monkeypatch.setattr("ohbs_image._creds", lambda *a: ("sid", "key", None))
+
+    def fake_api(service, action, version, region, params, sid, key, token):
+        if action == "DescribeImages":
+            return {"Response": {"ImageSet": [{"ImageId": "img-abc12345"}]}}
+        if action == "DescribeSubnets":
+            return {"Response": {"SubnetSet": [{"SubnetId": "subnet-abc12345",
+                                                  "VpcId": "vpc-abc12345",
+                                                  "Zone": "ap-guangzhou-3"}]}}
+        if action == "DescribeSecurityGroups":
+            return {"Response": {"SecurityGroupSet": [{"SecurityGroupId": "sg-abc12345"}]}}
+        raise AssertionError(action)
+
+    monkeypatch.setattr("ohbs_image._tc3_api", fake_api)
+    args = argparse.Namespace(config=str(target), no_cloud=False, output="json")
+    cmd_doctor(args)
+    doc = json.loads(capsys.readouterr().out)
+    assert set(doc) == {"schema", "ready", "checks"}
+    statuses = {check["id"]: check["status"] for check in doc["checks"]}
+    assert statuses["cloud.source_image"] == "pass"
+    assert statuses["cloud.subnet_vpc"] == "pass"
+    assert statuses["cloud.subnet_zone"] == "pass"
+    assert statuses["cloud.security_group"] == "pass"
+
+
 def test_local_state_backend_round_trip(tmp_path):
     state = tmp_path / "state"
     remote = tmp_path / "remote"
@@ -76,3 +107,15 @@ def test_parser_exposes_first_wave_commands():
     state = parser.parse_args(["state", "sync", "push", "--backend", "cos",
                                "--location", "cos://bucket/state"])
     assert state.direction == "push"
+
+
+def test_plan_v1_contract_shape(tmp_path, capsys):
+    target = tmp_path / "ohbs-image.toml"
+    assert cmd_configure(_configure_args(target)) == 0
+    capsys.readouterr()
+    assert cmd_plan(argparse.Namespace(config=str(target), output="json")) == 0
+    doc = json.loads(capsys.readouterr().out)
+    assert list(doc) == ["schema", "mutates_cloud", "profile", "family", "cis_level",
+                         "placement", "source_image_id", "temporary_resources", "outputs",
+                         "gates", "distribution", "limits", "cost"]
+    assert doc["schema"] == "https://ohbs-image.dev/plan/v1"

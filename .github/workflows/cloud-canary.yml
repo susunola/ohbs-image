@@ -67,6 +67,7 @@ jobs:
         run: |
           export "E2E_TARGET_IMAGE_${CANARY_PROFILE}=$E2E_CANARY_IMAGE"
           pip install -e ".[dev]"
+          ansible-galaxy collection install -r requirements-builder.yml
           python scripts/real_e2e_test.py \
             --region "$E2E_TARGET_REGION" --zone "$E2E_TARGET_ZONE" \
             --vpc-id "$E2E_TARGET_VPC_ID" --subnet-id "$E2E_TARGET_SUBNET_ID" \

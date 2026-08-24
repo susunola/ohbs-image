@@ -75,6 +75,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_discover.add_argument("resource", choices=["images", "vpcs", "subnets", "security-groups"])
     p_discover.add_argument("--region", required=True)
     p_discover.add_argument("--zone")
+    p_discover.add_argument("--vpc", help="Limit subnet discovery to this VPC")
     p_discover.add_argument("--profile", choices=sorted(PROFILES))
     p_discover.add_argument("--output", choices=["text", "json"], default="text")
     p_discover.set_defaults(func=cmd_discover)

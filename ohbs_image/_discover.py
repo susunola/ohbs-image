@@ -20,7 +20,7 @@ def _credentials() -> tuple[str, str, str]:
 
 
 def discover_resources(kind: str, region: str, *, zone: str = "",
-                       profile: str = "") -> list[dict[str, Any]]:
+                       profile: str = "", vpc_id: str = "") -> list[dict[str, Any]]:
     sid, key, token = _credentials()
     if kind == "images":
         params: dict[str, Any] = {"ImageType": "PUBLIC_IMAGE", "Limit": 100}
@@ -43,7 +43,10 @@ def discover_resources(kind: str, region: str, *, zone: str = "",
             if needles and not all(needle in haystack for needle in needles):
                 continue
             result.append({"id": row.get("ImageId", ""), "name": name,
-                           "os": row.get("OsName", ""), "created_at": row.get("CreatedTime", "")})
+                           "os": row.get("OsName", ""),
+                           "architecture": row.get("Architecture", ""),
+                           "state": row.get("ImageState", ""),
+                           "created_at": row.get("CreatedTime", "")})
         return result
     if kind == "vpcs":
         raw = ohbs_image._tc3_api("vpc", "DescribeVpcs", "2017-03-12", region,
@@ -52,7 +55,11 @@ def discover_resources(kind: str, region: str, *, zone: str = "",
         return [{"id": r.get("VpcId", ""), "name": r.get("VpcName", ""),
                  "cidr": r.get("CidrBlock", "")} for r in rows if isinstance(r, dict)]
     if kind == "subnets":
-        filters = [{"Name": "zone", "Values": [zone]}] if zone else []
+        filters = []
+        if zone:
+            filters.append({"Name": "zone", "Values": [zone]})
+        if vpc_id:
+            filters.append({"Name": "vpc-id", "Values": [vpc_id]})
         raw = ohbs_image._tc3_api("vpc", "DescribeSubnets", "2017-03-12", region,
                                   {"Limit": "100", "Filters": filters}, sid, key, token)
         rows = raw.get("Response", {}).get("SubnetSet", [])
@@ -69,7 +76,7 @@ def discover_resources(kind: str, region: str, *, zone: str = "",
 def cmd_discover(args: argparse.Namespace) -> int:
     try:
         rows = discover_resources(args.resource, args.region, zone=args.zone or "",
-                                  profile=args.profile or "")
+                                  profile=args.profile or "", vpc_id=args.vpc or "")
     except Exception as exc:
         fail(f"Discovery failed: {exc}")
         return 1
