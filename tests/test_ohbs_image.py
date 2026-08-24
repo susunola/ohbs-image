@@ -1387,7 +1387,7 @@ class TestRunPacker:
         assert result.exit_code == 1
         assert "process terminated." in caplog.text
 
-    def _run_packer_with_init_results(self, tmp_path, init_results, subcmd="validate"):
+    def _run_packer_with_init_results(self, tmp_path, init_results, subcmd="validate", timeout=None):
         """Run run_packer with a patched subprocess.run that yields *init_results*
         for the `packer init` step, and a succeeding `packer validate` step."""
         wd = tmp_path / "build"
@@ -1405,7 +1405,7 @@ class TestRunPacker:
             mock_proc.stdout = ["OK\n"]
             mock_proc.__enter__.return_value = mock_proc
             mock_popen.return_value = mock_proc
-            result = run_packer(wd, subcmd, capture=True)
+            result = run_packer(wd, subcmd, capture=True, timeout=timeout)
         return result, mock_run, mock_sleep
 
     def test_init_retries_transient_then_succeeds(self, tmp_path):
@@ -1419,6 +1419,29 @@ class TestRunPacker:
         assert result.exit_code == 0
         assert mock_run.call_count == 2          # one transient failure + one success
         assert mock_sleep.call_count == 1        # one backoff between attempts
+
+    def test_init_consumes_the_shared_packer_budget(self, tmp_path):
+        """The init phase must receive the caller's total deadline, not 300s."""
+        results = [subprocess.CompletedProcess([], 0, stdout="", stderr="")]
+        result, mock_run, _ = self._run_packer_with_init_results(tmp_path, results, timeout=17)
+        assert result.exit_code == 0
+        assert mock_run.call_args.kwargs["timeout"] == 17
+
+    def test_budget_exhausted_during_init_never_starts_build(self, tmp_path, caplog):
+        wd = tmp_path / "build"
+        wd.mkdir()
+        (wd / "packer").mkdir()
+        (wd / "packer" / "main.pkr.hcl").write_text("")
+        with (
+            mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout="", stderr="")) as init,
+            mock.patch("subprocess.Popen") as packer_build,
+            mock.patch("ohbs_image._packer.time.monotonic", side_effect=[0.0, 0.0, 11.0]),
+        ):
+            result = run_packer(wd, "build", capture=True, timeout=10)
+        assert result.exit_code == 1
+        assert init.call_args.kwargs["timeout"] == 10
+        packer_build.assert_not_called()
+        assert "exhausted during init" in caplog.text
 
     def test_init_retries_then_fails_on_persistent_transient(self, tmp_path):
         """Persistent transient failures exhaust retries and return non-zero."""
@@ -4432,6 +4455,9 @@ class TestProvenanceSbom:
         assert "Assessment Results" in text
         assert "Assessment Details" in text
         assert "Scores by recommendation group" in text
+        assert "Catalog coverage" in text
+        assert "Not evaluated" in text
+        assert "Scores use evaluated rules only" in text
         assert "Group 1" in text
         assert 'id="audit-filter"' in text
         assert 'id="audit-search"' in text

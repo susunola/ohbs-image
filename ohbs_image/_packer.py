@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import re
 import shutil
@@ -56,6 +57,17 @@ def run_packer(
     """
     if timeout is None:
         timeout = PACKER_TIMEOUT_MINUTES * 60
+    if timeout <= 0:
+        fail("packer time budget must be positive")
+        return PackerResult(exit_code=1)
+    # The configured budget is a deadline for the *whole* Packer operation,
+    # not merely ``packer build``. Plugin initialisation can retry for many
+    # minutes during a registry outage, so it must consume the same budget.
+    deadline = time.monotonic() + timeout
+
+    def remaining_seconds() -> int:
+        """Return positive whole seconds remaining under the shared deadline."""
+        return max(0, math.ceil(deadline - time.monotonic()))
 
     env = os.environ.copy()
     if debug:
@@ -81,13 +93,17 @@ def run_packer(
     init_res: subprocess.CompletedProcess[str] | None = None
     combined = ""
     for attempt in range(INIT_MAX_ATTEMPTS):
+        remaining = remaining_seconds()
+        if remaining <= 0:
+            fail("packer time budget exhausted during init; build was not started.")
+            return PackerResult(exit_code=1, stdout_lines=combined.splitlines())
         try:
             init_res = subprocess.run(
                 ["packer", "init", hcl_path],
                 cwd=workdir,
                 capture_output=True,
                 text=True,
-                timeout=300,
+                timeout=min(300, remaining),
                 env=env,
             )
         except FileNotFoundError:
@@ -95,12 +111,12 @@ def run_packer(
             return PackerResult(exit_code=1)
         except subprocess.TimeoutExpired:
             # A timeout is a network/stall symptom worth retrying.
-            if attempt == INIT_MAX_ATTEMPTS - 1:
-                fail(f"packer init timed out (300s) after {INIT_MAX_ATTEMPTS} attempts. "
-                     f"Check network / plugin registry access.")
+            if attempt == INIT_MAX_ATTEMPTS - 1 or remaining_seconds() <= 0:
+                fail("packer time budget exhausted during init. "
+                     "Check network / plugin registry access.")
                 return PackerResult(exit_code=1)
             warn(f"packer init timed out (attempt {attempt + 1}/{INIT_MAX_ATTEMPTS}) — retrying")
-            time.sleep(2 ** attempt)
+            time.sleep(min(2 ** attempt, remaining_seconds()))
             continue
 
         if init_res.returncode == 0:
@@ -111,7 +127,7 @@ def run_packer(
         if attempt == INIT_MAX_ATTEMPTS - 1:
             break  # exhausted retries — surface the last failure
         warn(f"packer init failed transiently (attempt {attempt + 1}/{INIT_MAX_ATTEMPTS}) — retrying")
-        time.sleep(2 ** attempt)
+        time.sleep(min(2 ** attempt, remaining_seconds()))
 
     assert init_res is not None  # loop always assigns on non-FileNotFound paths
     if init_res.returncode != 0:
@@ -126,6 +142,10 @@ def run_packer(
 
     # 2. packer <subcmd>
     cmd = ["packer", subcmd, f"-var-file={varfile_path}", hcl_path]
+    remaining = remaining_seconds()
+    if remaining <= 0:
+        fail("packer time budget exhausted during init; build was not started.")
+        return PackerResult(exit_code=1)
     try:
         if capture or quiet or log_file:
             # Capture output line-by-line with real-time streaming.  The
@@ -159,7 +179,7 @@ def run_packer(
             reader = threading.Thread(target=_reader, daemon=True)
             reader.start()
             try:
-                proc.wait(timeout=timeout)
+                proc.wait(timeout=remaining)
             except subprocess.TimeoutExpired:
                 # SIGTERM first so Packer can run its own cleanup (deleting
                 # the temporary build CVM); SIGKILL only as a last resort.
@@ -170,7 +190,7 @@ def run_packer(
                     proc.kill()
                     proc.wait()
                 reader.join(timeout=10)
-                fail(f"packer {subcmd} timed out after {timeout // 60} minutes; "
+                fail(f"packer {subcmd} exhausted the total {timeout // 60} minute time budget; "
                      "process terminated.")
                 return PackerResult(exit_code=1, stdout_lines=lines)
             reader.join(timeout=30)
@@ -184,7 +204,7 @@ def run_packer(
             # capture branch: without text=True this is Popen[bytes].)
             live = subprocess.Popen(cmd, cwd=str(workdir), env=env)
             try:
-                live.communicate(timeout=timeout)
+                live.communicate(timeout=remaining)
             except subprocess.TimeoutExpired:
                 live.terminate()
                 try:
@@ -192,7 +212,7 @@ def run_packer(
                 except subprocess.TimeoutExpired:
                     live.kill()
                     live.communicate()
-                fail(f"packer {subcmd} timed out after {timeout // 60} minutes; "
+                fail(f"packer {subcmd} exhausted the total {timeout // 60} minute time budget; "
                      "process terminated.")
                 return PackerResult(exit_code=1)
             return PackerResult(exit_code=live.returncode)

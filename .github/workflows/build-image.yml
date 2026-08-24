@@ -29,6 +29,9 @@ jobs:
     # This label is intentionally private: a golden-image build has cloud
     # credentials and must not require a public SSH listener on the build CVM.
     runs-on: [self-hosted, linux, ohbs-image-private]
+    # Enforce a second, workflow-level ceiling around dependency installation
+    # and the shared Packer deadline (default 120 minutes).
+    timeout-minutes: 145
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -84,6 +87,9 @@ jobs:
               -e "s/\"subnet-xxxxxxxx\"/\"$TC_BUILD_SUBNET_ID\"/" \
               -e "s/\"sg-xxxxxxxx\"/\"$TC_BUILD_SG_ID\"/" \
               ohbs-image.toml.example > ohbs-image.toml
+          # A CI-produced release is accepted only after a fresh VM boot and
+          # re-audit.  This remains opt-in for interactive/local builds.
+          printf '\nverify_boot = true\n' >> ohbs-image.toml
 
       - name: Build golden image
         run: ohbs-image build --config ohbs-image.toml -y

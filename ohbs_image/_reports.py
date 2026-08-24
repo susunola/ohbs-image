@@ -302,6 +302,8 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
     display_rules = catalog_rules or list(results_by_id.values())
     assessment_rows.clear()
     category_stats.clear()
+    evaluated_rules = 0
+    not_evaluated_rules = 0
     for rule in sorted(display_rules, key=lambda value: _cis_rule_order_key(value.get("id", ""))):
         rule_id = str(rule.get("id", "Not available"))
         result = results_by_id.get(rule_id, {})
@@ -312,9 +314,14 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
         levels = rule.get("levels", result.get("levels", []))
         profiles = ", ".join(f"L{level}" for level in levels) if isinstance(levels, list) else "Not available"
         category = str(rule.get("section") or result.get("section") or rule_id.split(".", 1)[0])
-        stats = category_stats.setdefault(category, {"pass": 0, "fail": 0, "manual": 0, "error": 0})
+        stats = category_stats.setdefault(
+            category, {"pass": 0, "fail": 0, "manual": 0, "error": 0, "not_evaluated": 0})
         if rule_status in stats:
             stats[rule_status] += 1
+            evaluated_rules += 1
+        else:
+            stats["not_evaluated"] += 1
+            not_evaluated_rules += 1
         status_token = re.sub(r"[^a-z0-9]+", "-", display_status.lower()).strip("-") or "unknown"
         assessment_rows.append(
             f"<tr data-status=\"{status_token}\"><td>{text(rule_id)}</td><td>{text(rule.get('title', result.get('title', '')))}</td>"
@@ -323,9 +330,14 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
     findings_html = ("<section class=\"findings\"><div class=\"section-heading\"><div><p>EXCEPTIONS</p><h2>Rules requiring attention</h2></div><strong>"
                      f"{len(findings)} record{'s' if len(findings) != 1 else ''}</strong></div><table><tr><th>Rule</th><th>Audit</th><th>Remediation</th><th>Title</th></tr>"
                      + "".join(findings[:200]) + "</table></section>") if findings else ""
+    total_rules = len(assessment_rows)
+    coverage_s = f"{(100 * evaluated_rules / total_rules):.0f}%" if total_rules else "Not available"
+    coverage_cards = (f'<div class="card neutral"><div class="label">Evaluated</div><div class="value">{evaluated_rules}</div></div>'
+                      f'<div class="card neutral"><div class="label">Not evaluated</div><div class="value">{not_evaluated_rules}</div></div>'
+                      f'<div class="card neutral"><div class="label">Catalog coverage</div><div class="value">{coverage_s}</div></div>')
     results_html = ("<section id=\"assessment-results\" class=\"results\"><div class=\"section-heading\"><div><p>ASSESSMENT RESULTS</p>"
                     "<h2>Recommendation results</h2></div><strong>"
-                    f"{len(assessment_rows)} recommendations</strong></div>"
+                    f"{total_rules} recommendations · {evaluated_rules} evaluated ({coverage_s})</strong></div>"
                     "<div class=\"results-tools\"><label>Audit status <select id=\"audit-filter\"><option value=\"all\">All</option><option value=\"pass\">Pass</option><option value=\"fail\">Fail</option><option value=\"manual\">Manual</option><option value=\"error\">Error</option><option value=\"not-evaluated-scope\">Not evaluated (scope)</option></select></label><label>Search recommendation <input id=\"audit-search\" type=\"search\" placeholder=\"Rule ID or text\"></label><span id=\"audit-count\"></span></div>"
                     "<table id=\"assessment-table\"><tr><th>Rule</th><th>Recommendation</th><th>Profiles</th><th>Assessment</th><th>Audit</th><th>Remediation</th></tr>"
                     + "".join(assessment_rows[:1000]) + "</table></section>") if assessment_rows else ""
@@ -337,13 +349,17 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
     for category, stats in sorted(category_stats.items(), key=lambda entry: _cis_rule_order_key(entry[0])):
         scored = stats["pass"] + stats["fail"] + stats["error"]
         category_score = f"{(100 * stats['pass'] / scored):.0f}%" if scored else "Not scored"
+        category_evaluated = stats["pass"] + stats["fail"] + stats["manual"] + stats["error"]
+        category_total = sum(stats.values())
+        category_coverage = (f"{category_evaluated}/{category_total} "
+                             f"({(100 * category_evaluated / category_total):.0f}%)") if category_total else "Not available"
         category_rows.append(
-            f"<tr><td>Group {text(category)}</td><td>{text(category_score)}</td>"
+            f"<tr><td>Group {text(category)}</td><td>{text(category_score)} (evaluated)</td><td>{text(category_coverage)}</td>"
             f"<td>{text(stats['pass'])}</td><td>{text(stats['fail'])}</td>"
-            f"<td>{text(stats['manual'])}</td><td>{text(stats['error'])}</td></tr>")
+            f"<td>{text(stats['manual'])}</td><td>{text(stats['error'])}</td><td>{text(stats['not_evaluated'])}</td></tr>")
     category_html = ("<section class=\"recommendation-summary\"><div class=\"section-heading\"><div><p>COMPLIANCE SUMMARY</p>"
-                     "<h2>Scores by recommendation group</h2></div><strong>Pass / Fail / Manual / Error</strong></div>"
-                     "<table><tr><th>Group</th><th>Score</th><th>Pass</th><th>Fail</th><th>Manual</th><th>Error</th></tr>"
+                     "<h2>Scores by recommendation group</h2></div><strong>Scores use evaluated rules only</strong></div>"
+                     "<table><tr><th>Group</th><th>Score</th><th>Coverage</th><th>Pass</th><th>Fail</th><th>Manual</th><th>Error</th><th>Not evaluated</th></tr>"
                      + "".join(category_rows) + "</table></section>") if category_rows else ""
     rows = [("Profile", r.profile_name), ("CIS level", f"L{r.level}"),
             ("Region / zone", f"{r.region} / {r.zone}"), ("Source image", r.source_image_id),
@@ -352,7 +368,7 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
             ("Provenance", str(provenance or "Not available"))]
     detail_rows = "".join(f"<tr><th>{text(k)}</th><td>{text(v)}</td></tr>" for k, v in rows)
     html_doc = f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ohbs-image delivery report · {text(image_name)}</title><style>:root{{--ink:#15212c;--muted:#627487;--line:#dce4eb;--bg:#f3f6f8;--navy:#173a63;--ok:#06734d;--bad:#a12e2b}}*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}}main{{max-width:1000px;margin:auto;padding:32px 20px 64px}}header{{background:var(--navy);color:white;padding:30px;border-radius:15px 15px 0 0}}h1{{margin:0;font-size:27px}}.sub{{color:#cfdef0;margin-top:7px}}.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}}.card,table{{background:white;border:1px solid var(--line);border-radius:10px}}.card{{padding:17px}}.label{{font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--muted);text-transform:uppercase}}.value{{font-size:27px;font-weight:800;margin-top:5px}}.approved{{color:var(--ok)}}.blocked{{color:var(--bad)}}h2{{font-size:18px;margin:32px 0 12px}}table{{border-collapse:separate;border-spacing:0;width:100%;overflow:hidden}}th,td{{padding:12px 15px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;word-break:break-word}}th{{width:31%;color:var(--muted);font-size:13px}}tr:last-child th,tr:last-child td{{border-bottom:0}}footer{{color:var(--muted);font-size:12px;margin-top:22px}}@media(max-width:700px){{.grid{{grid-template-columns:repeat(2,1fr)}}header{{border-radius:10px}}}}</style><body><main><header><h1>Image delivery report</h1><div class="sub">{text(image_name)} · generated by ohbs-image</div></header><section class="grid"><div class="card"><div class="label">Release status</div><div class="value {status_class}">{status}</div></div><div class="card"><div class="label">Re-audit score</div><div class="value">{text(score_s)}</div></div><div class="card"><div class="label">Rules passed</div><div class="value">{text(summary.get("pass", "—"))}</div></div><div class="card"><div class="label">Rules failed</div><div class="value">{text(summary.get("fail", "—"))}</div></div></section><h2>Build identity</h2><table>{detail_rows}</table><h2>Evidence</h2><table><tr><th>Attestation</th><td>{"Signed" if signed else "Not signed"}</td></tr><tr><th>SBOM packages</th><td>{text(summary.get("sbom_packages", "—"))}</td></tr><tr><th>Audit mode</th><td>{text(audit.get("mode", "—"))}</td></tr></table><footer>This report is a human-readable view. Verify the referenced provenance signature and machine-readable result for release automation.</footer></main></body></html>'''
-    html_doc = html_doc.replace("</section><h2>Build identity", metric_cards + "</section><h2>Build identity")
+    html_doc = html_doc.replace("</section><h2>Build identity", metric_cards + coverage_cards + "</section><h2>Build identity")
     html_doc = html_doc.replace("<h2>Evidence", results_html + findings_html + details_html + "<h2>Evidence")
     html_doc = html_doc.replace('<div class="card"><div class="label">Rules passed',
                                 '<div class="card success"><div class="label">Pass')
