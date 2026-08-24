@@ -26,6 +26,7 @@ from ._commands import (
     cmd_validate,
     cmd_verify,
     cmd_verify_image,
+    cmd_verify_release,
 )
 from ._logging import VERSION, _setup_logging, fail
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP
@@ -110,6 +111,11 @@ def build_parser() -> argparse.ArgumentParser:
                              help="Human or CI identity to record (default GITHUB_ACTOR/USER)")
         release.add_argument("--reason", default="", help="Optional change or rollback reason")
         release.set_defaults(func=handler)
+
+    p_verify_release = sub.add_parser("verify-release", parents=[common],
+                                      help="Verify an approved image's release-manifest evidence")
+    p_verify_release.add_argument("--image", required=True, help="Approved image ID (e.g. img-xxxx)")
+    p_verify_release.set_defaults(func=cmd_verify_release)
 
     p_vrf = sub.add_parser("verify", parents=[common],
                            help="Verify a SLSA provenance signature")

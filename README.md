@@ -173,6 +173,7 @@ ohbs-image list                               # enumerate available profiles wit
 ohbs-image images [--latest] [-n N]           # list recorded builds (lineage)
 ohbs-image promote --image img-xxx --environment staging --approved-by alice
 ohbs-image rollback --image img-xxx --environment staging --reason "deployment issue"
+ohbs-image verify-release --image img-xxx   # verify portable release-manifest evidence hashes
 ohbs-image pending                            # change detection: is a rebuild required? (exit 0/1)
 ohbs-image cleanup-images [--older-than 30]   # retire old images by lineage age
 ohbs-image cleanup-images --apply             # actually delete (default = dry run)
@@ -757,6 +758,30 @@ distribute pipeline):
   `ohbs-image rollback --image img-xxx --environment staging` only update this
   auditable release state; application deployment and cloud sharing remain
   explicit external pipeline actions.
+
+  Before a downstream pipeline consumes an image, run
+  `ohbs-image verify-release --image img-xxx` against the downloaded evidence
+  state. It verifies that each referenced audit, provenance, and HTML report
+  remains under the state root and matches its recorded SHA-256.
+
+### Real cloud acceptance and cleanup drills
+
+Two manual GitHub workflows turn the operational checks into repeatable,
+reviewable runs without creating surprise cloud spend:
+
+- `real-cloud-acceptance` requires the protected `cloud-e2e` environment and
+  an explicit cost confirmation. It runs exactly one profile/level through a
+  real build; Linux also performs clean-boot verification. Configure
+  `TC_E2E_OIDC_ROLE_ARN`, `TC_E2E_REGION`, `TC_E2E_ZONE`, `TC_E2E_VPC_ID`,
+  `TC_E2E_SUBNET_ID`, `TC_E2E_SG_ID`, and `TC_E2E_SOURCE_IMAGE_ID` as
+  environment secrets. Windows also needs `TC_E2E_WINRM_PASSWORD`.
+- `ephemeral-cleanup-drill` is dry-run by default. Its `apply` input is the
+  only path that terminates tagged ephemeral CVMs; protect the same environment
+  with reviewers and inspect the dry-run artifact first.
+
+Both workflows use short-lived OIDC credentials and keep their logs/evidence
+as 90-day artifacts. They are intentionally manual until the organization has
+accepted the associated cloud cost and change-control policy.
 
 - **SBOM + change detection (supply chain)** — with `[meta].sbom = true` the
   build emits a zero-dependency SBOM (`/opt/ohbs-image-SBOM.jsonl`, native

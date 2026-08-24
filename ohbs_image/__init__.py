@@ -50,10 +50,10 @@ __all__ = [
     '_probe_teardown_keypair', '_probe_terminate', '_record_lineage', '_reports_dir',
     '_render_extra_args_block', '_rhel_profile', '_sanitize_region_zone', '_save_build_report', '_send_notification', '_setup_logging', '_sg_ingress_allows',
     '_share_images', '_source_image_created', '_state_lock', '_tc3_api', '_terminate_ephemeral_instances', '_tlinux_profile', '_trigger_deploy_webhook', '_ubuntu_profile',
-    '_new_run_id', '_read_release_manifest', '_read_run_manifest', '_release_manifest_path', '_release_transition', '_run_manifest_is_active', '_run_manifest_path', '_validate_env_var_name', '_validate_shell_arg', '_validate_value_present', '_write_build_html_report', '_write_build_result', '_write_provenance', '_write_release_manifest', '_write_run_manifest', '_write_sarif', '_write_xccdf',
+    '_new_run_id', '_read_release_manifest', '_read_run_manifest', '_release_manifest_path', '_release_transition', '_run_manifest_is_active', '_run_manifest_path', '_validate_env_var_name', '_validate_shell_arg', '_validate_value_present', '_verify_release_manifest', '_write_build_html_report', '_write_build_result', '_write_provenance', '_write_release_manifest', '_write_run_manifest', '_write_sarif', '_write_xccdf',
     '_yaml_list', 'banner', 'build_parser', 'cmd_audit', 'cmd_build', 'cmd_check_source',
     'cmd_clean', 'cmd_cleanup_images', 'cmd_cleanup_runs', 'cmd_drift', 'cmd_images', 'cmd_init', 'cmd_list',
-    'cmd_pending', 'cmd_preflight', 'cmd_promote', 'cmd_rollback', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate',
+    'cmd_pending', 'cmd_preflight', 'cmd_promote', 'cmd_rollback', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate', 'cmd_verify_release',
     'cmd_verify', 'cmd_verify_image', 'fail', 'info', 'load_config', 'logger',
     'main', 'ok', 'render_all', 'render_finalize', 'render_install', 'render_pkrvars',
     'render_site', 'render_site_audit', 'resolve', 'run_packer', 'run_preflight', 'warn',
@@ -134,6 +134,7 @@ from ._commands import (
     cmd_validate,
     cmd_verify,
     cmd_verify_image,
+    cmd_verify_release,
 )
 from ._config import (
     _CIS_REGION_DASHES,
@@ -217,6 +218,7 @@ from ._reports import (
     _send_notification,
     _state_lock,
     _trigger_deploy_webhook,
+    _verify_release_manifest,
     _write_build_html_report,
     _write_provenance,
     _write_release_manifest,

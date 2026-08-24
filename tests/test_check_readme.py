@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import check_readme  # noqa: E402
 
-ALL_CMDS = {"audit", "build", "check-source", "clean", "cleanup-images", "cleanup-runs", "drift", "promote", "rollback",
+ALL_CMDS = {"audit", "build", "check-source", "clean", "cleanup-images", "cleanup-runs", "drift", "promote", "rollback", "verify-release",
             "images", "init", "list", "pending", "preflight", "scan", "test",
             "validate", "verify", "verify-image"}
 

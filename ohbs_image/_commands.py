@@ -501,6 +501,17 @@ def cmd_rollback(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verify_release(args: argparse.Namespace) -> int:
+    """Verify release-manifest evidence hashes before a downstream promotion."""
+    failures = ohbs_image._verify_release_manifest(args.image)
+    if failures:
+        for item in failures:
+            fail(item)
+        return 1
+    ok(f"Release manifest and evidence hashes verified for {args.image}")
+    return 0
+
+
 def cmd_cleanup_runs(args: argparse.Namespace) -> int:
     """Retire tagged, orphaned ephemeral build/probe CVMs (dry-run by default)."""
     older_than = getattr(args, "older_than", None)

@@ -87,6 +87,51 @@ def _read_release_manifest(image_id: str) -> dict[str, Any] | None:
     return doc if isinstance(doc, dict) else None
 
 
+def _evidence_reference(path: Path | None) -> str:
+    """Return a portable state-root-relative evidence reference when possible."""
+    if path is None:
+        return ""
+    root = ohbs_image._lineage_path().parent.resolve()
+    try:
+        return str(path.resolve().relative_to(root))
+    except ValueError:
+        return ""  # external paths are not portable release evidence
+
+
+def _verify_release_manifest(image_id: str) -> list[str]:
+    """Return integrity failures for a portable release manifest (empty = valid)."""
+    doc = _read_release_manifest(image_id)
+    if not doc:
+        return [f"release manifest not found for {image_id}"]
+    evidence = doc.get("evidence")
+    if not isinstance(evidence, dict):
+        return ["release manifest evidence is missing or malformed"]
+    root = ohbs_image._lineage_path().parent.resolve()
+    failures: list[str] = []
+    for name in ("audit_report", "provenance", "html_report"):
+        ref = evidence.get(name, "")
+        digest = evidence.get(name.replace("report", "sha256") if name == "audit_report"
+                              else name + "_sha256", "")
+        # Keep the manifest readable even when an optional evidence artifact
+        # was not produced, but never accept an absolute/path-traversal ref.
+        if not ref and not digest:
+            continue
+        if not isinstance(ref, str) or not isinstance(digest, str) or not digest:
+            failures.append(f"{name}: missing portable path or SHA-256")
+            continue
+        candidate = (root / ref).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            failures.append(f"{name}: path escapes evidence root")
+            continue
+        if not candidate.is_file():
+            failures.append(f"{name}: evidence file is missing ({ref})")
+        elif _file_hash(candidate) != digest:
+            failures.append(f"{name}: SHA-256 mismatch")
+    return failures
+
+
 def _write_release_manifest(r: ResolvedConfig, image_ids: list[str], image_name: str,
                             score: float | None, report: Path | None,
                             provenance: Path | None, html_report: Path | None,
@@ -120,11 +165,11 @@ def _write_release_manifest(r: ResolvedConfig, image_ids: list[str], image_name:
                     "score": score,
                     "attestation_signed": signed,
                     "evidence": {
-                        "audit_report": str(report) if report else "",
+                        "audit_report": _evidence_reference(report),
                         "audit_sha256": _file_hash(report) if report else "",
-                        "provenance": str(provenance) if provenance else "",
+                        "provenance": _evidence_reference(provenance),
                         "provenance_sha256": _file_hash(provenance) if provenance else "",
-                        "html_report": str(html_report) if html_report else "",
+                        "html_report": _evidence_reference(html_report),
                         "html_report_sha256": _file_hash(html_report) if html_report else "",
                     },
                     "promotions": [],

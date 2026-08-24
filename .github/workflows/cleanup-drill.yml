@@ -1,0 +1,60 @@
+name: ephemeral-cleanup-drill
+
+# Manual by design. Default is read-only; `apply` needs both a protected
+# environment approval and an explicit input because it terminates CVMs.
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Actually terminate stale tagged CVMs (default dry-run)
+        required: true
+        default: false
+        type: boolean
+      older_than_hours:
+        description: Only consider ephemeral CVMs older than this many hours
+        required: true
+        default: "24"
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  cleanup:
+    environment: cloud-e2e
+    runs-on: [self-hosted, linux, ohbs-image-private]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+      - name: Authenticate to Tencent Cloud via OIDC
+        uses: everpcpc/tencentcloud-oidc-auth@bcc33538077d94b147dae540f7419a8cea2a60e8 # v1
+        with:
+          role-arn: ${{ secrets.TC_E2E_OIDC_ROLE_ARN }}
+          oidc-provider-id: github
+          region: ${{ secrets.TC_E2E_REGION }}
+      - name: Generate inspection config
+        env:
+          TC_BUILD_REGION: ${{ secrets.TC_E2E_REGION }}
+          TC_BUILD_ZONE: ${{ secrets.TC_E2E_ZONE }}
+          TC_BUILD_SOURCE_IMAGE_ID: ${{ secrets.TC_E2E_SOURCE_IMAGE_ID }}
+          TC_BUILD_VPC_ID: ${{ secrets.TC_E2E_VPC_ID }}
+          TC_BUILD_SUBNET_ID: ${{ secrets.TC_E2E_SUBNET_ID }}
+          TC_BUILD_SG_ID: ${{ secrets.TC_E2E_SG_ID }}
+        run: |
+          for v in TC_BUILD_REGION TC_BUILD_ZONE TC_BUILD_SOURCE_IMAGE_ID TC_BUILD_VPC_ID TC_BUILD_SUBNET_ID TC_BUILD_SG_ID; do test -n "${!v}"; done
+          sed -e "s/region              = \"ap-guangzhou\"/region              = \"$TC_BUILD_REGION\"/" \
+              -e "s/zone                = \"ap-guangzhou-3\"/zone                = \"$TC_BUILD_ZONE\"/" \
+              -e "s/\"img-xxxxxxxx\"/\"$TC_BUILD_SOURCE_IMAGE_ID\"/" \
+              -e "s/\"vpc-xxxxxxxx\"/\"$TC_BUILD_VPC_ID\"/" \
+              -e "s/\"subnet-xxxxxxxx\"/\"$TC_BUILD_SUBNET_ID\"/" \
+              -e "s/\"sg-xxxxxxxx\"/\"$TC_BUILD_SG_ID\"/" ohbs-image.toml.example > ohbs-image.toml
+      - name: Inspect or terminate stale ephemeral CVMs
+        run: |
+          pip install .
+          args=(cleanup-runs --config ohbs-image.toml --older-than "${{ inputs.older_than_hours }}")
+          if [ "${{ inputs.apply }}" = "true" ]; then args+=(--apply); fi
+          ohbs-image "${args[@]}"

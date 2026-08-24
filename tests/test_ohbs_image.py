@@ -4468,7 +4468,8 @@ class TestProvenanceSbom:
         assert "Example failed rule" in text
 
     def test_release_manifest_tracks_promotion_and_rollback(self, valid_toml, tmp_path, monkeypatch):
-        from ohbs_image import _read_release_manifest, _release_transition, _write_release_manifest
+        from ohbs_image import (_read_release_manifest, _release_transition,
+                                _verify_release_manifest, _write_release_manifest)
         r = resolve(valid_toml)
         r.run_id = "12345678-1234-1234-1234-123456789abc"
         monkeypatch.setattr("ohbs_image._lineage_path", lambda: tmp_path / "lineage.jsonl")
@@ -4480,7 +4481,13 @@ class TestProvenanceSbom:
         paths = _write_release_manifest(r, ["img-abc"], "image-name", 97.0,
                                         audit, provenance, html_report, True)
         assert paths and paths[0].exists()
-        assert _read_release_manifest("img-abc")["state"] == "approved"
+        initial = _read_release_manifest("img-abc")
+        assert initial and initial["state"] == "approved"
+        assert initial["evidence"]["audit_report"] == "audit.json"
+        assert _verify_release_manifest("img-abc") == []
+        audit.write_text("tampered", encoding="utf-8")
+        assert "audit_report: SHA-256 mismatch" in _verify_release_manifest("img-abc")
+        audit.write_text("{}", encoding="utf-8")
         assert _release_transition("img-abc", "staging", action="promoted", actor="alice")
         assert _read_release_manifest("img-abc")["state"] == "promoted"
         assert _release_transition("img-abc", "staging", action="rolled_back",
