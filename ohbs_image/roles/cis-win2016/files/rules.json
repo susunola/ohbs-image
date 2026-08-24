@@ -7514,7 +7514,11 @@
     "risk": "safe",
     "page": 912,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "DisablePasswordSaving", "value": 1}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "DisablePasswordSaving",
+      "value": 1
+    }
   },
   {
     "id": "18.10.57.3.2.1",
@@ -7552,7 +7556,11 @@
     "risk": "safe",
     "page": 918,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fDisableCpm", "value": 1}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "fDisableCpm",
+      "value": 1
+    }
   },
   {
     "id": "18.10.57.3.3.2",
@@ -7569,7 +7577,11 @@
     "risk": "safe",
     "page": 920,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fDisableCdm", "value": 1}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "fDisableCdm",
+      "value": 1
+    }
   },
   {
     "id": "18.10.57.3.3.3",
@@ -7586,7 +7598,11 @@
     "risk": "safe",
     "page": 922,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fDisableLPT", "value": 1}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "fDisableLPT",
+      "value": 1
+    }
   },
   {
     "id": "18.10.57.3.3.4",
@@ -7603,7 +7619,11 @@
     "risk": "safe",
     "page": 924,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fDisablePNPRedir", "value": 1}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "fDisablePNPRedir",
+      "value": 1
+    }
   },
   {
     "id": "18.10.57.3.9.1",
@@ -7641,7 +7661,11 @@
     "risk": "safe",
     "page": 930,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fEncryptRPCTraffic", "value": 1}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "fEncryptRPCTraffic",
+      "value": 1
+    }
   },
   {
     "id": "18.10.57.3.9.3",
@@ -7658,7 +7682,11 @@
     "risk": "safe",
     "page": 932,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "SecurityLayer", "value": 2}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "SecurityLayer",
+      "value": 2
+    }
   },
   {
     "id": "18.10.57.3.9.4",
@@ -7696,7 +7724,11 @@
     "risk": "safe",
     "page": 936,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "MinEncryptionLevel", "value": 3}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "MinEncryptionLevel",
+      "value": 3
+    }
   },
   {
     "id": "18.10.57.3.10.1",
@@ -7713,7 +7745,12 @@
     "risk": "safe",
     "page": 939,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "MaxIdleTime", "value": 900000, "op": "le"}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "MaxIdleTime",
+      "value": 900000,
+      "op": "le"
+    }
   },
   {
     "id": "18.10.57.3.10.2",
@@ -7730,7 +7767,11 @@
     "risk": "safe",
     "page": 941,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "MaxDisconnectionTime", "value": 60000}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+      "name": "MaxDisconnectionTime",
+      "value": 60000
+    }
   },
   {
     "id": "18.10.57.3.11.1",
@@ -8274,7 +8315,11 @@
     "risk": "safe",
     "page": 1014,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU", "name": "NoAutoUpdate", "value": 0}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+      "name": "NoAutoUpdate",
+      "value": 0
+    }
   },
   {
     "id": "18.10.93.2.2",
@@ -8291,7 +8336,11 @@
     "risk": "safe",
     "page": 1017,
     "family": "reg-dword",
-    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU", "name": "ScheduledInstallDay", "value": 0}
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+      "name": "ScheduledInstallDay",
+      "value": 0
+    }
   },
   {
     "id": "18.10.93.4.1",
