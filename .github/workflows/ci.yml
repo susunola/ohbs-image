@@ -83,7 +83,9 @@ jobs:
       # Role payloads are self-contained for Ansible, but their engines have
       # shared ownership. Fail fast if a bulk fix lands in only some profiles.
       - name: Verify shared engine payloads have not drifted
-        run: python3 scripts/check_engine_drift.py
+        run: |
+          python3 scripts/generate_engines.py
+          python3 scripts/check_engine_drift.py
 
       - name: Run tests
         run: pytest -v --tb=short

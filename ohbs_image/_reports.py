@@ -872,7 +872,9 @@ def _write_provenance(r: ResolvedConfig, image_ids: list[str], image_name: str,
         prov: dict[str, Any] = {
             "_type": "https://in-toto.io/Statement/v1",
             "predicateType": "https://slsa.dev/provenance/v1",
-            "subject": [{"name": i, "digest": {"sha256": "n/a"}} for i in image_ids],
+            # Cloud image IDs are provider identities, not content SHA-256
+            # values. Never claim a fabricated sha256 digest in attestation.
+            "subject": [{"name": i, "digest": {"tencentcloudImageId": i}} for i in image_ids],
             "predicate": {
                 "buildDefinition": {
                     "buildType": "https://ohbs_image.dev/build/v1",
@@ -899,6 +901,13 @@ def _write_provenance(r: ResolvedConfig, image_ids: list[str], image_name: str,
                         "fingerprint": ohbs_image._build_fingerprint(r),
                     },
                     "internalParameters": {"ohbs_image_version": VERSION},
+                    "resolvedDependencies": [
+                        {"uri": f"tencentcloud:cvm:image:{r.region}:{r.source_image_id}",
+                         "digest": {"tencentcloudImageId": r.source_image_id}},
+                        {"uri": f"pkg:generic/ohbs-rules/{r.role_dir}@{r.image_benchmark}",
+                         "digest": {"sha256": ohbs_image._bundled_rules_hash(
+                             r.role_dir, r.catalog_basename)}},
+                    ],
                 },
                 "runDetails": {
                     "builder": {"id": f"ohbsimage@{VERSION}"},

@@ -8,6 +8,17 @@ can be traced across rebuilds.
 ## [Unreleased]
 
 ### Added
+- **First-success product workflow** — `configure` (including read-only
+  `--discover`), actionable `doctor` text/JSON diagnostics, and read-only
+  `plan` output for resources, gates and duration.
+- **Team evidence and governance tools** — local/COS `state sync`, config v1
+  JSON Schema/migration/explain commands, and run-to-run `report diff`.
+- **Opt-in real-cloud Canary** — scheduled acceptance remains disabled until
+  explicitly enabled, and manual runs require cost confirmation.
+- **Generated engine ownership guard** — `scripts/generate_engines.py` makes
+  canonical source ownership explicit while retaining self-contained roles.
+- **Stronger SLSA provenance** — records source image and rules as resolved
+  dependencies and no longer represents provider image IDs as fake SHA-256.
 - **`[ohbs].allow_disruptive` config option** (default `true`) — controls
   whether the engine applies disruptive remediations (mount options,
   service removals, SELinux enforcing, …) during the build. Previously

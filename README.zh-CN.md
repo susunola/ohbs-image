@@ -81,13 +81,14 @@ export WINRM_PASSWORD=xxxx
 ## 快速开始
 
 ```bash
-# 1. 生成配置文件
-ohbs-image init
+# 1. 交互式生成最小可用配置（也支持完整命令行参数）
+ohbs-image configure
 
-# 2. 编辑 ohbs-image.toml，填入 VPC、子网、安全组和源镜像 ID
+# 2. 一次列出环境、配置、凭据和云访问问题及修复建议
+ohbs-image doctor
 
-# 3. 构建前自检（校验配置、凭据和前置条件）
-ohbs-image preflight
+# 3. 只读预览资源、闸门、最长时间和成本提示
+ohbs-image plan
 
 # 4. 干跑校验（渲染模板 + packer validate）
 ohbs-image validate
@@ -133,6 +134,15 @@ ohbs-image clean
 | 命令 | 说明 |
 |---|---|
 | `ohbs-image init` | 在当前目录生成 `ohbs-image.toml` |
+| `ohbs-image configure` | 交互或非交互生成最小可用配置 |
+| `ohbs-image discover images --region ap-guangzhou` | 只读发现镜像和网络资源 |
+| `ohbs-image config schema` | 输出配置 JSON Schema |
+| `ohbs-image config migrate --apply` | 原子迁移旧配置到 schema v1 |
+| `ohbs-image report diff --before RUN --after RUN` | 比较两次构建元数据差异 |
+| `ohbs-image doctor --output json` | 结构化诊断工具链、配置、凭据和只读云访问 |
+| `ohbs-image plan --output json` | 不创建资源的构建预览 |
+| `ohbs-image state sync push --backend local --location /shared/state` | 同步团队本地证据目录 |
+| `ohbs-image state sync push --backend cos --location cos://bucket/state` | 通过官方 `coscli` 同步腾讯云 COS |
 | `ohbs-image preflight` | 校验配置、凭据和前置条件 |
 | `ohbs-image validate` | 渲染模板并执行 `packer validate` |
 | `ohbs-image build` | 渲染 + `packer build`（产出镜像） |
@@ -179,6 +189,15 @@ ohbs-image clean
 | `--older-than <days>` | `30` | cleanup-images | 退役 N 天前的构建 |
 | `--keep-latest <n>` | `1` | cleanup-images | 保留最新 N 个构建 |
 | `--apply` | — | cleanup-images | 实际删除（默认仅演练） |
+
+### 首次成功流程与团队状态
+
+`configure` 生成最小配置；`doctor` 一次返回全部阻断项与修复建议；
+`plan` 保证只读，不创建云资源。`state sync` 可将证据目录同步到团队目录
+或腾讯云 COS，COS 模式使用官方 `coscli` 的凭据机制，不把密钥放入命令行。
+
+`.github/workflows/cloud-canary.yml` 提供真实云 Canary，默认关闭。只有仓库变量
+`OHBS_ENABLE_CLOUD_CANARY=true` 时才会定时创建收费 CVM；手动执行也必须显式确认成本。
 
 ## 配置文件
 

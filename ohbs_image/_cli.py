@@ -28,8 +28,13 @@ from ._commands import (
     cmd_verify_image,
     cmd_verify_release,
 )
+from ._config_tools import cmd_config_explain, cmd_config_migrate, cmd_config_schema
+from ._discover import cmd_discover
 from ._logging import VERSION, _setup_logging, fail
-from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP
+from ._onboarding import cmd_configure, cmd_doctor, cmd_plan
+from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
+from ._report_diff import cmd_report_diff
+from ._state import cmd_state_sync
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -58,6 +63,75 @@ def build_parser() -> argparse.ArgumentParser:
     p_init.add_argument("--target", default=".", help="Output directory (default: current)")
     p_init.add_argument("--force", action="store_true", help="Overwrite existing config")
     p_init.set_defaults(func=cmd_init)
+
+    p_doctor = sub.add_parser("doctor", parents=[common],
+                              help="Diagnose local toolchain, configuration and cloud access")
+    p_doctor.add_argument("--output", choices=["text", "json"], default="text")
+    p_doctor.add_argument("--no-cloud", action="store_true",
+                          help="Skip read-only Tencent Cloud API checks")
+    p_doctor.set_defaults(func=cmd_doctor)
+
+    p_discover = sub.add_parser("discover", help="Discover compatible Tencent Cloud resources")
+    p_discover.add_argument("resource", choices=["images", "vpcs", "subnets", "security-groups"])
+    p_discover.add_argument("--region", required=True)
+    p_discover.add_argument("--zone")
+    p_discover.add_argument("--profile", choices=sorted(PROFILES))
+    p_discover.add_argument("--output", choices=["text", "json"], default="text")
+    p_discover.set_defaults(func=cmd_discover)
+
+    p_configure = sub.add_parser("configure", help="Generate a minimal build configuration")
+    p_configure.add_argument("--target", default="ohbs-image.toml")
+    p_configure.add_argument("--force", action="store_true")
+    p_configure.add_argument("--discover", action="store_true",
+                             help="Discover missing resources using read-only cloud APIs")
+    p_configure.add_argument("--profile", choices=sorted(PROFILES))
+    p_configure.add_argument("--region")
+    p_configure.add_argument("--zone")
+    p_configure.add_argument("--source-image")
+    p_configure.add_argument("--vpc")
+    p_configure.add_argument("--subnet")
+    p_configure.add_argument("--security-group")
+    p_configure.add_argument("--instance-type")
+    p_configure.add_argument("--level", type=int, choices=[1, 2], default=1)
+    p_configure.add_argument("--public-ip", action="store_true")
+    p_configure.set_defaults(func=cmd_configure)
+
+    p_plan = sub.add_parser("plan", parents=[common],
+                            help="Preview resources, gates, duration and outputs without changes")
+    p_plan.add_argument("--output", choices=["text", "json"], default="text")
+    p_plan.set_defaults(func=cmd_plan)
+
+    p_state = sub.add_parser("state", help="Synchronize team evidence state")
+    state_sub = p_state.add_subparsers(dest="state_command")
+    p_sync = state_sub.add_parser("sync", help="Push or pull the evidence directory")
+    p_sync.add_argument("direction", choices=["push", "pull"])
+    p_sync.add_argument("--backend", choices=["local", "cos"], required=True)
+    p_sync.add_argument("--location", required=True,
+                        help="Local directory or cos://bucket/prefix")
+    p_sync.set_defaults(func=cmd_state_sync)
+
+    p_config = sub.add_parser("config", help="Inspect and migrate configuration contracts")
+    config_sub = p_config.add_subparsers(dest="config_command")
+    p_schema = config_sub.add_parser("schema", help="Print the JSON Schema")
+    p_schema.add_argument("--output")
+    p_schema.set_defaults(func=cmd_config_schema)
+    p_explain = config_sub.add_parser("explain", help="Explain one configuration key")
+    p_explain.add_argument("key")
+    p_explain.set_defaults(func=cmd_config_explain)
+    p_migrate = config_sub.add_parser("migrate", help="Migrate legacy configuration to schema v1")
+    p_migrate.add_argument("--config", default="ohbs-image.toml")
+    p_migrate.add_argument("--output")
+    p_migrate.add_argument("--apply", action="store_true",
+                           help="Atomically update --config in place")
+    p_migrate.set_defaults(func=cmd_config_migrate)
+
+    p_report = sub.add_parser("report", help="Compare build evidence")
+    report_sub = p_report.add_subparsers(dest="report_command")
+    p_diff = report_sub.add_parser("diff", help="Compare two lineage run IDs")
+    p_diff.add_argument("--before", required=True)
+    p_diff.add_argument("--after", required=True)
+    p_diff.add_argument("--output", choices=["text", "json"], default="text")
+    p_diff.set_defaults(func=cmd_report_diff)
 
     p_pre = sub.add_parser("preflight", parents=[common], help="Run pre-flight checks")
     p_pre.set_defaults(func=cmd_preflight)

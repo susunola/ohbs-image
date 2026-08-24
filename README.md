@@ -74,12 +74,12 @@ git clone https://github.com/susunola/ohbs-image.git
 cd ohbs-image
 pip install .
 
-# 2. Generate and edit configuration
-ohbs-image init
-# Edit ohbs-image.toml — fill in VPC, subnet, security group, and source_image_id
+# 2. Generate a minimal configuration (interactive; flags also supported)
+ohbs-image configure
 
 # 3. Build
-ohbs-image preflight   # validate credentials and prerequisites
+ohbs-image doctor      # actionable local/config/cloud diagnosis
+ohbs-image plan        # read-only resource, gate, duration, and cost preview
 ohbs-image validate    # dry-run: render templates + packer validate
 ohbs-image build       # produce the hardened custom image
 ohbs-image clean       # remove build artifacts
@@ -161,6 +161,15 @@ ohbs-image --version
 ```bash
 ohbs-image                                    # show help (exits 2)
 ohbs-image init                               # generate ohbs-image.toml
+ohbs-image configure                          # interactive/non-interactive minimal config generator
+ohbs-image discover images --region ap-guangzhou --profile ubuntu2404
+ohbs-image config schema                      # JSON Schema for editor/CI validation
+ohbs-image config migrate --apply             # atomic legacy config migration
+ohbs-image report diff --before RUN --after RUN # compare lineage metadata
+ohbs-image doctor [--output json] [--no-cloud] # actionable readiness diagnosis
+ohbs-image plan [--output json]                # read-only build/resource/gate preview
+ohbs-image state sync push --backend local --location /shared/ohbs-state
+ohbs-image state sync push --backend cos --location cos://bucket/ohbs-state
 ohbs-image preflight                          # validate config, credentials, prerequisites
 ohbs-image validate                           # render templates + packer validate
 ohbs-image build                              # render + packer build → custom image
@@ -218,6 +227,32 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | `--apply` | cleanup-images | Actually delete (default is a dry run) |
 
 ---
+
+### First-success workflow
+
+`configure` generates the smallest valid configuration. In a TTY it prompts
+for missing values; automation can supply `--profile`, `--region`, `--zone`,
+`--source-image`, `--vpc`, `--subnet`, and `--security-group`.
+
+`doctor` returns all detected problems in one run, with a suggested fix for
+each blocker. `--output json` emits the stable `doctor/v1` contract and
+`--no-cloud` disables its read-only `DescribeImages` access check.
+
+`plan` never creates or changes cloud resources. It previews the temporary
+CVM, placement, maximum duration, release gates, distribution and cost caveat.
+
+### Team state and cloud Canary
+
+`state sync` copies the evidence directory (`OHBS_IMAGE_STATE_DIR` or
+`~/.ohbs-image`) to/from a local team directory or Tencent COS. The COS backend
+uses the official `coscli` binary and its credential/config mechanism, so
+secrets are never passed on the command line. Orchestration should pull before
+a state-aware operation and push afterwards.
+
+The opt-in `.github/workflows/cloud-canary.yml` runs a weekly real-cloud
+TencentOS 3 L1 acceptance only when repository variable
+`OHBS_ENABLE_CLOUD_CANARY=true`. It is disabled by default because it creates
+billed CVMs; manual runs require explicit cost confirmation.
 
 ## Configuration
 
