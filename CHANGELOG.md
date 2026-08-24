@@ -16,6 +16,15 @@ can be traced across rebuilds.
   tencentos3 5.2.4, tencentos4 5.3.4): commenting NOPASSWD mid-apply cut
   ansible's sudo channel and killed the L2 build.
 
+- **`selinux` mode_enforcing: no live `setenforce 1` mid-apply** — the
+  rhel-family L2 builds all died at this step: the base image's
+  filesystem carries trees created SELinux-disabled (build user homes,
+  /opt), so flipping enforcing live killed sshd pubkey auth instantly
+  (2h of packer 'i/o timeout', never even reached the reboot).  The
+  fixer now labels the critical paths inline and schedules the full
+  relabel via `/.autorelabel`; the ssh-guard keeps the marker when
+  SELINUX=enforcing (it previously deleted it unconditionally).
+
 ### Fixed (L2 first pass)
 - **`dnf_flag` notapplicable on apt systems** (ubuntu2404 L2 1.2.1.2
   failed on a dnf.conf that can never exist).
