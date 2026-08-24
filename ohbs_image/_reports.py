@@ -315,8 +315,9 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
         stats = category_stats.setdefault(category, {"pass": 0, "fail": 0, "manual": 0, "error": 0})
         if rule_status in stats:
             stats[rule_status] += 1
+        status_token = re.sub(r"[^a-z0-9]+", "-", display_status.lower()).strip("-") or "unknown"
         assessment_rows.append(
-            f"<tr><td>{text(rule_id)}</td><td>{text(rule.get('title', result.get('title', '')))}</td>"
+            f"<tr data-status=\"{status_token}\"><td>{text(rule_id)}</td><td>{text(rule.get('title', result.get('title', '')))}</td>"
             f"<td>{text(profiles)}</td><td>{text(assessment_type)}</td>"
             f"<td>{text(display_status)}</td><td>{text(remediation)}</td></tr>")
     findings_html = ("<section class=\"findings\"><div class=\"section-heading\"><div><p>EXCEPTIONS</p><h2>Rules requiring attention</h2></div><strong>"
@@ -324,7 +325,9 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
                      + "".join(findings[:200]) + "</table></section>") if findings else ""
     results_html = ("<section id=\"assessment-results\" class=\"results\"><div class=\"section-heading\"><div><p>ASSESSMENT RESULTS</p>"
                     "<h2>Recommendation results</h2></div><strong>"
-                    f"{len(assessment_rows)} recommendations</strong></div><table><tr><th>Rule</th><th>Recommendation</th><th>Profiles</th><th>Assessment</th><th>Audit</th><th>Remediation</th></tr>"
+                    f"{len(assessment_rows)} recommendations</strong></div>"
+                    "<div class=\"results-tools\"><label>Audit status <select id=\"audit-filter\"><option value=\"all\">All</option><option value=\"pass\">Pass</option><option value=\"fail\">Fail</option><option value=\"manual\">Manual</option><option value=\"error\">Error</option><option value=\"not-evaluated-scope\">Not evaluated (scope)</option></select></label><label>Search recommendation <input id=\"audit-search\" type=\"search\" placeholder=\"Rule ID or text\"></label><span id=\"audit-count\"></span></div>"
+                    "<table id=\"assessment-table\"><tr><th>Rule</th><th>Recommendation</th><th>Profiles</th><th>Assessment</th><th>Audit</th><th>Remediation</th></tr>"
                     + "".join(assessment_rows[:1000]) + "</table></section>") if assessment_rows else ""
     details_html = ("<section id=\"assessment-details\" class=\"assessment-details\"><div class=\"section-heading\"><div><p>ASSESSMENT DETAILS</p>"
                     "<h2>Exception review</h2></div><strong>"
@@ -376,6 +379,34 @@ nav{display:flex;gap:0;margin:0 1px;padding:0;background:#fff;border:1px solid v
 .identity,.evidence,.findings,.results,.assessment-details{margin-top:18px;padding:23px 24px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px rgb(16 42 67/.035)}.section-heading{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:16px}.section-heading h2{margin:0;font-size:20px;letter-spacing:-.025em}.section-heading p{color:var(--muted)}.section-heading strong{color:var(--muted);font-size:12px;white-space:nowrap}h2{font-size:18px;margin:0 0 12px}table{border:1px solid var(--line);border-radius:9px;overflow:hidden}th,td{padding:11px 13px}th{background:#f7fafc;color:#526a80;font-size:11px;letter-spacing:.08em;text-transform:uppercase}.identity th{width:31%;background:#f9fbfc}.findings td:first-child,.results td:first-child{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.rule-detail{border-top:1px solid var(--line);padding:17px 0}.rule-detail:first-of-type{border-top:0;padding-top:0}.rule-detail h3{margin:0 0 11px;font-size:14px}.rule-detail dl{display:grid;grid-template-columns:140px 1fr;gap:7px 15px;margin:0}.rule-detail dt{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.rule-detail dd{margin:0;word-break:break-word}footer{border-top:1px solid var(--line);padding-top:16px;margin-top:28px}
 @media(max-width:700px){main{padding:18px 14px 40px}header{min-height:0;padding:24px}.release-stamp{position:static;margin-top:18px}.grid{grid-template-columns:repeat(2,1fr)}.identity,.evidence,.findings,.results,.assessment-details{padding:19px}.rule-detail dl{grid-template-columns:1fr}.rule-detail dt{margin-top:8px}}@media print{body{background:#fff;font-size:11px}main{max-width:none;padding:0}header{box-shadow:none}nav{display:none}.card,.identity,.evidence,.findings,.results,.assessment-details{box-shadow:none;break-inside:avoid}.grid{margin:10px 0 16px}}
 </style>''')
+    html_doc = html_doc.replace("</style>", '''
+.results-tools{display:flex;align-items:end;gap:16px;flex-wrap:wrap;margin:0 0 15px;padding:13px;background:#f3f7f8;border:1px solid var(--line)}.results-tools label{display:grid;gap:4px;color:var(--muted);font-size:11px;font-weight:700}.results-tools select,.results-tools input{min-height:30px;padding:4px 7px;border:1px solid #9baeba;background:#fff;color:var(--ink);font:13px Arial,sans-serif}.results-tools input{width:230px}.results-tools span{margin-left:auto;color:var(--muted);font-size:12px}@media(max-width:700px){.results-tools{align-items:stretch}.results-tools input{width:100%}.results-tools span{margin-left:0}}@media print{.results-tools{display:none}}
+</style>''')
+    html_doc = html_doc.replace("</body>", '''<script>
+(() => {
+  const select = document.getElementById("audit-filter");
+  const search = document.getElementById("audit-search");
+  const table = document.getElementById("assessment-table");
+  const count = document.getElementById("audit-count");
+  if (!select || !search || !table || !count) return;
+  const rows = Array.from(table.querySelectorAll("tr[data-status]"));
+  const apply = () => {
+    const status = select.value;
+    const needle = search.value.trim().toLowerCase();
+    let shown = 0;
+    rows.forEach((row) => {
+      const match = (status === "all" || row.dataset.status === status)
+        && (!needle || (row.textContent || "").toLowerCase().includes(needle));
+      row.hidden = !match;
+      if (match) shown += 1;
+    });
+    count.textContent = `${shown} of ${rows.length} shown`;
+  };
+  select.addEventListener("change", apply);
+  search.addEventListener("input", apply);
+  apply();
+})();
+</script></body>''')
     html_doc = html_doc.replace("</style>", '''
 /* Assessment-report treatment: data-led, restrained, and export-safe. */
 :root{--ink:#1c2b36;--muted:#61727f;--line:#cfd8de;--bg:#f1f4f5;--navy:#17384f;--teal:#16756c;--ok:#287a4f;--bad:#b43d3d;--warn:#9a651e}

@@ -4421,6 +4421,8 @@ class TestProvenanceSbom:
         assert "Assessment Details" in text
         assert "Scores by recommendation group" in text
         assert "Group 1" in text
+        assert 'id="audit-filter"' in text
+        assert 'id="audit-search"' in text
         assert "Ensure cramfs kernel module is not available" in text
         assert "Removing support for unneeded filesystem types reduces the local attack surface" in text
         assert "not evaluated (scope)" in text
