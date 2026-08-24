@@ -3254,22 +3254,26 @@ def f_selinux(ctx, p):
         target = "permissive" if kind == "mode_not_disabled" else "enforcing"
         set_kv_in_file(ctx, "/etc/selinux/config", "SELINUX", target, sep="=")
         if target == "enforcing":
-            # NEVER setenforce 1 mid-apply, and NEVER boot enforcing with an
-            # unlabeled filesystem: the base image's trees (build user
-            # homes, /opt, ssh keys) were created SELinux-disabled, so both
-            # a live flip AND a plain enforcing reboot kill sshd pubkey auth
-            # — the rhel-family L2 builds all died on exactly this (2h of
-            # packer 'i/o timeout').  Label the critical paths inline, then
-            # let /.autorelabel run the FULL relabel in early boot; the
-            # post-reboot audit sees runtime=enforcing + config=enforcing.
-            sh(["restorecon", "-R", "/etc/ssh", "/home", "/root", "/opt",
-                "/var/log"], 600)
-            try:
-                open("/.autorelabel", "w").close()
-            except OSError:
-                pass
-            return True, ("SELINUX=enforcing written; full relabel scheduled "
-                          "for next boot (/.autorelabel), no live setenforce")
+            # Do the relabel INLINE, never at boot: a boot-time autorelabel
+            # is an unobservable multi-minute-to-infinite no-SSH window
+            # (rhel10-L2 hung there 30+ min; packer only sees i/o timeouts),
+            # and a live setenforce on unlabeled trees kills sshd instantly.
+            # restorecon with SELinux still disabled is safe — it only writes
+            # xattrs — so relabel everything now, stamp it, and let the
+            # enforcing boot start sshd immediately.  Paths created after
+            # the apply are covered by a targeted restorecon in the pipeline
+            # cleanup step.
+            stamp = "/etc/selinux/.ohbs-enforcing-relabeled"
+            if exists(stamp):
+                return False, ("enforcing already configured and full relabel "
+                               "completed (%s)" % stamp)
+            rc, o, e = sh(["restorecon", "-R", "/"], 3600)
+            if rc != 0:
+                return False, "restorecon -R / failed: %s" % (e or o)[:200]
+            write_file(ctx, stamp, "restorecon -R / completed at build time\n",
+                       0o600)
+            return True, ("SELINUX=enforcing written; FULL inline relabel "
+                          "completed (no boot-time autorelabel window)")
         return True, ("SELINUX=%s written; reboot required "
                       "(no relabel needed)" % target)
     return False, "no automated remediation for %s" % kind
