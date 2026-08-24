@@ -300,13 +300,15 @@ def render_site(p: dict[str, Any], level: int, mode: str = "apply",
         # The Windows build communicator uses WinRM.  The L2 "Allow Remote
         # Shell Access" control disables the service while Ansible is still
         # collecting the engine result, so it makes the build lose its own
-        # management channel.  Defer it to the final Packer provisioner,
-        # after every upload and report fetch is complete.  The two IDs are
-        # benchmark-specific (2016 vs 2019+); absent IDs are harmlessly
-        # ignored by the engine's selection filter.
+        # management channel.  Likewise, control 2.2.22 denies network logon
+        # to local Administrators, including Packer's build account.  Defer
+        # both to the final Packer provisioner, after every upload and report
+        # fetch is complete.  The two Remote Shell IDs are benchmark-specific
+        # (2016 vs 2019+); absent IDs are harmlessly ignored by the engine's
+        # selection filter.
         engine_exclude = list(rules_exclude or [])
         if mode == "apply":
-            for rule_id in ("18.10.90.1", "18.10.91.1"):
+            for rule_id in ("2.2.22", "18.10.90.1", "18.10.91.1"):
                 if rule_id not in engine_exclude:
                     engine_exclude.append(rule_id)
         # Windows has no post-reboot re-audit — the gate lives in the single
@@ -532,6 +534,20 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
             warn("[meta].ssh_debug_password is ignored for Windows profiles "
                  "(it only applies to Linux user_data).")
         _validate_env_var_name(r.winrm_password_env, "[cloud].winrm_password_env")
+        network_logon_lock = (
+            "      \"# Apply CIS 2.2.22 last. It denies local Administrators network logon,\",\n"
+            "      \"# which includes the Packer WinRM build account.\",\n"
+            "      \"$inf = Join-Path $env:TEMP ('ohbs-network-logon-' + [guid]::NewGuid() + '.inf')\",\n"
+            "      \"$db = Join-Path $env:TEMP ('ohbs-network-logon-' + [guid]::NewGuid() + '.sdb')\",\n"
+            "      \"secedit /export /cfg $inf /areas USER_RIGHTS | Out-Null\",\n"
+            "      \"$content = Get-Content $inf -Raw\",\n"
+            "      \"$line = 'SeDenyNetworkLogonRight = *S-1-5-32-546,*S-1-5-114'\",\n"
+            "      \"if ($content -match '(?m)^\\s*SeDenyNetworkLogonRight\\s*=.*$') { $content = $content -replace '(?m)^\\s*SeDenyNetworkLogonRight\\s*=.*$', $line } else { $content = $content -replace '(?m)^(\\[Privilege Rights\\])', ('${1}' + [Environment]::NewLine + $line) }\",\n"
+            "      \"[IO.File]::WriteAllText($inf, $content)\",\n"
+            "      \"secedit /configure /db $db /cfg $inf /areas USER_RIGHTS | Out-Null\",\n"
+            "      \"if ($LASTEXITCODE -ne 0) { throw 'failed to apply CIS 2.2.22' }\",\n"
+            "      \"Remove-Item $inf,$db -Force -ErrorAction SilentlyContinue\",\n"
+        )
         remote_shell_lock = ""
         if r.level == 2:
             remote_shell_lock = (
@@ -547,6 +563,7 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
                .replace("__SECRET_KEY_ENV__", r.secret_key_env)
                .replace("__SECURITY_TOKEN_ENV__", r.security_token_env)
                .replace("__ROLE_DIR__", r.role_dir)
+               .replace("__WINRM_NETWORK_LOGON_LOCK_BLOCK__", network_logon_lock)
                .replace("__WINRM_REMOTE_SHELL_LOCK_BLOCK__", remote_shell_lock)
                .replace("__SMOKE_TEST_BLOCK__", smoke_block)
                .replace("__TEST_COMPONENTS_BLOCK__", test_block)

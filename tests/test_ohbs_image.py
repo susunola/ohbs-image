@@ -598,8 +598,9 @@ class TestRenderSite:
         p = PROFILES["win2022"]
         apply = render_site(p, level=2, mode="apply")
         scan = render_site(p, level=2, mode="scan")
-        assert 'cis_exclude: ["18.10.90.1", "18.10.91.1"]' in apply
+        assert 'cis_exclude: ["2.2.22", "18.10.90.1", "18.10.91.1"]' in apply
         assert "18.10.91.1" not in scan
+        assert "2.2.22" not in scan
 
 
 class TestRenderAll:
@@ -906,6 +907,7 @@ class TestRenderAll:
         assert "ansible_winrm_transport=ntlm" not in hcl
         assert "winrm re-locked" in hcl
         assert "AllowRemoteShell -Type DWord -Value 0" not in hcl
+        assert "SeDenyNetworkLogonRight = *S-1-5-32-546,*S-1-5-114" in hcl
 
         r_l2 = resolve(_make_win_toml("win2022"))
         r_l2.level = 2
