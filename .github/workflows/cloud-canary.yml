@@ -1,0 +1,85 @@
+name: cloud-canary
+
+# Scheduled real-cloud validation is opt-in because it creates billed CVMs.
+# Set repository variable OHBS_ENABLE_CLOUD_CANARY=true and protect the
+# cloud-e2e environment before enabling. Manual dispatch remains available.
+on:
+  schedule:
+    - cron: "17 2 * * 2"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Canary profile
+        default: tencentos3
+        type: choice
+        options: [tencentos3, win2022]
+      confirm_cost:
+        description: I approve billed cloud resources
+        default: false
+        required: true
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  canary:
+    if: >-
+      (github.event_name == 'schedule' && vars.OHBS_ENABLE_CLOUD_CANARY == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.confirm_cost == true)
+    environment: cloud-e2e
+    runs-on: [self-hosted, linux, ohbs-image-private]
+    timeout-minutes: 180
+    env:
+      CANARY_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'tencentos3' }}
+      OHBS_IMAGE_STATE_DIR: ${{ runner.temp }}/ohbs-image-canary-state
+      E2E_TARGET_REGION: ${{ secrets.TC_E2E_REGION }}
+      E2E_TARGET_ZONE: ${{ secrets.TC_E2E_ZONE }}
+      E2E_TARGET_VPC_ID: ${{ secrets.TC_E2E_VPC_ID }}
+      E2E_TARGET_SUBNET_ID: ${{ secrets.TC_E2E_SUBNET_ID }}
+      E2E_TARGET_SG_ID: ${{ secrets.TC_E2E_SG_ID }}
+      WINRM_PASSWORD: ${{ secrets.TC_E2E_WINRM_PASSWORD }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+      - uses: hashicorp/setup-packer@c4e4b2636b98ce7566f9ec9c309e26821f695bd2
+        with:
+          version: "1.16.0"
+      - name: Authenticate with Tencent Cloud OIDC
+        uses: everpcpc/tencentcloud-oidc-auth@bcc33538077d94b147dae540f7419a8cea2a60e8
+        with:
+          role-arn: ${{ secrets.TC_E2E_OIDC_ROLE_ARN }}
+          oidc-provider-id: github
+          region: ${{ secrets.TC_E2E_REGION }}
+      - name: Select source image
+        shell: bash
+        env:
+          LINUX_IMAGE: ${{ secrets.TC_CANARY_TENCENTOS3_IMAGE_ID }}
+          WINDOWS_IMAGE: ${{ secrets.TC_CANARY_WIN2022_IMAGE_ID }}
+        run: |
+          if [ "$CANARY_PROFILE" = "win2022" ]; then image="$WINDOWS_IMAGE"; else image="$LINUX_IMAGE"; fi
+          test -n "$image"
+          echo "E2E_CANARY_IMAGE=$image" >> "$GITHUB_ENV"
+      - name: Build and clean-boot verify
+        run: |
+          export "E2E_TARGET_IMAGE_${CANARY_PROFILE}=$E2E_CANARY_IMAGE"
+          pip install -e ".[dev]"
+          ansible-galaxy collection install -r requirements-builder.yml
+          python scripts/real_e2e_test.py \
+            --region "$E2E_TARGET_REGION" --zone "$E2E_TARGET_ZONE" \
+            --vpc-id "$E2E_TARGET_VPC_ID" --subnet-id "$E2E_TARGET_SUBNET_ID" \
+            --security-group-id "$E2E_TARGET_SG_ID" \
+            --target-mode single --profile "$CANARY_PROFILE" --level 1 --yes
+      - name: Archive canary evidence
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: cloud-canary-${{ env.CANARY_PROFILE }}-${{ github.run_id }}
+          path: |
+            logs
+            ${{ runner.temp }}/ohbs-image-canary-state
+          retention-days: 90
+          if-no-files-found: warn

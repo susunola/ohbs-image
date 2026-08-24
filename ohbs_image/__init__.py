@@ -54,7 +54,7 @@ __all__ = [
     '_new_run_id', '_read_release_manifest', '_read_run_manifest', '_release_manifest_path', '_release_transition', '_run_manifest_is_active', '_run_manifest_path', '_validate_env_var_name', '_validate_shell_arg', '_validate_value_present', '_verify_release_manifest', '_write_build_html_report', '_write_build_result', '_write_provenance', '_write_release_manifest', '_write_run_manifest', '_write_sarif', '_write_xccdf',
     '_yaml_list', 'banner', 'build_parser', 'cmd_audit', 'cmd_build', 'cmd_check_source',
     'cmd_clean', 'cmd_cleanup_images', 'cmd_cleanup_runs', 'cmd_drift', 'cmd_images', 'cmd_init', 'cmd_list',
-    'cmd_pending', 'cmd_preflight', 'cmd_promote', 'cmd_rollback', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate', 'cmd_verify_release',
+    'cmd_configure', 'cmd_discover', 'cmd_doctor', 'cmd_plan', 'cmd_state_sync', 'cmd_pending', 'cmd_preflight', 'cmd_promote', 'cmd_rollback', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate', 'cmd_verify_release',
     'cmd_verify', 'cmd_verify_image', 'fail', 'info', 'load_config', 'logger',
     'main', 'ok', 'render_all', 'render_finalize', 'render_install', 'render_pkrvars',
     'render_site', 'render_site_audit', 'resolve', 'run_packer', 'run_preflight', 'warn',
@@ -148,6 +148,7 @@ from ._config import (
     load_config,
     resolve,
 )
+from ._discover import cmd_discover
 from ._logging import (
     VERSION,
     ConfigError,
@@ -161,6 +162,7 @@ from ._logging import (
     warn,
 )
 from ._models import BuildSpec, DeliveryReportView, ReleasePolicy, RunContext
+from ._onboarding import cmd_configure, cmd_doctor, cmd_plan
 from ._packer import (
     PACKER_TIMEOUT_MINUTES,
     _extract_image_ids,
@@ -225,6 +227,7 @@ from ._reports import (
     _write_release_manifest,
     _write_run_manifest,
 )
+from ._state import cmd_state_sync
 from ._tc_cloud import (
     _check_security_group_ingress,
     _creds,

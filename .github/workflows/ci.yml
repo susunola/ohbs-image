@@ -36,7 +36,7 @@ jobs:
       # refuses to run without this controller-side collection. Keep this
       # installation explicit: pywinrm alone cannot validate Windows roles.
       - name: Install Windows Ansible collection
-        run: ansible-galaxy collection install ansible.windows
+        run: ansible-galaxy collection install -r requirements-builder.yml
 
       # packer is needed by the real-HCL validate tests (TestRealPackerValidate*).
       # They render every profile and run `packer validate` against the actual
@@ -88,7 +88,9 @@ jobs:
       # Role payloads are self-contained for Ansible, but their engines have
       # shared ownership. Fail fast if a bulk fix lands in only some profiles.
       - name: Verify shared engine payloads have not drifted
-        run: python3 scripts/check_engine_drift.py
+        run: |
+          python3 scripts/generate_engines.py
+          python3 scripts/check_engine_drift.py
 
       - name: Run tests (with coverage report)
         # Coverage is reported but NOT gated (--cov-fail-under=0) on purpose:

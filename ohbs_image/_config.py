@@ -213,9 +213,14 @@ def load_config(path: Path) -> dict[str, Any]:
         data["cis"] = data["ohbs"]
     elif "cis" in data and "ohbs" not in data:
         data["ohbs"] = data["cis"]
-    elif "ohbs" in data and "cis" in data:
+    elif ("ohbs" in data and "cis" in data
+          and data["ohbs"] is not data["cis"]):
+        # load_config deliberately creates an in-memory alias so legacy
+        # internal readers can use [cis]. Do not warn about that synthetic
+        # alias; warn only when the caller supplied two distinct sections.
         warn("Both [ohbs] and [cis] sections are present; "
              "[ohbs] takes precedence and [cis] is ignored.")
+        data["cis"] = data["ohbs"]
 
     required: dict[str, list[str]] = {
         "build": [
@@ -327,9 +332,11 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         data["cis"] = data["ohbs"]
     elif "cis" in data and "ohbs" not in data:
         data["ohbs"] = data["cis"]
-    elif "ohbs" in data and "cis" in data:
+    elif ("ohbs" in data and "cis" in data
+          and data["ohbs"] is not data["cis"]):
         warn("Both [ohbs] and [cis] sections are present; "
              "[ohbs] takes precedence and [cis] is ignored.")
+        data["cis"] = data["ohbs"]
     profile_name = _read_required_str(data, "build", "profile")
     p = PROFILES[profile_name]
     meta: dict[str, Any] = _get_table(data, "meta")

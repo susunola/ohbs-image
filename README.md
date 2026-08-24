@@ -74,12 +74,12 @@ git clone https://github.com/susunola/ohbs-image.git
 cd ohbs-image
 pip install .
 
-# 2. Generate and edit configuration
-ohbs-image init
-# Edit ohbs-image.toml — fill in VPC, subnet, security group, and source_image_id
+# 2. Generate a minimal configuration (interactive; flags also supported)
+ohbs-image configure
 
 # 3. Build
-ohbs-image preflight   # validate credentials and prerequisites
+ohbs-image doctor      # actionable local/config/cloud diagnosis
+ohbs-image plan        # read-only resource, gate, duration, and cost preview
 ohbs-image validate    # dry-run: render templates + packer validate
 ohbs-image build       # produce the hardened custom image
 ohbs-image clean       # remove build artifacts
@@ -140,7 +140,7 @@ export WINRM_PASSWORD=xxxx   # Windows builds only
 | **Python** | 3.11+ (stdlib only — zero pip dependencies) |
 | **Packer** | 1.12+ |
 | **ansible-core** | 2.15+ (controller — required for Windows builds) |
-| **ansible.windows** | `ansible-galaxy collection install ansible.windows` (Windows builds only) |
+| **ansible.windows** | `ansible-galaxy collection install -r requirements-builder.yml` (Windows builds only; version locked) |
 | **Tencent Cloud** | Sub-account with `cvm:RunInstances`, `cvm:CreateImage`, `cvm:DescribeImages`; `cvm:CopyImage` for cross-region copy |
 | **Network** | Dedicated VPC + subnet + security group — SSH/22 (Linux) or WinRM/5985 (Windows, NTLM message encryption), source-restricted to build machine egress IP |
 | **Source Image** | Public image ID for the target OS |
@@ -161,6 +161,15 @@ ohbs-image --version
 ```bash
 ohbs-image                                    # show help (exits 2)
 ohbs-image init                               # generate ohbs-image.toml
+ohbs-image configure                          # interactive/non-interactive minimal config generator
+ohbs-image discover images --region ap-guangzhou --profile ubuntu2404
+ohbs-image config schema                      # JSON Schema for editor/CI validation
+ohbs-image config migrate --apply             # atomic legacy config migration
+ohbs-image report diff --before RUN --after RUN # compare lineage metadata
+ohbs-image doctor [--output json] [--no-cloud] # actionable readiness diagnosis
+ohbs-image plan [--output json]                # read-only build/resource/gate preview
+ohbs-image state sync push --backend local --location /shared/ohbs-state
+ohbs-image state sync push --backend cos --location cos://bucket/ohbs-state
 ohbs-image preflight                          # validate config, credentials, prerequisites
 ohbs-image validate                           # render templates + packer validate
 ohbs-image build                              # render + packer build → custom image
@@ -218,6 +227,33 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | `--apply` | cleanup-images | Actually delete (default is a dry run) |
 
 ---
+
+### First-success workflow
+
+`configure` generates the smallest valid configuration. In a TTY it prompts
+for missing values; automation can supply `--profile`, `--region`, `--zone`,
+`--source-image`, `--vpc`, `--subnet`, and `--security-group`.
+
+`doctor` returns all detected problems in one run, with a suggested fix for
+each blocker. `--output json` emits the stable `doctor/v1` contract and
+`--no-cloud` disables its read-only `DescribeImages` access check.
+
+`plan` never creates or changes cloud resources. It previews the temporary
+CVM, placement, maximum duration, release gates, distribution and cost caveat.
+
+### Team state and cloud Canary
+
+`state sync` copies the evidence directory (`OHBS_IMAGE_STATE_DIR` or
+`~/.ohbs-image`) to/from a local team directory or Tencent COS. The COS backend
+uses the official `coscli` binary and its credential/config mechanism, so
+secrets are never passed on the command line. Orchestration should pull before
+a state-aware operation and push afterwards. Set `OHBS_IMAGE_COSCLI_CONFIG`
+when CI uses a non-default coscli configuration file.
+
+The opt-in `.github/workflows/cloud-canary.yml` runs a weekly real-cloud
+TencentOS 3 L1 acceptance only when repository variable
+`OHBS_ENABLE_CLOUD_CANARY=true`. It is disabled by default because it creates
+billed CVMs; manual runs require explicit cost confirmation.
 
 ## Configuration
 
@@ -766,7 +802,7 @@ distribute pipeline):
 
 ### Real cloud acceptance and cleanup drills
 
-Two manual GitHub workflows turn the operational checks into repeatable,
+Three protected GitHub workflows turn the operational checks into repeatable,
 reviewable runs without creating surprise cloud spend:
 
 - `real-cloud-acceptance` requires the protected `cloud-e2e` environment and
@@ -778,8 +814,14 @@ reviewable runs without creating surprise cloud spend:
 - `ephemeral-cleanup-drill` is dry-run by default. Its `apply` input is the
   only path that terminates tagged ephemeral CVMs; protect the same environment
   with reviewers and inspect the dry-run artifact first.
+- `cloud-canary` adds a weekly TencentOS 3 L1 acceptance, but its scheduled
+  job remains inert until repository variable
+  `OHBS_ENABLE_CLOUD_CANARY=true`. Manual runs require cost confirmation and
+  may select TencentOS 3 or Windows Server 2022. Configure
+  `TC_CANARY_TENCENTOS3_IMAGE_ID` and `TC_CANARY_WIN2022_IMAGE_ID` in the same
+  protected environment.
 
-Both workflows use short-lived OIDC credentials and keep their logs/evidence
+All workflows use short-lived OIDC credentials and keep their logs/evidence
 as 90-day artifacts. They are intentionally manual until the organization has
 accepted the associated cloud cost and change-control policy.
 

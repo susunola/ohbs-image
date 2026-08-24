@@ -1,3 +1,4 @@
 # sdist: include the bundled CIS roles (engine, rules.json, etc.)
 recursive-include ohbs_image/roles *
 include ohbs_image/py.typed
+recursive-exclude ohbs_image/roles __pycache__ *.py[cod]
