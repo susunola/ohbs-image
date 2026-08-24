@@ -1077,7 +1077,8 @@
     "risk": "disruptive",
     "page": 167,
     "reboot_required": true,
-    "note": "fixer sets FUTURE via update-crypto-policies (disruptive; takes effect after reboot)"
+    "note": "fixer sets FUTURE via update-crypto-policies (disruptive; takes effect after reboot)",
+    "defer": "firstboot"
   },
   {
     "id": "2.1.1",

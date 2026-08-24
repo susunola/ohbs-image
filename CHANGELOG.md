@@ -34,6 +34,13 @@ can be traced across rebuilds.
   AND enforcing boots return SSH immediately.  The pipeline cleanup
   relabels late-created artifacts the same way.
 
+- **catalog: tencentos4 1.11 (crypto policy FUTURE/FIPS) deferred to
+  first boot** — the fixer set FUTURE mid-apply; FUTURE enforces RSA ≥
+  3072 system-wide, so sshd started refusing the build's own RSA-2048
+  packer keypair after the reboot ('refusing RSA key: Invalid key
+  length'), stranding the tencentos4-L2 build.  Recorded in the
+  firstboot manifest instead; the consumer's first boot applies it.
+
 ### Fixed (L2 first pass)
 - **`dnf_flag` notapplicable on apt systems** (ubuntu2404 L2 1.2.1.2
   failed on a dnf.conf that can never exist).
