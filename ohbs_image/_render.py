@@ -118,7 +118,7 @@ def _check_pywinrm() -> bool:
 
 def _apply_rule_overrides(workdir: Path, role_dir: str,
                           overrides: dict[str, dict[str, Any]]) -> None:
-    """Deep-merge [cis].overrides into the WORKSPACE copy of rules.json.
+    """Deep-merge [ohbs].overrides into the WORKSPACE copy of rules.json.
 
     *overrides* maps CIS rule IDs (e.g. "5.2.2") to a dict of parameter
     values.  Each rule's `params` dict is updated in place — the bundled
@@ -130,18 +130,18 @@ def _apply_rule_overrides(workdir: Path, role_dir: str,
         rules = json.loads(rules_path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise ConfigError(
-            f"[cis].overrides: cannot read bundled rules.json for {role_dir}: "
+            f"[ohbs].overrides: cannot read bundled rules.json for {role_dir}: "
             f"{exc}") from exc
     except json.JSONDecodeError as exc:
         raise ConfigError(
-            f"[cis].overrides: bundled rules.json for {role_dir} is invalid: "
+            f"[ohbs].overrides: bundled rules.json for {role_dir} is invalid: "
             f"{exc}") from exc
 
     by_id: dict[str, dict[str, Any]] = {str(r.get("id", "")): r for r in rules}
     missing = [rid for rid in overrides if rid not in by_id]
     if missing:
         raise ConfigError(
-            f"[cis].overrides references unknown rule ID(s): {missing}. "
+            f"[ohbs].overrides references unknown rule ID(s): {missing}. "
             f"Valid IDs start with e.g. '1.1.1.1' — run 'ohbs-image list' and "
             f"check the catalog for the exact ID.")
 
@@ -156,7 +156,7 @@ def _apply_rule_overrides(workdir: Path, role_dir: str,
         changed.append(rid)
     rules_path.write_text(json.dumps(rules, ensure_ascii=False, indent=1) + "\n",
                           encoding="utf-8")
-    info(f"Applied [cis].overrides to {len(changed)} rule(s): "
+    info(f"Applied [ohbs].overrides to {len(changed)} rule(s): "
          f"{', '.join(sorted(changed))}")
 
 def render_finalize(r: ResolvedConfig, p: dict[str, Any],
@@ -394,11 +394,11 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
     # Benchmark-aware catalog selection: for a non-CIS benchmark the active
     # catalog is rules_<slug>.json (copied alongside rules.json by _bundle_role).
     # Promote it to the workspace rules.json so the engine's fixed
-    # `--catalog rules.json` path and [cis].overrides both keep working. Pure
+    # `--catalog rules.json` path and [ohbs].overrides both keep working. Pure
     # no-op for CIS (where rules.json already IS the active catalog).
     _select_workspace_catalog(workdir, r.role_dir, r.catalog_basename)
 
-    # P1#5 — [cis].overrides: deep-merge per-rule parameter overrides into
+    # [ohbs].overrides: deep-merge per-rule parameter overrides into
     # the WORKSPACE copy of rules.json (the bundled catalog is never
     # mutated).  Mirrors ansible-lockdown's per-control vars without
     # touching the engine or shipping a second catalog.

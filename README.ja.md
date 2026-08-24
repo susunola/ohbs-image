@@ -370,7 +370,7 @@ ohbs-image build
 - [ ] CI パイプライン（GitHub Actions）による自動イメージビルド
 - [ ] PyPI パッケージ（`pip install ohbs-image`）
 - [ ] `ohbs-image list` — 利用可能なプロファイルとメタデータの一覧表示
-- [ ] `ohbs-image report` — 完了したビルドの監査レポートを取得・表示
+- [ ] 完了したビルドの監査レポートを取得・表示（`ohbs-image images` でビルド履歴を一覧）
 - [ ] カスタムルール選択（`ohbs-image.toml` の `rules_include` / `rules_exclude`）
 
 ## コントリビューション
