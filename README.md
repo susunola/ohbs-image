@@ -142,7 +142,7 @@ export WINRM_PASSWORD=xxxx   # Windows builds only
 | **ansible-core** | 2.15+ (controller — required for Windows builds) |
 | **ansible.windows** | `ansible-galaxy collection install ansible.windows` (Windows builds only) |
 | **Tencent Cloud** | Sub-account with `cvm:RunInstances`, `cvm:CreateImage`, `cvm:DescribeImages`; `cvm:CopyImage` for cross-region copy |
-| **Network** | Dedicated VPC + subnet + security group — SSH/22 (Linux) or WinRM/5986 (Windows), source-restricted to build machine egress IP |
+| **Network** | Dedicated VPC + subnet + security group — SSH/22 (Linux) or WinRM/5985 (Windows, NTLM message encryption), source-restricted to build machine egress IP |
 | **Source Image** | Public image ID for the target OS |
 
 ### Install from source
@@ -352,7 +352,7 @@ benchmark = "CIS-v1.0.0"
 | | `cve_scan` | bool | Trivy CRITICAL-severity vulnerability gate before the snapshot (default `false`) |
 | | `sbom` | bool | Emit an SBOM (`/opt/ohbs-image-SBOM.jsonl`) into the image, hash it and pin it in lineage + provenance (default `false`) |
 | | `delivery_report_required` | bool | Fail release when the HTML delivery report cannot be archived (default `false`) |
-| | `verify_boot` | bool | After the snapshot, boot a probe instance from the produced image, re-audit on fresh boot and gate (Linux only, default `false`) |
+| | `verify_boot` | bool | After the snapshot, boot a probe instance from the produced image, re-audit every CIS rule on fresh boot and gate (SSH for Linux; NTLM WinRM for Windows; default `false`) |
 | | `test_components` | []string | User-defined test scripts run sequentially before the snapshot (Image Builder test-component style); non-zero exit aborts the build (empty = off) |
 | `[notify]` | `webhook` | string | WeCom group-robot webhook URL (empty = off) |
 | | `on` | string | `always` \| `success` \| `failure` (default `failure`) |
@@ -771,7 +771,7 @@ reviewable runs without creating surprise cloud spend:
 
 - `real-cloud-acceptance` requires the protected `cloud-e2e` environment and
   an explicit cost confirmation. It runs exactly one profile/level through a
-  real build; Linux also performs clean-boot verification. Configure
+  real build and clean-boot verification. Configure
   `TC_E2E_OIDC_ROLE_ARN`, `TC_E2E_REGION`, `TC_E2E_ZONE`, `TC_E2E_VPC_ID`,
   `TC_E2E_SUBNET_ID`, `TC_E2E_SG_ID`, and `TC_E2E_SOURCE_IMAGE_ID` as
   environment secrets. Windows also needs `TC_E2E_WINRM_PASSWORD`.
@@ -808,8 +808,11 @@ accepted the associated cloud cost and change-control policy.
   throwaway ed25519 key pair (created locally, imported via
   `cvm:ImportKeyPair`, deleted afterwards) and logs in as the image's
   built-in `ohbsimage` user — root login is disabled by the hardening, so no
-  credentials need to be supplied. `[meta].verify_boot
-  = true` chains it automatically after every successful build (Linux only).
+  credentials need to be supplied. Windows probes instead set a new,
+  per-probe Administrator password through `RunInstances`, authenticate with
+  NTLM WinRM, and run the exact engine/catalog retained in the image; the
+  password is never logged or persisted. `[meta].verify_boot = true` chains
+  either path automatically after every successful build.
 
   ```bash
   ohbs-image verify-image --image img-ekny61ig --min-score 85

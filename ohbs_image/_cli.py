@@ -177,7 +177,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_vrf_img = sub.add_parser(
         "verify-image", parents=[common],
         help="Clean-boot verification: boot a probe from a produced image, "
-             "re-audit on fresh boot, terminate (P0#3)")
+             "re-audit on fresh boot via SSH/WinRM, terminate (P0#3)")
     p_vrf_img.add_argument("--image", required=True,
                            help="Image ID to verify (e.g. img-xxxx)")
     p_vrf_img.add_argument("--min-score", type=float, default=85.0,

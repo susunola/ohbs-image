@@ -59,6 +59,7 @@ jobs:
       - name: Run one real build and clean-boot acceptance
         env:
           E2E_SOURCE_IMAGE: ${{ secrets.TC_E2E_SOURCE_IMAGE_ID }}
+          WINRM_PASSWORD: ${{ secrets.TC_E2E_WINRM_PASSWORD }}
         run: |
           test -n "$E2E_SOURCE_IMAGE"
           export "E2E_TARGET_IMAGE_${{ inputs.profile }}=$E2E_SOURCE_IMAGE"

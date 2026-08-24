@@ -367,8 +367,26 @@ def _probe_teardown_keypair(r: ResolvedConfig, key_id: str, priv_path: str) -> N
     if priv_path:
         shutil.rmtree(os.path.dirname(priv_path), ignore_errors=True)
 
+def _probe_windows_password() -> str:
+    """Return an unlogged, Windows-valid password for one probe instance."""
+    import secrets
+    import string
+
+    # Tencent CVM requires 12–30 characters and at least three character
+    # classes for Windows. Avoid quote/backtick/slash characters because they
+    # are awkward across API, PowerShell and XML transports.
+    groups = (string.ascii_uppercase, string.ascii_lowercase,
+              string.digits, "!@#$%*+-_=?.")
+    chars = [secrets.choice(group) for group in groups]
+    alphabet = "".join(groups)
+    chars.extend(secrets.choice(alphabet) for _ in range(16))
+    secrets.SystemRandom().shuffle(chars)
+    return "".join(chars)
+
+
 def _probe_launch(r: ResolvedConfig, image_id: str, instance_name: str,
-                  key_ids: list[str] | None = None, pub_key: str = "") -> str:
+                  key_ids: list[str] | None = None, pub_key: str = "",
+                  password: str = "") -> str:
     """Launch a probe instance from *image_id*; return instance-id.
 
     *key_ids* (from _probe_setup_keypair) is wired into LoginSettings —
@@ -406,8 +424,15 @@ def _probe_launch(r: ResolvedConfig, image_id: str, instance_name: str,
                                        {"Key": "purpose", "Value": "ohbs-image-verify"},
                                        {"Key": "run_id", "Value": r.run_id},
                                        {"Key": "ephemeral", "Value": "true"}]}]}
+    if key_ids and password:
+        raise ConfigError("probe must use either SSH key or password, not both")
     if key_ids:
         params["LoginSettings"] = {"KeyIds": key_ids}
+    if password:
+        # Tencent CVM does not support SSH keys for Windows. Supplying a
+        # per-probe password resets the image's deliberately randomized
+        # Administrator password without changing the shipped image.
+        params["LoginSettings"] = {"Password": password}
     if pub_key:
         # Root SSH is disabled by CIS hardening; the 'ohbsimage' build user
         # (sudo + authorized_keys, see the install-ansible provisioner) is
@@ -501,6 +526,72 @@ def _probe_ssh_ready(ip: str, ssh_port: int, ssh_user: str,
             pass
         _time.sleep(10)
     return False
+
+
+def _probe_winrm_session(ip: str, password: str) -> Any:
+    """Create an NTLM WinRM session without relaxing image security.
+
+    The final image disables Basic auth and unencrypted WinRM. NTLM over the
+    standard HTTP listener provides message encryption, so this deliberately
+    tests the hardened post-snapshot configuration rather than re-enabling
+    the build-time Basic-auth escape hatch.
+    """
+    try:
+        import winrm
+    except ImportError as exc:
+        raise ConfigError("pywinrm is required for Windows clean-boot verification") from exc
+    return winrm.Session(
+        f"http://{ip}:5985/wsman", auth=("Administrator", password),
+        transport="ntlm", read_timeout_sec=70, operation_timeout_sec=60,
+    )
+
+
+def _probe_winrm_ready(ip: str, password: str, timeout_s: int = 900) -> bool:
+    """Wait until a hardened Windows probe accepts authenticated NTLM WinRM."""
+    import time as _time
+
+    deadline = _time.time() + timeout_s
+    while _time.time() < deadline:
+        try:
+            result = _probe_winrm_session(ip, password).run_ps(
+                "$ErrorActionPreference='Stop'; "
+                "if ((Get-Service -Name WinRM).Status -ne 'Running') { exit 1 }; "
+                "if (-not (Test-Path 'C:\\ProgramData\\ohbs-image\\ohbs_engine.ps1')) { exit 2 }; "
+                "if (-not (Test-Path 'C:\\ProgramData\\ohbs-image\\rules.json')) { exit 3 }")
+            if result.status_code == 0:
+                return True
+        except Exception:
+            pass
+        _time.sleep(10)
+    return False
+
+
+def _probe_scan_windows(r: ResolvedConfig, ip: str, password: str,
+                        level: int) -> dict[str, Any]:
+    """Run the shipped Windows CIS engine on a fresh-boot probe via WinRM."""
+    if level not in (1, 2):
+        return {"error": f"invalid CIS level {level} for Windows probe"}
+    remote = (
+        "$ErrorActionPreference='Stop'; "
+        "$out = Join-Path $env:TEMP 'ohbs-image-verify.json'; "
+        "try { & 'C:\\ProgramData\\ohbs-image\\ohbs_engine.ps1' "
+        "-Catalog 'C:\\ProgramData\\ohbs-image\\rules.json' -Mode scan "
+        f"-CisProfile 'L{level}' -Out $out | Out-Null; "
+        "if (-not (Test-Path $out)) { throw 'CIS engine produced no result' }; "
+        "[Console]::Out.Write((Get-Content -Raw -LiteralPath $out)) } "
+        "finally { Remove-Item -LiteralPath $out -Force -ErrorAction SilentlyContinue }")
+    try:
+        result = _probe_winrm_session(ip, password).run_ps(remote)
+    except Exception as exc:
+        return {"error": f"Windows remote scan failed: {type(exc).__name__}"}
+    if result.status_code != 0:
+        detail = (result.std_err or result.std_out or b"").decode("utf-8", "replace")[:300]
+        return {"error": f"Windows remote scan exited {result.status_code}: {detail}"}
+    stdout = (result.std_out or b"").decode("utf-8-sig", "replace")
+    try:
+        return cast("dict[str, Any]", json.loads(stdout))
+    except json.JSONDecodeError:
+        return {"error": stdout[:300] or "Windows remote scan returned no JSON"}
 
 def _probe_scan(r: ResolvedConfig, ip: str, ssh_port: int, ssh_user: str,
                 level: int, key_path: str | None = None) -> dict[str, Any]:

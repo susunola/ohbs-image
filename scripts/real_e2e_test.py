@@ -783,8 +783,8 @@ secret_key_env = "TENCENTCLOUD_SECRET_KEY"
 
 [meta]
 # A real acceptance run must verify the snapshot, not merely the build VM.
-# Windows currently reports this as unsupported by the product and remains
-# covered by the build/role matrix; Linux runs the fresh-boot probe.
+# Linux uses an ephemeral SSH key; Windows uses a per-probe password and
+# hardened NTLM WinRM. Both run the fresh-boot probe.
 verify_boot = true
 """
 

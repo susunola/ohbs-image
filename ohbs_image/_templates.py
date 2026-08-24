@@ -862,6 +862,22 @@ build {
       "-e", "ansible_winrm_transport=basic"
     ]
   }
+  # Keep the exact engine and catalog that produced the image.  They are used
+  # by the post-snapshot Windows clean-boot probe; this is the Windows
+  # counterpart of the Linux role copy retained under /opt.
+  provisioner "powershell" {
+    inline = [
+      "New-Item -ItemType Directory -Force -Path 'C:\\ProgramData\\ohbs-image' | Out-Null"
+    ]
+  }
+  provisioner "file" {
+    source      = "ansible/roles/__ROLE_DIR__/files/ohbs_engine.ps1"
+    destination = "C:\\ProgramData\\ohbs-image\\ohbs_engine.ps1"
+  }
+  provisioner "file" {
+    source      = "ansible/roles/__ROLE_DIR__/files/rules.json"
+    destination = "C:\\ProgramData\\ohbs-image\\rules.json"
+  }
 __SMOKE_TEST_BLOCK____TEST_COMPONENTS_BLOCK__
   # Re-lock WinRM before the snapshot: the build's userdata enabled Basic
   # auth + unencrypted HTTP so the communicator could get in; the shipped

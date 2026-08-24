@@ -898,6 +898,10 @@ class TestRenderAll:
         assert "winrm_use_ntlm" not in hcl
         assert "ansible_winrm_transport=ntlm" not in hcl
         assert "winrm re-locked" in hcl
+        # The fresh-boot probe must re-run the exact engine/catalog that
+        # produced the image, not merely test whether port 5985 is open.
+        assert r"C:\\ProgramData\\ohbs-image\\ohbs_engine.ps1" in hcl
+        assert "ansible/roles/cis-win2022/files/rules.json" in hcl
 
 
 # ---------------------------------------------------------------------------
@@ -4176,6 +4180,38 @@ class TestVerifyImage:
         assert cmd_verify_image(args) == 1
         assert terminated == ["ins-probe"]
         assert teardowns == [(r, "key-probe", "/tmp/probe_key")]  # even on gate failure
+
+    def test_verify_windows_image_runs_fresh_boot_scan_and_terminates(
+        self, monkeypatch, tmp_path):
+        """Windows clean-boot uses an ephemeral password + NTLM WinRM, not SSH."""
+        from ohbs_image import cmd_verify_image
+        r = resolve(_make_win_toml("win2022"))
+        launched = {}
+        monkeypatch.setattr("ohbs_image._probe_windows_password", lambda: "Abcdef1234!XYZ")
+        monkeypatch.setattr("ohbs_image._probe_launch",
+                            lambda *a, **k: launched.update(k) or "ins-probe")
+        monkeypatch.setattr("ohbs_image._probe_public_ip", lambda *a, **k: "1.2.3.4")
+        monkeypatch.setattr("ohbs_image._probe_winrm_ready", lambda *a, **k: True)
+        monkeypatch.setattr("ohbs_image._probe_scan_windows",
+                            lambda *a, **k: {"summary": {"all": {"score": 96.0, "fail": 0}}})
+        terminated = []
+        monkeypatch.setattr("ohbs_image._probe_terminate", lambda r_, i: terminated.append(i))
+        monkeypatch.setattr("ohbs_image._write_run_manifest", lambda *a, **k: None)
+        args = mock.MagicMock(config="c", workdir=str(tmp_path / "w"),
+                              image="img-new", min_score=85.0)
+        assert cmd_verify_image(args, resolved=r) == 0
+        assert launched == {"password": "Abcdef1234!XYZ"}
+        assert terminated == ["ins-probe"]
+
+    def test_windows_probe_password_is_api_safe(self):
+        from ohbs_image import _probe_windows_password
+        password = _probe_windows_password()
+        assert 12 <= len(password) <= 30
+        assert any(c.islower() for c in password)
+        assert any(c.isupper() for c in password)
+        assert any(c.isdigit() for c in password)
+        assert any(not c.isalnum() for c in password)
+        assert not any(c in password for c in "'`/")
 
 
 class TestBuildNewFeatures:

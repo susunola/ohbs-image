@@ -525,6 +525,7 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
                .replace("__SECRET_ID_ENV__", r.secret_id_env)
                .replace("__SECRET_KEY_ENV__", r.secret_key_env)
                .replace("__SECURITY_TOKEN_ENV__", r.security_token_env)
+               .replace("__ROLE_DIR__", r.role_dir)
                .replace("__SMOKE_TEST_BLOCK__", smoke_block)
                .replace("__TEST_COMPONENTS_BLOCK__", test_block)
                .replace("__SPOT_BLOCK__", spot_block)

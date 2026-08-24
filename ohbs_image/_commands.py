@@ -339,24 +339,20 @@ def cmd_build(args: argparse.Namespace) -> int:
         # P0#3 — clean-boot verification (build → test → distribute).
         # Boot a probe from the produced image and re-audit on fresh boot.
         if r.verify_boot and image_ids:
-            if r.family == "windows":
-                warn("[meta].verify_boot is Linux-only — skipping "
-                     "clean-boot verification for Windows")
-            else:
-                ok("Clean-boot verification: booting probe instance from "
-                   f"{image_ids[0]} …")
-                vrc = ohbs_image.cmd_verify_image(args, image_id=image_ids[0], resolved=r)
-                if vrc != 0:
-                    fail("clean-boot verification FAILED — image not approved")
-                    ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
-                                    sbom_sha=sbom_sha, sbom_count=sbom_count)
-                    _write_build_result(args, r, status="failed", image_name=image_name,
-                                        image_ids=image_ids, score=score, report=rep, provenance=prov,
-                                        signed=signed, reason="clean-boot verification failed")
-                    ohbs_image._write_run_manifest(r, status="failed", phase="clean-boot-gate")
-                    _send_notification(r, False, image_ids, score, image_name)
-                    _close_build_log(_fh)
-                    return vrc
+            ok("Clean-boot verification: booting probe instance from "
+               f"{image_ids[0]} …")
+            vrc = ohbs_image.cmd_verify_image(args, image_id=image_ids[0], resolved=r)
+            if vrc != 0:
+                fail("clean-boot verification FAILED — image not approved")
+                ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
+                                sbom_sha=sbom_sha, sbom_count=sbom_count)
+                _write_build_result(args, r, status="failed", image_name=image_name,
+                                    image_ids=image_ids, score=score, report=rep, provenance=prov,
+                                    signed=signed, reason="clean-boot verification failed")
+                ohbs_image._write_run_manifest(r, status="failed", phase="clean-boot-gate")
+                _send_notification(r, False, image_ids, score, image_name)
+                _close_build_log(_fh)
+                return vrc
         # An explicitly requested result artifact is part of the release
         # contract.  Do not share or trigger deployment if it could not be
         # written for the downstream automation that requested it.
@@ -648,26 +644,31 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
     if not image_id:
         fail("--image <img-xxx> is required")
         return 1
-    if r.family == "windows":
-        fail("verify-image boots an SSH probe — Linux images only for now "
-             "(Windows images are gated by the in-build re-audit)")
-        return 1
     info(f"Launching verification instance from {image_id} "
          f"({r.profile_name} L{r.level}, {r.region}) …")
     instance_id = None
     key_id = ""
     key_path = ""
+    probe_password = ""
     try:
         ohbs_image._write_run_manifest(r, status="active", phase="probe-setup")
         try:
-            # Throwaway SSH key pair for the probe (CIS hardening disables
-            # password/root login, so the BatchMode probe needs -i).
-            key_id, key_path, pub_key = ohbs_image._probe_setup_keypair(r)
-            ohbs_image._write_run_manifest(r, status="active", phase="probe-keypair",
-                                           resource={"type": "keypair", "id": key_id})
-            instance_id = ohbs_image._probe_launch(
-                r, image_id, f"ohbs-image-verify-{image_id}",
-                key_ids=[key_id], pub_key=pub_key)
+            if r.family == "windows":
+                # Windows does not support cloud SSH keys.  The password is
+                # generated per probe and never persisted or logged.
+                probe_password = ohbs_image._probe_windows_password()
+                instance_id = ohbs_image._probe_launch(
+                    r, image_id, f"ohbs-image-verify-{image_id}",
+                    password=probe_password)
+            else:
+                # Throwaway SSH key pair for the probe (CIS hardening disables
+                # password/root login, so the BatchMode probe needs -i).
+                key_id, key_path, pub_key = ohbs_image._probe_setup_keypair(r)
+                ohbs_image._write_run_manifest(r, status="active", phase="probe-keypair",
+                                               resource={"type": "keypair", "id": key_id})
+                instance_id = ohbs_image._probe_launch(
+                    r, image_id, f"ohbs-image-verify-{image_id}",
+                    key_ids=[key_id], pub_key=pub_key)
             ohbs_image._write_run_manifest(r, status="active", phase="probe-running",
                                            resource={"type": "instance", "id": instance_id})
         except ConfigError as exc:
@@ -683,19 +684,27 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
             fail("Could not get a public IP for the probe instance (timeout)")
             return 1
         ok(f"Probe public IP: {ip}")
-        # The probe logs in as 'ohbsimage' (the image's built-in build user):
-        # CIS hardening sets PermitRootLogin no, and _probe_launch's UserData
-        # installs the throwaway probe key ONLY into ohbsimage's
-        # authorized_keys — r.ssh_username (root for the build itself) has no
-        # usable credential on the fresh boot.
-        ssh_user = "ohbsimage"
-        ssh_port = r.ssh_port or 22
-        if not ohbs_image._probe_ssh_ready(ip, ssh_port, ssh_user, key_path=key_path):
-            fail("SSH did not come up on the probe instance (timeout) — "
-                 "clean-boot verification failed")
-            return 1
-        ok("SSH ready on fresh boot")
-        doc = ohbs_image._probe_scan(r, ip, ssh_port, ssh_user, r.level, key_path=key_path)
+        if r.family == "windows":
+            if not ohbs_image._probe_winrm_ready(ip, probe_password):
+                fail("WinRM did not come up on the probe instance (timeout) — "
+                     "clean-boot verification failed")
+                return 1
+            ok("WinRM ready on fresh boot")
+            doc = ohbs_image._probe_scan_windows(r, ip, probe_password, r.level)
+        else:
+            # The probe logs in as 'ohbsimage' (the image's built-in build user):
+            # CIS hardening sets PermitRootLogin no, and _probe_launch's UserData
+            # installs the throwaway probe key ONLY into ohbsimage's
+            # authorized_keys — r.ssh_username (root for the build itself) has no
+            # usable credential on the fresh boot.
+            ssh_user = "ohbsimage"
+            ssh_port = r.ssh_port or 22
+            if not ohbs_image._probe_ssh_ready(ip, ssh_port, ssh_user, key_path=key_path):
+                fail("SSH did not come up on the probe instance (timeout) — "
+                     "clean-boot verification failed")
+                return 1
+            ok("SSH ready on fresh boot")
+            doc = ohbs_image._probe_scan(r, ip, ssh_port, ssh_user, r.level, key_path=key_path)
         if "error" in doc and "summary" not in doc:
             fail(f"Fresh-boot scan failed: {doc.get('error', 'unknown error')}")
             return 1

@@ -310,10 +310,6 @@ def run_preflight(r: ResolvedConfig) -> bool:
         warn("[meta].benchmark is empty — image tags/report will not name "
              "the CIS benchmark edition")
 
-    if r.verify_boot and family == "windows":
-        warn("[meta].verify_boot is Linux-only — it will be ignored for "
-             "Windows builds")
-
     # Best-effort: catch the #1 support-ticket cause (SG blocks the build
     # port) before Packer burns ~10 minutes on an SSH/WinRM connect timeout.
     _check_security_group_ingress(r)
