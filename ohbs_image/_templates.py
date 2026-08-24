@@ -491,6 +491,12 @@ build {
       "# leaves /var/tmp/dracut.*/ behind, and its files land outside the",
       "# SUID baseline recorded by CIS 7.1.13 (rhel10 build 2026-08-22).",
       "sudo rm -rf /var/tmp/dracut.* /tmp/dracut.* 2>/dev/null || true",
+      "# Relabel the artifacts created AFTER the engine's apply (guard files,",
+      "# /opt reports, banner) before an enforcing boot: the selinux fixer",
+      "# restorecons the whole filesystem inline during apply, but these",
+      "# late files would otherwise be unlabeled when SELinux comes up",
+      "# enforcing at the consumer's first boot.  Cheap targeted pass.",
+      "command -v restorecon >/dev/null 2>&1 && sudo restorecon -R /opt /etc /var/log /var/lib /home /root 2>/dev/null || true",
       "rm -rf /tmp/ansible /opt/ohbs-image-ansible/staging /opt/ohbs-image-ansible/reboot.sh /opt/ohbs-image-ansible/ssh-guard.sh /opt/ohbs-image-ansible/reconnected.sh /opt/ohbs-image-ansible/fix-logperms.sh /opt/ohbs-image-ansible/cleanup.sh ~/.ansible/roles 2>/dev/null || true"
     ]
   }
