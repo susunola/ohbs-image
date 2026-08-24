@@ -4497,11 +4497,9 @@
       "Server",
       "Workstation"
     ],
-    "family": "pam_arg",
+    "family": "authselect_feature",
     "params": {
-      "module": "pam_unix.so",
-      "arg": "nullok",
-      "mode": "absent"
+      "feature": "without-nullok"
     },
     "risk": "safe",
     "page": 700,
