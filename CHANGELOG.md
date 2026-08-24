@@ -7,6 +7,8 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-08-25 — first-success workflow and release hardening
+
 ### Added (rule-catalog automation, round 6)
 - **141 more manual rules wired to existing engine families** — no engine
   changes; every params block is modelled on an already-automated rule with
