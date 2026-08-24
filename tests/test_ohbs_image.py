@@ -908,6 +908,7 @@ class TestRenderAll:
         assert "winrm re-locked" in hcl
         assert "AllowRemoteShell -Type DWord -Value 0" not in hcl
         assert "SeDenyNetworkLogonRight = *S-1-5-32-546,*S-1-5-114" in hcl
+        assert "\\\\s" not in hcl
 
         r_l2 = resolve(_make_win_toml("win2022"))
         r_l2.level = 2

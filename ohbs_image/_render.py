@@ -542,7 +542,7 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
             "      \"secedit /export /cfg $inf /areas USER_RIGHTS | Out-Null\",\n"
             "      \"$content = Get-Content $inf -Raw\",\n"
             "      \"$line = 'SeDenyNetworkLogonRight = *S-1-5-32-546,*S-1-5-114'\",\n"
-            "      \"if ($content -match '(?m)^\\s*SeDenyNetworkLogonRight\\s*=.*$') { $content = $content -replace '(?m)^\\s*SeDenyNetworkLogonRight\\s*=.*$', $line } else { $content = $content -replace '(?m)^(\\[Privilege Rights\\])', ('${1}' + [Environment]::NewLine + $line) }\",\n"
+            "      \"if ($content.Contains('SeDenyNetworkLogonRight')) { $content = $content -replace '(?m)^SeDenyNetworkLogonRight.*$', $line } else { $content = $content.Replace('[Privilege Rights]', ('[Privilege Rights]' + [Environment]::NewLine + $line)) }\",\n"
             "      \"[IO.File]::WriteAllText($inf, $content)\",\n"
             "      \"secedit /configure /db $db /cfg $inf /areas USER_RIGHTS | Out-Null\",\n"
             "      \"if ($LASTEXITCODE -ne 0) { throw 'failed to apply CIS 2.2.22' }\",\n"
