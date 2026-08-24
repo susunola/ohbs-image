@@ -11,6 +11,7 @@ on:
 permissions:
   id-token: write             # required for trusted publishing
   contents: read
+  attestations: write         # required for build provenance attestation
 
 jobs:
   publish:
@@ -31,6 +32,16 @@ jobs:
 
       - name: Build wheel + sdist
         run: python -m build
+
+      # SLSA-style build provenance for the release artifacts themselves:
+      # GitHub signs an attestation linking the wheel/sdist to this repo +
+      # commit. Verify later with `gh attestation verify dist/*.whl
+      # --owner susunola` — customers' security reviews can check the tool
+      # that hardens their images is itself unmodified.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2, pinned 2026-08-24
+        with:
+          subject-path: "dist/*.whl dist/*.tar.gz"
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1, pinned 2026-08-23
