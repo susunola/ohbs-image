@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import check_readme  # noqa: E402
+import ohbs_image  # noqa: E402
 
 ALL_CMDS = {"audit", "build", "check-source", "clean", "cleanup-images", "cleanup-runs", "config", "configure", "discover", "doctor", "drift", "plan", "promote", "report", "rollback", "state", "verify-release",
             "images", "init", "list", "pending", "preflight", "scan", "test",
@@ -116,7 +117,7 @@ class TestMainExitCodes:
     def test_main_returns_0_when_current(self, monkeypatch):
         readme = "\n".join(f"ohbs-image {c}" for c in ALL_CMDS) + "\n" + \
                  " ".join(check_readme._PROFILE_NAMES) + \
-                 "\nhttps://img.shields.io/badge/version-0.17.0-blue"
+                 f"\nhttps://img.shields.io/badge/version-{ohbs_image.VERSION}-blue"
         monkeypatch.setattr(check_readme, "registered_subcommands",
                             lambda: set(ALL_CMDS))
         with monkeypatch_open(readme):
@@ -202,7 +203,7 @@ class TestMainCheckTranslations:
         profiles = " ".join(check_readme._PROFILE_NAMES)
         (tmp_path / "README.md").write_text(
             f"ohbs-image init\nohbs-image build\n{profiles}\n"
-            "https://img.shields.io/badge/version-0.17.0-blue\n",
+            f"https://img.shields.io/badge/version-{ohbs_image.VERSION}-blue\n",
             encoding="utf-8")
         for name in ("README.zh-CN.md", "README.ja.md", "README.th.md"):
             (tmp_path / name).write_text(
@@ -224,7 +225,7 @@ class TestMainCheckTranslations:
         profiles = " ".join(check_readme._PROFILE_NAMES)
         (tmp_path / "README.md").write_text(
             f"ohbs-image init\nohbs-image build\n{profiles}\n"
-            "https://img.shields.io/badge/version-0.17.0-blue\n",
+            f"https://img.shields.io/badge/version-{ohbs_image.VERSION}-blue\n",
             encoding="utf-8")
         for name in ("README.zh-CN.md", "README.ja.md", "README.th.md"):
             # condensed quick-start style: only two commands documented
