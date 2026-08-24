@@ -946,17 +946,23 @@ credentials), and the guide for adding a new CIS profile.
 
 ### Keep the docs in sync with the CLI
 
-CI enforces that README.md always documents every subcommand and OS profile
-(`.github/workflows/ci.yml` → `scripts/check_readme.py`). When you add, remove,
-or rename a `ohbs-image` subcommand or a profile, update the relevant section
-of README.md, then verify locally before pushing:
+CI enforces that README.md always documents every subcommand and OS profile,
+and that the translated quick-start READMEs (zh-CN / ja / th) never reference
+a command that no longer exists (`.github/workflows/ci.yml` →
+`scripts/check_readme.py`). When you add, remove, or rename a `ohbs-image`
+subcommand or a profile, update the relevant sections, then verify locally
+before pushing:
 
 ```bash
-python3 scripts/check_readme.py            # exit 0 = docs current, 1 = missing items
+python3 scripts/check_readme.py --check-tests --check-translations
+# exit 0 = docs current, 1 = missing items / stale translation references
 ```
 
-The script reports exactly which subcommands/profiles README.md is missing, so
-you can fix the docs in one pass rather than watching CI fail.
+Translations are deliberately abridged quick-starts, so the translation guard
+only flags *backticked* `ohbs-image <cmd>` references that do not exist in
+the CLI — it does not require every command to appear in every language.
+The script reports exactly which subcommands/profiles README.md is missing,
+so you can fix the docs in one pass rather than watching CI fail.
 
 #### Validate in a clean Docker environment
 

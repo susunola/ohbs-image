@@ -370,7 +370,7 @@ ohbs-image build
 - [ ] CI pipeline (GitHub Actions) สำหรับ automated image build
 - [ ] PyPI package (`pip install ohbs-image`)
 - [ ] `ohbs-image list` — แสดงรายการ profile พร้อม metadata
-- [ ] `ohbs-image report` — ดึงและแสดง audit report จาก build ที่เสร็จแล้ว
+- [ ] ดึงและแสดง audit report จาก build ที่เสร็จแล้ว (ดูประวัติ build ได้ด้วย `ohbs-image images`)
 - [ ] Custom rule selection (`rules_include` / `rules_exclude` ใน `ohbs-image.toml`)
 
 ## การมีส่วนร่วม

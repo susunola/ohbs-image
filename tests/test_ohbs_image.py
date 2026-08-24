@@ -5584,17 +5584,31 @@ class TestSarifDetailExtraction:
 class TestMainExceptionGuard:
     """P2 — main() converts internal errors to exit 70, Ctrl-C to 130."""
 
-    def test_internal_error_exit_70(self, monkeypatch, capsys):
+    def test_internal_error_exit_70(self, monkeypatch, capsys, caplog):
         from ohbs_image import main
-        monkeypatch.setattr(
-            "ohbs_image.build_parser",
-            lambda: type("P", (), {"parse_args": lambda self, a: type(
+
+        def make_parser(verbose):
+            return type("P", (), {"parse_args": lambda self, a: type(
                 "A", (), {"func": lambda *a: (_ for _ in ()).throw(
-                    RuntimeError("boom")), "verbose": False})()})())
+                    RuntimeError("boom")), "verbose": verbose})()})()
+
+        # default (no -v): traceback suppressed; the one-line error goes through
+        # logging, so assert it via caplog (capsys only sees sys.stderr writers)
+        monkeypatch.setattr("ohbs_image.build_parser", lambda: make_parser(False))
         rc = main([])
         assert rc == 70
         err = capsys.readouterr().err
-        # the guard surfaces the failure: traceback + a human message
+        assert "Traceback" not in err
+        assert "internal error" in caplog.text
+        assert "boom" in caplog.text
+        assert "rerun with -v" in caplog.text
+
+        # with -v: full traceback is surfaced on stderr
+        caplog.clear()
+        monkeypatch.setattr("ohbs_image.build_parser", lambda: make_parser(True))
+        rc = main([])
+        assert rc == 70
+        err = capsys.readouterr().err
         assert "Traceback" in err
         assert "boom" in err
 

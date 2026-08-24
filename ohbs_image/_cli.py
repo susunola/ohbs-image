@@ -86,7 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_bld.add_argument("--skip-if-unchanged", action="store_true",
                        help="Skip the rebuild when inputs (source image, rules, "
                             "benchmark, level) are unchanged since the last "
-                            "successful build (change detection, P1#7)")
+                            "successful build")
     p_bld.set_defaults(func=cmd_build)
 
     p_cln = sub.add_parser("clean", parents=[common], help="Remove working directory")
@@ -129,7 +129,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_lst = sub.add_parser("list", help="Enumerate available profiles with metadata")
     p_lst.add_argument("--versions", action="store_true",
-                       help="Show rule-catalog sha256 + engine version per profile (#19)")
+                       help="Show rule-catalog sha256 + engine version per profile")
     p_lst.set_defaults(func=cmd_list)
 
     p_scn = sub.add_parser("scan", parents=[common], help="Audit-only build (no remediation) with score gate")
@@ -144,16 +144,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_scn.add_argument("--sarif", default=None,
                        help="Write a SARIF 2.1.0 report of failed rules to PATH")
     p_scn.add_argument("--xccdf", default=None,
-                       help="Write an XCCDF 1.2 TestResult report of failed rules to PATH (P2#8)")
+                       help="Write an XCCDF 1.2 TestResult report of failed rules to PATH")
     p_scn.set_defaults(func=cmd_scan)
 
     p_pnd = sub.add_parser("pending", parents=[common],
-                           help="Change detection: report whether a rebuild is needed (P1#7)")
+                           help="Change detection: report whether a rebuild is needed")
     p_pnd.set_defaults(func=cmd_pending)
 
     p_aud = sub.add_parser(
         "audit",
-        help="Independent third-party audit (oscap / inspec / kitty) with a score gate (P0#1)")
+        help="Independent third-party audit (oscap / inspec / kitty) with a score gate")
     p_aud.add_argument("--tool", choices=["oscap", "inspec", "kitty"], required=True,
                        help="Audit tool: oscap (SCAP content) | inspec (dev-sec baseline) | kitty (Windows CSV)")
     p_aud.add_argument("--host", default=None, help="Target host to audit (required for oscap/inspec)")
@@ -167,7 +167,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_aud.add_argument("--baseline", default=None,
                        help="inspec baseline (default dev-sec/linux-baseline)")
     p_aud.add_argument("--parse", default=None,
-                       help="kitty: path to a HardeningKitty audit CSV export to parse (P2#11)")
+                       help="kitty: path to a HardeningKitty audit CSV export to parse")
     p_aud.add_argument("--min-score", type=float, default=85.0,
                        help="Gate threshold in percent (default 85)")
     p_aud.add_argument("--sarif", default=None, help="Write findings as SARIF 2.1.0 to PATH")
@@ -177,7 +177,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_vrf_img = sub.add_parser(
         "verify-image", parents=[common],
         help="Clean-boot verification: boot a probe from a produced image, "
-             "re-audit on fresh boot via SSH/WinRM, terminate (P0#3)")
+             "re-audit on fresh boot via SSH/WinRM, terminate")
     p_vrf_img.add_argument("--image", required=True,
                            help="Image ID to verify (e.g. img-xxxx)")
     p_vrf_img.add_argument("--min-score", type=float, default=85.0,
@@ -186,8 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_drift = sub.add_parser(
         "drift", parents=[common],
-        help="Detect configuration drift on a running instance vs the "
-             "image baseline (round-2 #12)")
+        help="Detect configuration drift on a running instance vs the image baseline")
     p_drift.add_argument("--host", required=True,
                          help="IP of the running instance to check for drift")
     p_drift.add_argument("--image", default="",
@@ -203,7 +202,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_src = sub.add_parser(
         "check-source", parents=[common],
         help="Vendor image refresh detection — is the source image newer "
-             "than the last build? (round-2 #20)")
+             "than the last build?")
     p_src.set_defaults(func=cmd_check_source)
 
     p_tst = sub.add_parser("test", parents=[common], help="Test the build pipeline")
@@ -226,7 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
                           help="Keep the newest N builds (default 1)")
     p_clnimg.add_argument("--unused-since", type=int, default=0,
                           help="Only delete images NOT shared with other "
-                               "accounts (in-use guard, round-2 #16); 0 = off")
+                               "accounts (in-use guard); 0 = off")
     p_clnimg.add_argument("--apply", action="store_true",
                           help="Actually delete images (default is a dry run)")
     p_clnimg.set_defaults(func=cmd_cleanup_images)
@@ -259,8 +258,10 @@ def main(argv: list[str] | None = None) -> int:
         print(file=sys.stderr)
         fail("interrupted")
         return 130
-    except Exception as exc:  # unexpected internal error: print the traceback for diagnosis, then exit 70
+    except Exception as exc:  # unexpected internal error: fail cleanly, show the traceback only under -v
         import traceback as _tb
-        _tb.print_exc(file=sys.stderr)
-        fail(f"internal error: {type(exc).__name__}: {exc}")
+        if getattr(args, "verbose", False):
+            _tb.print_exc(file=sys.stderr)
+        fail(f"internal error: {type(exc).__name__}: {exc} "
+             "(rerun with -v for the full traceback)")
         return 70
