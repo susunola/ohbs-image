@@ -3964,6 +3964,33 @@ class TestRuleIdAndBenchmark:
                     assert r.get("risk") != "none", \
                         f"{path}: {r['id']} partition rule still risk=none"
 
+    def test_win2016_machine_controls_have_executable_families(self):
+        """Machine-scoped CIS controls must not regress to opaque manual rows.
+
+        These rules have stable Windows APIs or policy registry values.  The
+        test deliberately excludes controls that need site-specific content
+        (legal notice, account rename and ASR rule selections).
+        """
+        path = "ohbs_image/roles/cis-win2016/files/rules.json"
+        with open(path, encoding="utf-8") as fh:
+            rules = {r["id"]: r for r in json.load(fh)}
+        expected = {
+            "2.3.1.2": "local-user-disabled",
+            "18.6.19.2.1": "reg-dword",
+            "18.10.26.1.2": "eventlog-size",
+            "18.10.26.2.2": "eventlog-size",
+            "18.10.57.3.9.3": "reg-dword",
+            "18.10.93.2.1": "reg-dword",
+        }
+        for rule_id, family in expected.items():
+            assert rules[rule_id]["automated"] is True
+            assert rules[rule_id]["family"] == family
+            assert rules[rule_id]["params"]
+
+        with open("ohbs_image/roles/cis-win2016/files/ohbs_engine.ps1", encoding="utf-8") as fh:
+            engine = fh.read()
+        assert '"local-user-disabled"' in engine
+
     def test_sarif_carries_benchmark(self):
         from ohbs_image import _build_sarif
         out = json.loads(_build_sarif(["  ✗ 1.1.1.1 | X"],
@@ -5572,17 +5599,31 @@ class TestSarifDetailExtraction:
 class TestMainExceptionGuard:
     """P2 — main() converts internal errors to exit 70, Ctrl-C to 130."""
 
-    def test_internal_error_exit_70(self, monkeypatch, capsys):
+    def test_internal_error_exit_70(self, monkeypatch, capsys, caplog):
         from ohbs_image import main
-        monkeypatch.setattr(
-            "ohbs_image.build_parser",
-            lambda: type("P", (), {"parse_args": lambda self, a: type(
+
+        def make_parser(verbose):
+            return type("P", (), {"parse_args": lambda self, a: type(
                 "A", (), {"func": lambda *a: (_ for _ in ()).throw(
-                    RuntimeError("boom")), "verbose": False})()})())
+                    RuntimeError("boom")), "verbose": verbose})()})()
+
+        # default (no -v): traceback suppressed; the one-line error goes through
+        # logging, so assert it via caplog (capsys only sees sys.stderr writers)
+        monkeypatch.setattr("ohbs_image.build_parser", lambda: make_parser(False))
         rc = main([])
         assert rc == 70
         err = capsys.readouterr().err
-        # the guard surfaces the failure: traceback + a human message
+        assert "Traceback" not in err
+        assert "internal error" in caplog.text
+        assert "boom" in caplog.text
+        assert "rerun with -v" in caplog.text
+
+        # with -v: full traceback is surfaced on stderr
+        caplog.clear()
+        monkeypatch.setattr("ohbs_image.build_parser", lambda: make_parser(True))
+        rc = main([])
+        assert rc == 70
+        err = capsys.readouterr().err
         assert "Traceback" in err
         assert "boom" in err
 

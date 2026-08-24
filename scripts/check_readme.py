@@ -6,8 +6,15 @@ OS profile in ``ohbs_image.PROFILES`` is documented in README.md (as
 ``ohbs-image <cmd>`` / the profile name).  Run in CI so adding or removing a
 command or profile without updating the docs fails the build.
 
+With ``--check-translations``, the translated READMEs (zh-CN / ja / th) are
+held to a lighter, deliberate contract: they are condensed quick-start
+documents, so they are NOT required to cover every subcommand — but every
+``ohbs-image <cmd>`` they do reference must still exist in the CLI (no stale
+references after a rename or removal).
+
 Usage:
-    python3 scripts/check_readme.py [--readme PATH]
+    python3 scripts/check_readme.py [--readme PATH] [--check-tests]
+                                    [--check-translations]
 
 The check is pure stdlib + the installed ``ohbs_image`` package (already
 importable in the CI test job, where this runs after ``pip install -e .``).
@@ -61,6 +68,25 @@ def readme_documented_profiles(readme_text: str) -> set[str]:
     return set(re.findall(pattern, readme_text))
 
 
+def translation_stale_commands(translation_text: str,
+                               registered: set[str]) -> list[str]:
+    """Which *backticked* ``ohbs-image <cmd>`` references in a translation no
+    longer exist in the CLI.
+
+    Translations are condensed quick-start documents and are NOT required to
+    enumerate every subcommand (unlike README.md). What they must never do is
+    reference a command that was renamed or removed — a stale reference is the
+    actual rot mode. Backticks are required so prose such as "ohbs-image
+    launches a CVM" is not misread as a command reference.
+    """
+    stale: set[str] = set()
+    for m in re.finditer(r"`ohbs-image\s+([a-z][a-z-]*)", translation_text):
+        word = m.group(1)
+        if word not in registered:
+            stale.add(word)
+    return sorted(stale)
+
+
 def check_readme(readme_text: str, registered: set[str],
                  profiles: set[str], version: str = "") -> list[str]:
     """Return a list of human-readable problems, empty when docs are current."""
@@ -100,6 +126,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--check-tests", action="store_true",
                    help="Also verify tests/test_check_readme.py's hardcoded "
                         "command/profile lists match the live CLI (default: off)")
+    p.add_argument("--check-translations", action="store_true",
+                   help="Also verify the translated READMEs (zh-CN / ja / th) "
+                        "do not reference any command that no longer exists "
+                        "in the CLI, so a renamed/removed command cannot "
+                        "leave a stale reference in another language "
+                        "(default: off)")
     args = p.parse_args(argv)
 
     readme_path = Path(args.readme)
@@ -122,6 +154,25 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check_tests:
         errors += check_test_consistency(registered, profiles)
+
+    if args.check_translations:
+        # Contract differs by document type: README.md must cover every
+        # subcommand, but the translated READMEs (zh-CN / ja / th) are
+        # condensed quick-start documents by design — forcing full coverage
+        # would make them unusably long. For translations we enforce the
+        # *no stale references* contract instead: every `ohbs-image <cmd>`
+        # they mention must still exist in the CLI, so a renamed or removed
+        # command cannot leave a dead reference behind in any language.
+        for name in ("README.zh-CN.md", "README.ja.md", "README.th.md"):
+            tpath = REPO_ROOT / name
+            if not tpath.exists():
+                errors.append(f"{name}: translation README not found")
+                continue
+            ttext = tpath.read_text(encoding="utf-8")
+            stale = translation_stale_commands(ttext, registered)
+            if stale:
+                errors.append(f"{name} references unknown subcommand(s): "
+                              + ", ".join(stale))
 
     if errors:
         print("check_readme: documentation is out of date with the code:", file=sys.stderr)

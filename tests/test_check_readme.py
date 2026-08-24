@@ -162,3 +162,75 @@ class TestCheckTestConsistency:
         monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
         errs = check_readme.check_test_consistency({"audit"}, set())
         assert any("test file not found" in e for e in errs)
+
+
+class TestTranslationStaleCommands:
+    """Tests for check_readme.translation_stale_commands() — translations are
+    condensed by design, so only *stale* (renamed/removed) command references
+    are treated as errors, not missing coverage."""
+
+    def test_condensed_translation_with_real_commands_passes(self):
+        text = "`ohbs-image init` と `ohbs-image build` のみ"
+        assert check_readme.translation_stale_commands(
+            text, {"init", "build"}) == []
+
+    def test_stale_command_reported(self):
+        text = "`ohbs-image init` and a stale `ohbs-image obsoleted-cmd`"
+        assert check_readme.translation_stale_commands(
+            text, {"init"}) == ["obsoleted-cmd"]
+
+    def test_backtick_required(self):
+        """Prose such as "ohbs-image launches a CVM" (no backticks) must not
+        be misread as a command reference."""
+        text = "ohbs-image launches a CVM"
+        assert check_readme.translation_stale_commands(text, {"init"}) == []
+
+    def test_flags_do_not_fake_a_command(self):
+        text = "`ohbs-image scan --xccdf out.xml` and `ohbs-image build -y`"
+        assert check_readme.translation_stale_commands(
+            text, {"scan", "build"}) == []
+
+
+class TestMainCheckTranslations:
+    def test_main_check_translations_reports_stale(self, monkeypatch,
+                                                   tmp_path, capsys):
+        """main() with --check-translations exits 1 and names the stale
+        command when a translation references a command that no longer
+        exists in the CLI."""
+        monkeypatch.setattr(check_readme, "registered_subcommands",
+                            lambda: {"init", "build"})
+        profiles = " ".join(check_readme._PROFILE_NAMES)
+        (tmp_path / "README.md").write_text(
+            f"ohbs-image init\nohbs-image build\n{profiles}\n"
+            "https://img.shields.io/badge/version-0.17.0-blue\n",
+            encoding="utf-8")
+        for name in ("README.zh-CN.md", "README.ja.md", "README.th.md"):
+            (tmp_path / name).write_text(
+                "`ohbs-image init` and a stale `ohbs-image ghost-cmd`\n",
+                encoding="utf-8")
+        monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
+        rc = check_readme.main(["--readme", str(tmp_path / "README.md"),
+                                "--check-translations"])
+        assert rc == 1
+        err = capsys.readouterr().err
+        assert "ghost-cmd" in err
+
+    def test_main_check_translations_passes_when_clean(self, monkeypatch,
+                                                       tmp_path):
+        """--check-translations passes when every referenced command exists
+        (translations do NOT need full subcommand coverage)."""
+        monkeypatch.setattr(check_readme, "registered_subcommands",
+                            lambda: {"init", "build"})
+        profiles = " ".join(check_readme._PROFILE_NAMES)
+        (tmp_path / "README.md").write_text(
+            f"ohbs-image init\nohbs-image build\n{profiles}\n"
+            "https://img.shields.io/badge/version-0.17.0-blue\n",
+            encoding="utf-8")
+        for name in ("README.zh-CN.md", "README.ja.md", "README.th.md"):
+            # condensed quick-start style: only two commands documented
+            (tmp_path / name).write_text(
+                "`ohbs-image init` and `ohbs-image build`\n", encoding="utf-8")
+        monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
+        rc = check_readme.main(["--readme", str(tmp_path / "README.md"),
+                                "--check-translations"])
+        assert rc == 0

@@ -159,10 +159,16 @@ ohbs-image clean
 | `ohbs-image test --idempotency` | 重复执行 apply，二次有变更即失败 |
 | `ohbs-image list` | 枚举可用 profile 及元数据 |
 | `ohbs-image images [--latest] [-n N]` | 列出历史构建（血缘） |
+| `ohbs-image promote --image <id> --environment <env> --approved-by <user>` | 在发布清单中记录晋升到某环境（只更新可审计的发布状态，应用部署与云共享仍是外部显式动作） |
+| `ohbs-image rollback --image <id> --environment <env> --reason "..."` | 在发布清单中记录回滚（同样只更新发布状态） |
+| `ohbs-image verify-release --image <id>` | 校验发布清单引用的审计 / 来源 / HTML 报告证据哈希仍与状态根目录一致 |
 | `ohbs-image pending` | 变更检测：是否需要重建（退出码 0/1） |
 | `ohbs-image cleanup-images [--older-than 30]` | 按血缘年龄退役旧镜像 |
 | `ohbs-image cleanup-images --apply` | 实际删除（默认仅演练） |
 | `ohbs-image cleanup-images --unused-since 60` | 只删除未共享（无下游引用）的镜像；共享镜像的血缘记录满 N 天后视为闲置，照样退役（0 = 关闭此保护） |
+| `ohbs-image cleanup-runs --older-than 24` | 找出打标但已成孤儿 / 超龄的构建与探针 CVM（默认演练） |
+| `ohbs-image cleanup-runs --older-than 24 --apply` | 实际终止打标的临时 CVM（小时数必须 > 0） |
+| `ohbs-image cleanup-runs --include-legacy --apply` | 显式纳入无运行清单的旧探针（默认关闭） |
 | `ohbs-image verify --provenance <file>` | 校验 SLSA 来源签名 |
 | `ohbs-image verify --image <img-id>` | 按镜像 ID 定位来源记录 |
 | `ohbs-image verify-image --image <img-id>` | 对产出镜像做干净启动验收 |
@@ -193,6 +199,8 @@ ohbs-image clean
 | `--baseline <name>` | `dev-sec/linux-baseline` | audit | inspec 基线 |
 | `--parse <csv>` | — | audit --tool kitty | 待解析的 HardeningKitty 审计 CSV |
 | `--older-than <days>` | `30` | cleanup-images | 退役 N 天前的构建 |
+| `--older-than <hours>` | `24` | cleanup-runs | 退役打标临时 CVM（N 小时前） |
+| `--include-legacy` | — | cleanup-runs | 包含无运行清单的旧探针（默认关闭） |
 | `--keep-latest <n>` | `1` | cleanup-images | 保留最新 N 个构建 |
 | `--apply` | — | cleanup-images | 实际删除（默认仅演练） |
 
