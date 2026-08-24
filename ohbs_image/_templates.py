@@ -901,6 +901,7 @@ __SMOKE_TEST_BLOCK____TEST_COMPONENTS_BLOCK__
       "if ($LASTEXITCODE -ne 0) { Write-Error '[ohbs-image] FAILED to set Administrator password (exit ' + $LASTEXITCODE + ')'; exit 1 }",
       "# Remove the build-time WinRM firewall guard rule (image ships hardened).",
       "Remove-NetFirewallRule -DisplayName 'ohbs-image-winrm-build-5985' -ErrorAction SilentlyContinue",
+__WINRM_REMOTE_SHELL_LOCK_BLOCK__
       "Write-Host '[ohbs-image] winrm re-locked: basic auth + unencrypted HTTP off; Administrator password randomized; guard rule removed'"
     ]
   }

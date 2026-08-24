@@ -594,6 +594,13 @@ class TestRenderSite:
         assert "ansible_connection: winrm" in out
         assert "hosts: all" in out
 
+    def test_windows_apply_defers_remote_shell_lockout(self):
+        p = PROFILES["win2022"]
+        apply = render_site(p, level=2, mode="apply")
+        scan = render_site(p, level=2, mode="scan")
+        assert 'cis_exclude: ["18.10.90.1", "18.10.91.1"]' in apply
+        assert "18.10.91.1" not in scan
+
 
 class TestRenderAll:
     def test_linux_renders_correctly(self, valid_toml, tmp_path):
@@ -898,6 +905,14 @@ class TestRenderAll:
         assert "winrm_use_ntlm" not in hcl
         assert "ansible_winrm_transport=ntlm" not in hcl
         assert "winrm re-locked" in hcl
+        assert "AllowRemoteShell -Type DWord -Value 0" not in hcl
+
+        r_l2 = resolve(_make_win_toml("win2022"))
+        r_l2.level = 2
+        wd_l2 = tmp_path / "build-l2"
+        render_all(wd_l2, r_l2)
+        assert "AllowRemoteShell -Type DWord -Value 0" in (
+            wd_l2 / "packer" / "main.pkr.hcl").read_text()
         # The fresh-boot probe must re-run the exact engine/catalog that
         # produced the image, not merely test whether port 5985 is open.
         assert r"C:\\ProgramData\\ohbs-image\\ohbs_engine.ps1" in hcl

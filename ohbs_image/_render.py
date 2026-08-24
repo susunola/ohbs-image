@@ -297,6 +297,18 @@ def render_site(p: dict[str, Any], level: int, mode: str = "apply",
     disruptive = "true" if allow_disruptive else "false"
 
     if family == "windows":
+        # The Windows build communicator uses WinRM.  The L2 "Allow Remote
+        # Shell Access" control disables the service while Ansible is still
+        # collecting the engine result, so it makes the build lose its own
+        # management channel.  Defer it to the final Packer provisioner,
+        # after every upload and report fetch is complete.  The two IDs are
+        # benchmark-specific (2016 vs 2019+); absent IDs are harmlessly
+        # ignored by the engine's selection filter.
+        engine_exclude = list(rules_exclude or [])
+        if mode == "apply":
+            for rule_id in ("18.10.90.1", "18.10.91.1"):
+                if rule_id not in engine_exclude:
+                    engine_exclude.append(rule_id)
         # Windows has no post-reboot re-audit — the gate lives in the single
         # apply/scan pass, so min_score/mode/include/exclude all land here.
         return (
@@ -307,7 +319,7 @@ def render_site(p: dict[str, Any], level: int, mode: str = "apply",
             .replace("__CIS_MODE__", mode)
             .replace("__MIN_SCORE__", str(min_score))
             .replace("__CIS_INCLUDE__", _yaml_list(rules_include or []))
-            .replace("__CIS_EXCLUDE__", _yaml_list(rules_exclude or []))
+            .replace("__CIS_EXCLUDE__", _yaml_list(engine_exclude))
             .replace("__CIS_ALLOW_DISRUPTIVE__", disruptive)
         )
     else:
@@ -520,12 +532,22 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
             warn("[meta].ssh_debug_password is ignored for Windows profiles "
                  "(it only applies to Linux user_data).")
         _validate_env_var_name(r.winrm_password_env, "[cloud].winrm_password_env")
+        remote_shell_lock = ""
+        if r.level == 2:
+            remote_shell_lock = (
+                "      \"# Apply the L2 Remote Shell Access control last.  Applying it during the\",\n"
+                "      \"# Ansible engine run breaks the active WinRM channel before the result can\",\n"
+                "      \"# be fetched.  Nothing after this provisioner needs remote management.\",\n"
+                "      \"New-Item -Path 'HKLM:\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows\\\\WinRM\\\\Service\\\\WinRS' -Force | Out-Null\",\n"
+                "      \"Set-ItemProperty -Path 'HKLM:\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows\\\\WinRM\\\\Service\\\\WinRS' -Name AllowRemoteShell -Type DWord -Value 0\",\n"
+            )
         hcl = (HCL_WIN_TEMPLATE
                .replace("__WINRM_PASSWORD_ENV__", r.winrm_password_env)
                .replace("__SECRET_ID_ENV__", r.secret_id_env)
                .replace("__SECRET_KEY_ENV__", r.secret_key_env)
                .replace("__SECURITY_TOKEN_ENV__", r.security_token_env)
                .replace("__ROLE_DIR__", r.role_dir)
+               .replace("__WINRM_REMOTE_SHELL_LOCK_BLOCK__", remote_shell_lock)
                .replace("__SMOKE_TEST_BLOCK__", smoke_block)
                .replace("__TEST_COMPONENTS_BLOCK__", test_block)
                .replace("__SPOT_BLOCK__", spot_block)
