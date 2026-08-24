@@ -1214,11 +1214,13 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "medium",
     "page": 165,
-    "family": "manual",
-    "params": {}
+    "family": "local-user-disabled",
+    "params": {
+      "name": "Guest"
+    }
   },
   {
     "id": "2.3.1.3",
@@ -2331,7 +2333,7 @@
       "Server"
     ],
     "assessment": "Manual",
-    "automated": false,
+    "automated": true,
     "risk": "low",
     "page": 293,
     "family": "reg-dword",
@@ -4881,11 +4883,15 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 581,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {
+      "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
+      "name": "DisabledComponents",
+      "value": 255
+    }
   },
   {
     "id": "18.6.20.1",
@@ -5860,7 +5866,7 @@
     "params": {
       "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Error Reporting",
       "name": "Disabled",
-      "value": "0 (DoReport) and 1 (Disabled)"
+      "value": 1
     }
   },
   {
@@ -5881,7 +5887,7 @@
     "params": {
       "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\kerberos\\parameters",
       "name": "DevicePKInitBehavior",
-      "value": "0 (DevicePKInitBehavior) and 1 (DevicePKInitEnabled)"
+      "value": 1
     }
   },
   {
@@ -6723,11 +6729,15 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 803,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Application",
+      "name": "Retention",
+      "value": 0
+    }
   },
   {
     "id": "18.10.26.1.2",
@@ -6740,11 +6750,14 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 805,
-    "family": "manual",
-    "params": {}
+    "family": "eventlog-size",
+    "params": {
+      "log": "Application",
+      "min_size_mb": 32
+    }
   },
   {
     "id": "18.10.26.2.1",
@@ -6757,11 +6770,15 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 808,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Security",
+      "name": "Retention",
+      "value": 0
+    }
   },
   {
     "id": "18.10.26.2.2",
@@ -6774,11 +6791,14 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 810,
-    "family": "manual",
-    "params": {}
+    "family": "eventlog-size",
+    "params": {
+      "log": "Security",
+      "min_size_mb": 192
+    }
   },
   {
     "id": "18.10.26.3.1",
@@ -6791,11 +6811,15 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 813,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Setup",
+      "name": "Retention",
+      "value": 0
+    }
   },
   {
     "id": "18.10.26.3.2",
@@ -6808,11 +6832,14 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 815,
-    "family": "manual",
-    "params": {}
+    "family": "eventlog-size",
+    "params": {
+      "log": "Setup",
+      "min_size_mb": 32
+    }
   },
   {
     "id": "18.10.26.4.1",
@@ -6825,11 +6852,15 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 818,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\System",
+      "name": "Retention",
+      "value": 0
+    }
   },
   {
     "id": "18.10.26.4.2",
@@ -6842,11 +6873,14 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 820,
-    "family": "manual",
-    "params": {}
+    "family": "eventlog-size",
+    "params": {
+      "log": "System",
+      "min_size_mb": 32
+    }
   },
   {
     "id": "18.10.29.2",
@@ -7476,11 +7510,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 912,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "DisablePasswordSaving", "value": 1}
   },
   {
     "id": "18.10.57.3.2.1",
@@ -7514,11 +7548,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 918,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fDisableCpm", "value": 1}
   },
   {
     "id": "18.10.57.3.3.2",
@@ -7531,11 +7565,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 920,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fDisableCdm", "value": 1}
   },
   {
     "id": "18.10.57.3.3.3",
@@ -7548,11 +7582,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 922,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fDisableLPT", "value": 1}
   },
   {
     "id": "18.10.57.3.3.4",
@@ -7565,11 +7599,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 924,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fDisablePNPRedir", "value": 1}
   },
   {
     "id": "18.10.57.3.9.1",
@@ -7603,11 +7637,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 930,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "fEncryptRPCTraffic", "value": 1}
   },
   {
     "id": "18.10.57.3.9.3",
@@ -7620,11 +7654,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 932,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "SecurityLayer", "value": 2}
   },
   {
     "id": "18.10.57.3.9.4",
@@ -7658,11 +7692,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 936,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "MinEncryptionLevel", "value": 3}
   },
   {
     "id": "18.10.57.3.10.1",
@@ -7675,11 +7709,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 939,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "MaxIdleTime", "value": 900000, "op": "le"}
   },
   {
     "id": "18.10.57.3.10.2",
@@ -7692,11 +7726,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 941,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services", "name": "MaxDisconnectionTime", "value": 60000}
   },
   {
     "id": "18.10.57.3.11.1",
@@ -8236,11 +8270,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 1014,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU", "name": "NoAutoUpdate", "value": 0}
   },
   {
     "id": "18.10.93.2.2",
@@ -8253,11 +8287,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": false,
+    "automated": true,
     "risk": "safe",
     "page": 1017,
-    "family": "manual",
-    "params": {}
+    "family": "reg-dword",
+    "params": {"path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU", "name": "ScheduledInstallDay", "value": 0}
   },
   {
     "id": "18.10.93.4.1",

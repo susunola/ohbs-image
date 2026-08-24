@@ -3949,6 +3949,33 @@ class TestRuleIdAndBenchmark:
                     assert r.get("risk") != "none", \
                         f"{path}: {r['id']} partition rule still risk=none"
 
+    def test_win2016_machine_controls_have_executable_families(self):
+        """Machine-scoped CIS controls must not regress to opaque manual rows.
+
+        These rules have stable Windows APIs or policy registry values.  The
+        test deliberately excludes controls that need site-specific content
+        (legal notice, account rename and ASR rule selections).
+        """
+        path = "ohbs_image/roles/cis-win2016/files/rules.json"
+        with open(path, encoding="utf-8") as fh:
+            rules = {r["id"]: r for r in json.load(fh)}
+        expected = {
+            "2.3.1.2": "local-user-disabled",
+            "18.6.19.2.1": "reg-dword",
+            "18.10.26.1.2": "eventlog-size",
+            "18.10.26.2.2": "eventlog-size",
+            "18.10.57.3.9.3": "reg-dword",
+            "18.10.93.2.1": "reg-dword",
+        }
+        for rule_id, family in expected.items():
+            assert rules[rule_id]["automated"] is True
+            assert rules[rule_id]["family"] == family
+            assert rules[rule_id]["params"]
+
+        with open("ohbs_image/roles/cis-win2016/files/ohbs_engine.ps1", encoding="utf-8") as fh:
+            engine = fh.read()
+        assert '"local-user-disabled"' in engine
+
     def test_sarif_carries_benchmark(self):
         from ohbs_image import _build_sarif
         out = json.loads(_build_sarif(["  ✗ 1.1.1.1 | X"],
