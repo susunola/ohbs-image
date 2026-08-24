@@ -293,20 +293,29 @@ function Test-UserRightMatch($ExpectedSids, $Members) {
 
 function Get-SecPol {
     param($Area, $Key)
-    $tmp = $null
-    try {
-        $tmp = "$env:TEMP\secpol_$([Guid]::NewGuid()).inf"
-        secedit /export /cfg $tmp /areas $Area 2>$null | Out-Null
-        if (Test-Path $tmp) {
-            Protect-TempFile $tmp
-            $content = Get-Content $tmp -Raw
-            if ($content -match "(?m)^\s*$Key\s*=\s*(.+)$") {
-                return $Matches[1].Trim()
+    # Retry on transient failure: secedit serializes on its database, and a
+    # concurrent secedit consumer (notably the ohbs firstboot task applying
+    # deferred rules during the SAME boot the gate scan runs in) makes an
+    # occasional export come back empty/unparseable — which then reads as a
+    # false "absent" finding (win2019-L2 1.1.1: PasswordHistorySize was
+    # verifiably 24 on the live system).
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        $tmp = $null
+        try {
+            $tmp = "$env:TEMP\secpol_$([Guid]::NewGuid()).inf"
+            secedit /export /cfg $tmp /areas $Area 2>$null | Out-Null
+            if (Test-Path $tmp) {
+                Protect-TempFile $tmp
+                $content = Get-Content $tmp -Raw
+                if ($content -match "(?m)^\s*$Key\s*=\s*(.+)$") {
+                    return $Matches[1].Trim()
+                }
             }
+        } catch {}
+        finally {
+            if ($tmp -and (Test-Path $tmp)) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
         }
-    } catch {}
-    finally {
-        if ($tmp -and (Test-Path $tmp)) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+        if ($attempt -lt 3) { Start-Sleep -Seconds 2 }
     }
     return $null
 }

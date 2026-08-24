@@ -61,6 +61,12 @@ can be traced across rebuilds.
   — the fixer existed; the rule was parked as manual.
 
 
+- **Windows `Get-SecPol` retries transient secedit failures** — the
+  firstboot hardening task shares the secedit database with the gate
+  scan during the same boot; an occasional export then comes back
+  empty and reads as a false "absent" finding (win2019-L2 1.1.1
+  PasswordHistorySize, verifiably 24 on the live image).
+
 ### Fixed (post-round-3 verification)
 - **Windows firstboot hardening: survive the WinRM startup race** — a
   consumer-VM TAT audit of the win2022 image found two deferred values
