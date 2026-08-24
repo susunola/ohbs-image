@@ -35,7 +35,7 @@ from pathlib import Path  # noqa: F401
 __all__ = [
     'CVE_SCAN_LINUX_BLOCK', 'ConfigError', 'DEFAULT_WORKDIR', 'FINALIZE_SH_TEMPLATE', 'HCL_LINUX_TEMPLATE', 'HCL_WIN_TEMPLATE',
     'HOSTS_FIX_SNIPPET', 'IDEMPOTENCY_LINUX_BLOCK', 'INSTALL_SH_TEMPLATE', 'PACKER_TIMEOUT_MINUTES', 'PROFILES', 'PROFILE_NAMES_HELP',
-    'PackerResult', 'ResolvedConfig', 'SAMPLE_CONFIG', 'SBOM_LINUX_BLOCK', 'SITE_AUDIT_TEMPLATE', 'SITE_YML_TEMPLATE',
+    'BuildSpec', 'DeliveryReportView', 'PackerResult', 'ReleasePolicy', 'ResolvedConfig', 'RunContext', 'SAMPLE_CONFIG', 'SBOM_LINUX_BLOCK', 'SITE_AUDIT_TEMPLATE', 'SITE_YML_TEMPLATE',
     'SITE_YML_WIN_TEMPLATE', 'SMOKE_LINUX_BLOCK', 'SMOKE_WIN_BLOCK', 'TEST_COMPONENTS_LINUX_BLOCK', 'TEST_COMPONENTS_WIN_BLOCK', 'VERSION',
     '_BANNER_ART', '_CIS_REGION_DASHES', '_FORBIDDEN_CLEAN_PREFIXES', '_RULE_FAIL_RE', '_apply_rule_overrides', '_assert_no_markers', '_atomic_write_bytes',
     '_audit_inspec', '_audit_oscap', '_audit_render', '_audit_results_sarif', '_audit_results_xccdf', '_audit_ssh_args',
@@ -50,10 +50,10 @@ __all__ = [
     '_probe_teardown_keypair', '_probe_terminate', '_record_lineage', '_reports_dir',
     '_render_extra_args_block', '_rhel_profile', '_sanitize_region_zone', '_save_build_report', '_send_notification', '_setup_logging', '_sg_ingress_allows',
     '_share_images', '_source_image_created', '_state_lock', '_tc3_api', '_terminate_ephemeral_instances', '_tlinux_profile', '_trigger_deploy_webhook', '_ubuntu_profile',
-    '_new_run_id', '_read_run_manifest', '_run_manifest_is_active', '_run_manifest_path', '_validate_env_var_name', '_validate_shell_arg', '_validate_value_present', '_write_build_html_report', '_write_build_result', '_write_provenance', '_write_run_manifest', '_write_sarif', '_write_xccdf',
+    '_new_run_id', '_read_release_manifest', '_read_run_manifest', '_release_manifest_path', '_release_transition', '_run_manifest_is_active', '_run_manifest_path', '_validate_env_var_name', '_validate_shell_arg', '_validate_value_present', '_write_build_html_report', '_write_build_result', '_write_provenance', '_write_release_manifest', '_write_run_manifest', '_write_sarif', '_write_xccdf',
     '_yaml_list', 'banner', 'build_parser', 'cmd_audit', 'cmd_build', 'cmd_check_source',
     'cmd_clean', 'cmd_cleanup_images', 'cmd_cleanup_runs', 'cmd_drift', 'cmd_images', 'cmd_init', 'cmd_list',
-    'cmd_pending', 'cmd_preflight', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate',
+    'cmd_pending', 'cmd_preflight', 'cmd_promote', 'cmd_rollback', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate',
     'cmd_verify', 'cmd_verify_image', 'fail', 'info', 'load_config', 'logger',
     'main', 'ok', 'render_all', 'render_finalize', 'render_install', 'render_pkrvars',
     'render_site', 'render_site_audit', 'resolve', 'run_packer', 'run_preflight', 'warn',
@@ -126,6 +126,8 @@ from ._commands import (
     cmd_list,
     cmd_pending,
     cmd_preflight,
+    cmd_promote,
+    cmd_rollback,
     cmd_save_baseline,
     cmd_scan,
     cmd_test,
@@ -156,6 +158,7 @@ from ._logging import (
     ok,
     warn,
 )
+from ._models import BuildSpec, DeliveryReportView, ReleasePolicy, RunContext
 from ._packer import (
     PACKER_TIMEOUT_MINUTES,
     _extract_image_ids,
@@ -203,8 +206,11 @@ from ._reports import (
     _find_provenance,
     _last_successful_fingerprint,
     _new_run_id,
+    _read_release_manifest,
     _read_run_manifest,
     _record_lineage,
+    _release_manifest_path,
+    _release_transition,
     _run_manifest_is_active,
     _run_manifest_path,
     _save_build_report,
@@ -213,6 +219,7 @@ from ._reports import (
     _trigger_deploy_webhook,
     _write_build_html_report,
     _write_provenance,
+    _write_release_manifest,
     _write_run_manifest,
 )
 from ._tc_cloud import (

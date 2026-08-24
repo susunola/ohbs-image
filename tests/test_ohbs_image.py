@@ -4467,6 +4467,28 @@ class TestProvenanceSbom:
         assert "Rules requiring attention" in text
         assert "Example failed rule" in text
 
+    def test_release_manifest_tracks_promotion_and_rollback(self, valid_toml, tmp_path, monkeypatch):
+        from ohbs_image import _read_release_manifest, _release_transition, _write_release_manifest
+        r = resolve(valid_toml)
+        r.run_id = "12345678-1234-1234-1234-123456789abc"
+        monkeypatch.setattr("ohbs_image._lineage_path", lambda: tmp_path / "lineage.jsonl")
+        audit = tmp_path / "audit.json"
+        provenance = tmp_path / "provenance.json"
+        html_report = tmp_path / "report.html"
+        for path in (audit, provenance, html_report):
+            path.write_text("{}", encoding="utf-8")
+        paths = _write_release_manifest(r, ["img-abc"], "image-name", 97.0,
+                                        audit, provenance, html_report, True)
+        assert paths and paths[0].exists()
+        assert _read_release_manifest("img-abc")["state"] == "approved"
+        assert _release_transition("img-abc", "staging", action="promoted", actor="alice")
+        assert _read_release_manifest("img-abc")["state"] == "promoted"
+        assert _release_transition("img-abc", "staging", action="rolled_back",
+                                   actor="alice", reason="gate failed")
+        doc = _read_release_manifest("img-abc")
+        assert doc and doc["state"] == "approved"
+        assert [entry["state"] for entry in doc["promotions"]] == ["promoted", "rolled_back"]
+
     def test_provenance_without_sbom(self, valid_toml, tmp_path, monkeypatch):
         from ohbs_image import _write_provenance
         r = resolve(valid_toml)

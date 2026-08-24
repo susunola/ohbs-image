@@ -32,6 +32,11 @@ jobs:
     # Enforce a second, workflow-level ceiling around dependency installation
     # and the shared Packer deadline (default 120 minutes).
     timeout-minutes: 145
+    # Outside github.workspace: checkout's default clean step removes
+    # untracked files, while this state root keeps fingerprints/evidence for
+    # the next scheduled run on the same private runner.
+    env:
+      OHBS_IMAGE_STATE_DIR: ${{ runner.tool_cache }}/ohbs-image-state
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -92,4 +97,15 @@ jobs:
           printf '\nverify_boot = true\n' >> ohbs-image.toml
 
       - name: Build golden image
-        run: ohbs-image build --config ohbs-image.toml -y
+        run: ohbs-image build --config ohbs-image.toml --skip-if-unchanged -y
+
+      # State remains locally persistent for fingerprinting, and a redacted
+      # portable copy is retained with every CI run for reviewers and GRC.
+      - name: Archive release evidence
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        with:
+          name: ohbs-image-evidence-${{ github.run_id }}
+          path: ${{ runner.tool_cache }}/ohbs-image-state
+          if-no-files-found: warn
+          retention-days: 90

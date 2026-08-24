@@ -19,6 +19,7 @@ import ohbs_image
 
 from ._config import ResolvedConfig
 from ._logging import VERSION, info, ok, warn
+from ._models import DeliveryReportView
 
 
 def _new_run_id() -> str:
@@ -69,6 +70,109 @@ def _run_manifest_path(run_id: str) -> Path:
     if not re.fullmatch(r"[0-9a-f-]{36}", run_id):
         raise OSError("invalid run ID for state manifest")
     return ohbs_image._lineage_path().parent / "runs" / f"{run_id}.json"
+
+
+def _release_manifest_path(image_id: str) -> Path:
+    """Return a state-root-contained release manifest path for an image ID."""
+    if not re.fullmatch(r"img-[A-Za-z0-9-]+", image_id):
+        raise OSError("invalid image ID for release manifest")
+    return ohbs_image._lineage_path().parent / "releases" / f"{image_id}.json"
+
+
+def _read_release_manifest(image_id: str) -> dict[str, Any] | None:
+    try:
+        doc = json.loads(_release_manifest_path(image_id).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _write_release_manifest(r: ResolvedConfig, image_ids: list[str], image_name: str,
+                            score: float | None, report: Path | None,
+                            provenance: Path | None, html_report: Path | None,
+                            signed: bool) -> list[Path] | None:
+    """Record an approved image as a promotable, evidence-bound release.
+
+    This is cloud-agnostic metadata: promotion changes neither CVM permissions
+    nor application deployment. External pipelines can consume the durable
+    candidate → approved → promoted → rolled-back audit trail.
+    """
+    if not isinstance(r, ResolvedConfig) or not image_ids:
+        return None
+    paths: list[Path] = []
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for image_id in image_ids:
+        try:
+            path = _release_manifest_path(image_id)
+            path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            lock = _state_lock(path)
+            try:
+                doc = {
+                    "schema": "https://ohbs-image.dev/release-manifest/v1",
+                    "image_id": image_id,
+                    "image_name": image_name,
+                    "state": "approved",
+                    "approved_at": now,
+                    "run_id": r.run_id,
+                    "profile": r.profile_name,
+                    "cis_level": r.level,
+                    "region": r.region,
+                    "score": score,
+                    "attestation_signed": signed,
+                    "evidence": {
+                        "audit_report": str(report) if report else "",
+                        "audit_sha256": _file_hash(report) if report else "",
+                        "provenance": str(provenance) if provenance else "",
+                        "provenance_sha256": _file_hash(provenance) if provenance else "",
+                        "html_report": str(html_report) if html_report else "",
+                        "html_report_sha256": _file_hash(html_report) if html_report else "",
+                    },
+                    "promotions": [],
+                }
+                _atomic_write_bytes(path, (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+                paths.append(path)
+            finally:
+                lock.rmdir()
+        except OSError as exc:
+            warn(f"Could not write release manifest for {image_id}: {exc}")
+            return None
+    return paths
+
+
+def _release_transition(image_id: str, environment: str, *, action: str,
+                        actor: str, reason: str = "") -> Path | None:
+    """Append a promotion or rollback transition to an approved release."""
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", environment):
+        raise OSError("environment must use letters, digits, dot, dash, or underscore")
+    if action not in {"promoted", "rolled_back"}:
+        raise OSError("invalid release transition")
+    path = _release_manifest_path(image_id)
+    try:
+        lock = _state_lock(path)
+        try:
+            doc = _read_release_manifest(image_id)
+            if not doc:
+                raise OSError(f"release manifest not found for {image_id}")
+            promotions = doc.get("promotions")
+            if not isinstance(promotions, list):
+                promotions = []
+            active = [item for item in promotions if isinstance(item, dict)
+                      and item.get("environment") == environment and item.get("state") == "promoted"]
+            if action == "rolled_back" and not active:
+                raise OSError(f"{image_id} is not promoted to {environment}")
+            promotions.append({"environment": environment, "state": action,
+                               "actor": actor, "reason": reason,
+                               "at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")})
+            doc["promotions"] = promotions
+            doc["state"] = "promoted" if action == "promoted" else "approved"
+            doc["updated_at"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+            _atomic_write_bytes(path, (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+            return path
+        finally:
+            lock.rmdir()
+    except OSError as exc:
+        warn(f"Could not {action} release {image_id}: {exc}")
+        return None
 
 
 def _read_run_manifest(run_id: str) -> dict[str, Any] | None:
@@ -331,13 +435,17 @@ def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name
                      f"{len(findings)} record{'s' if len(findings) != 1 else ''}</strong></div><table><tr><th>Rule</th><th>Audit</th><th>Remediation</th><th>Title</th></tr>"
                      + "".join(findings[:200]) + "</table></section>") if findings else ""
     total_rules = len(assessment_rows)
-    coverage_s = f"{(100 * evaluated_rules / total_rules):.0f}%" if total_rules else "Not available"
-    coverage_cards = (f'<div class="card neutral"><div class="label">Evaluated</div><div class="value">{evaluated_rules}</div></div>'
-                      f'<div class="card neutral"><div class="label">Not evaluated</div><div class="value">{not_evaluated_rules}</div></div>'
+    view = DeliveryReportView(
+        total_rules=total_rules, evaluated_rules=evaluated_rules,
+        not_evaluated_rules=not_evaluated_rules,
+        coverage_percent=round(100 * evaluated_rules / total_rules) if total_rules else None)
+    coverage_s = f"{view.coverage_percent}%" if view.coverage_percent is not None else "Not available"
+    coverage_cards = (f'<div class="card neutral"><div class="label">Evaluated</div><div class="value">{view.evaluated_rules}</div></div>'
+                      f'<div class="card neutral"><div class="label">Not evaluated</div><div class="value">{view.not_evaluated_rules}</div></div>'
                       f'<div class="card neutral"><div class="label">Catalog coverage</div><div class="value">{coverage_s}</div></div>')
     results_html = ("<section id=\"assessment-results\" class=\"results\"><div class=\"section-heading\"><div><p>ASSESSMENT RESULTS</p>"
                     "<h2>Recommendation results</h2></div><strong>"
-                    f"{total_rules} recommendations · {evaluated_rules} evaluated ({coverage_s})</strong></div>"
+                    f"{view.total_rules} recommendations · {view.evaluated_rules} evaluated ({coverage_s})</strong></div>"
                     "<div class=\"results-tools\"><label>Audit status <select id=\"audit-filter\"><option value=\"all\">All</option><option value=\"pass\">Pass</option><option value=\"fail\">Fail</option><option value=\"manual\">Manual</option><option value=\"error\">Error</option><option value=\"not-evaluated-scope\">Not evaluated (scope)</option></select></label><label>Search recommendation <input id=\"audit-search\" type=\"search\" placeholder=\"Rule ID or text\"></label><span id=\"audit-count\"></span></div>"
                     "<table id=\"assessment-table\"><tr><th>Rule</th><th>Recommendation</th><th>Profiles</th><th>Assessment</th><th>Audit</th><th>Remediation</th></tr>"
                     + "".join(assessment_rows[:1000]) + "</table></section>") if assessment_rows else ""
@@ -552,17 +660,18 @@ def _build_fingerprint(r: ResolvedConfig) -> str:
     import hashlib
     if not isinstance(r, ResolvedConfig):
         return ""
+    spec = r.build_spec
     parts = [
         "ohbs-image", VERSION,
-        "profile", r.profile_name,
-        "level", str(r.level),
-        "region", r.region,
-        "zone", r.zone,
-        "source", r.source_image_id,
-        "instance", r.instance_type,
-        "benchmark", r.image_benchmark,
-        "os", r.image_os_tag,
-        "rules", ohbs_image._bundled_rules_hash(r.role_dir, r.catalog_basename),
+        "profile", spec.profile_name,
+        "level", str(spec.level),
+        "region", spec.region,
+        "zone", spec.zone,
+        "source", spec.source_image_id,
+        "instance", spec.instance_type,
+        "benchmark", spec.benchmark,
+        "os", spec.os_tag,
+        "rules", ohbs_image._bundled_rules_hash(r.role_dir, spec.catalog_basename),
         "include", ",".join(r.rules_include),
         "exclude", ",".join(r.rules_exclude),
         "overrides", json.dumps(r.rules_overrides, sort_keys=True, ensure_ascii=False),

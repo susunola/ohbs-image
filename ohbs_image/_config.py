@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 from ._catalog import _catalog_basename, _catalog_path, _is_legacy_benchmark
 from ._logging import ConfigError, warn
+from ._models import BuildSpec, ReleasePolicy, RunContext
 from ._profiles import PROFILE_NAMES_HELP, PROFILES
 
 
@@ -81,6 +82,25 @@ class ResolvedConfig:
     verify_boot: bool                   # [meta].verify_boot — boot a probe instance from the produced image and re-audit before declaring success (default false)
     packer_extra: dict[str, Any] = field(default_factory=dict)  # [build.packer] — arbitrary packer tencentcloud-cvm builder args (passthrough)
     run_id: str = ""                    # runtime-only evidence correlation ID (not read from TOML)
+
+    @property
+    def build_spec(self) -> BuildSpec:
+        """Immutable image-defining view for fingerprints and manifests."""
+        return BuildSpec(self.profile_name, self.region, self.zone, self.instance_type,
+                         self.source_image_id, self.image_benchmark, self.level,
+                         self.image_os_tag, self.catalog_basename)
+
+    @property
+    def release_policy(self) -> ReleasePolicy:
+        """Immutable release-gate view, independent of provider placement."""
+        return ReleasePolicy(self.min_score, self.attestation_required,
+                             self.delivery_report_required, self.verify_boot,
+                             self.allow_scoped_approval)
+
+    @property
+    def run_context(self) -> RunContext:
+        """Snapshot the mutable runtime-only fields for evidence output."""
+        return RunContext(self.run_id, self.max_build_minutes)
 
 def _validate_value_present(label: str, value: Any) -> str | None:
     """Return an error message if *value* looks like a placeholder, else None."""

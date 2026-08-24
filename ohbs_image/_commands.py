@@ -385,6 +385,18 @@ def cmd_build(args: argparse.Namespace) -> int:
             _send_notification(r, False, image_ids, score, image_name)
             _close_build_log(_fh)
             return 1
+        release_manifests = ohbs_image._write_release_manifest(
+            r, image_ids, image_name, score, rep, prov, html_rep, signed)
+        if isinstance(r, ResolvedConfig) and release_manifests is None:
+            fail("release manifest could not be written — image is not distributable")
+            ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
+                                        sbom_sha=sbom_sha, sbom_count=sbom_count)
+            ohbs_image._write_run_manifest(r, status="failed", phase="release-manifest")
+            _send_notification(r, False, image_ids, score, image_name)
+            _close_build_log(_fh)
+            return 1
+        if release_manifests:
+            info("Release manifest -> " + ", ".join(str(path) for path in release_manifests))
         # Build → attest → verify → distribute.  A successful lineage record
         # is emitted only after every enabled release gate, including an
         # explicitly requested automation result artifact, has passed.
@@ -458,6 +470,34 @@ def cmd_images(args: argparse.Namespace) -> int:
         src = str(rec.get("source_image_id") or "")
         print(f"{ts:s}  {status:6s}  L{level if level is not None else '?'}  "
               f"score={score_s:>6s}  {name:s}  src={src:s}  ->  {imgs}")
+    return 0
+
+
+def _release_actor(args: argparse.Namespace) -> str:
+    """Return an auditable release actor without requiring an identity SDK."""
+    configured = getattr(args, "approved_by", "")
+    if isinstance(configured, str) and configured.strip():
+        return configured.strip()
+    return os.environ.get("GITHUB_ACTOR", "") or os.environ.get("USER", "") or "unknown"
+
+
+def cmd_promote(args: argparse.Namespace) -> int:
+    """Record promotion of an approved image to a named deployment environment."""
+    path = ohbs_image._release_transition(args.image, args.environment, action="promoted",
+                                          actor=_release_actor(args), reason=args.reason)
+    if path is None:
+        return 1
+    ok(f"Promoted {args.image} to {args.environment}; release manifest -> {path}")
+    return 0
+
+
+def cmd_rollback(args: argparse.Namespace) -> int:
+    """Record rollback of a previously promoted image in one environment."""
+    path = ohbs_image._release_transition(args.image, args.environment, action="rolled_back",
+                                          actor=_release_actor(args), reason=args.reason)
+    if path is None:
+        return 1
+    ok(f"Rolled back {args.image} from {args.environment}; release manifest -> {path}")
     return 0
 
 

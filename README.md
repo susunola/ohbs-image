@@ -171,6 +171,8 @@ ohbs-image scan --xccdf out.xml               # ... plus an XCCDF 1.2 TestResult
 ohbs-image test --idempotency                 # re-run apply, fail if 2nd pass changes anything
 ohbs-image list                               # enumerate available profiles with metadata
 ohbs-image images [--latest] [-n N]           # list recorded builds (lineage)
+ohbs-image promote --image img-xxx --environment staging --approved-by alice
+ohbs-image rollback --image img-xxx --environment staging --reason "deployment issue"
 ohbs-image pending                            # change detection: is a rebuild required? (exit 0/1)
 ohbs-image cleanup-images [--older-than 30]   # retire old images by lineage age
 ohbs-image cleanup-images --apply             # actually delete (default = dry run)
@@ -747,6 +749,14 @@ distribute pipeline):
   the archived audit JSON in `reports/`. It summarizes release status, score,
   image IDs, run identity and evidence paths; when `--result-file` is used,
   its path is returned as `html_report` for CI links and artifacts.
+
+  Every approved image also receives a release manifest under
+  `releases/<image-id>.json`. It binds the image to hashes of its audit,
+  provenance and HTML evidence, then records a cloud-agnostic promotion trail.
+  `ohbs-image promote --image img-xxx --environment staging` and
+  `ohbs-image rollback --image img-xxx --environment staging` only update this
+  auditable release state; application deployment and cloud sharing remain
+  explicit external pipeline actions.
 
 - **SBOM + change detection (supply chain)** — with `[meta].sbom = true` the
   build emits a zero-dependency SBOM (`/opt/ohbs-image-SBOM.jsonl`, native

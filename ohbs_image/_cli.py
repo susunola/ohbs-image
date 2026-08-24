@@ -19,6 +19,8 @@ from ._commands import (
     cmd_list,
     cmd_pending,
     cmd_preflight,
+    cmd_promote,
+    cmd_rollback,
     cmd_scan,
     cmd_test,
     cmd_validate,
@@ -95,6 +97,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_img.add_argument("-n", "--limit", type=int, default=10,
                        help="Max records to show (default 10; 0 = all)")
     p_img.set_defaults(func=cmd_images)
+
+    for command, handler, summary in (
+        ("promote", cmd_promote, "Record approved-image promotion to an environment"),
+        ("rollback", cmd_rollback, "Record rollback of an image from an environment"),
+    ):
+        release = sub.add_parser(command, parents=[common], help=summary)
+        release.add_argument("--image", required=True, help="Approved image ID (e.g. img-xxxx)")
+        release.add_argument("--environment", required=True,
+                             help="Deployment environment name (e.g. staging or production)")
+        release.add_argument("--approved-by", default="",
+                             help="Human or CI identity to record (default GITHUB_ACTOR/USER)")
+        release.add_argument("--reason", default="", help="Optional change or rollback reason")
+        release.set_defaults(func=handler)
 
     p_vrf = sub.add_parser("verify", parents=[common],
                            help="Verify a SLSA provenance signature")
