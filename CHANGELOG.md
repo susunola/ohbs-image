@@ -41,6 +41,12 @@ can be traced across rebuilds.
   length'), stranding the tencentos4-L2 build.  Recorded in the
   firstboot manifest instead; the consumer's first boot applies it.
 
+- **`audit_rules_valid` fixer comments out kernel-unloadable lines** —
+  rhel's stock audit.rules ships `--backlog_wait_time 60000`, a
+  directive removed from the kernel audit interface in 5.14; it aborted
+  the whole augenrules load (rhel8 6.3.3.20 / rhel10 6.3.3.35).  The
+  fixer now comments such lines out (with backup) before reloading.
+
 ### Fixed (L2 first pass)
 - **`dnf_flag` notapplicable on apt systems** (ubuntu2404 L2 1.2.1.2
   failed on a dnf.conf that can never exist).
