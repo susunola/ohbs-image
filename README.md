@@ -69,10 +69,12 @@ Beyond the build itself, ohbs-image covers the full **build → test → distrib
 ## Quick Start
 
 ```bash
-# 1. Install
+# 1. Install (editable, so `git pull` always takes effect immediately —
+#    a plain `pip install .` freezes the code in site-packages and silently
+#    runs the OLD engine after a pull; see scripts/check_install.py)
 git clone https://github.com/susunola/ohbs-image.git
 cd ohbs-image
-pip install .
+pip install -e .
 
 # 2. Generate and edit configuration
 ohbs-image init
@@ -150,9 +152,16 @@ export WINRM_PASSWORD=xxxx   # Windows builds only
 ```bash
 git clone https://github.com/susunola/ohbs-image.git
 cd ohbs-image
-pip install .
+pip install -e .
 ohbs-image --version
 ```
+
+> **Note:** prefer `pip install -e .` (editable) for source installs. A plain
+> `pip install .` copies the code into site-packages; a later `git pull`
+> then leaves the *installed* CLI and bundled roles stale with no warning.
+> If you must use a non-editable install (e.g. a build host), re-run
+> `pip install --force-reinstall .` after every pull, or verify with
+> `python3 scripts/check_install.py`.
 
 ---
 

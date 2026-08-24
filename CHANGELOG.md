@@ -7,6 +7,62 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Fixed (round-4 engine review)
+- **`must_sh`: five silent-failure hotspots now fail honestly** —
+  grub2-mkconfig/grubby (selinux bootloader), usermod lock/shell, chown
+  on home dirs, augenrules --load (audit_immutable/audit_failure_mode),
+  sysctl -w, and systemctl stop/disable/mask (svc_disabled) previously
+  reported "applied" even when the command failed.  `flush_restarts`
+  raises on any failed service restart.
+- **`Ctx.cached` no longer freezes producer failures** — a transient
+  exception was cached as None for the whole run, silently distorting
+  every dependent check; failures are retried on next access.
+- **perm checkers converge on `_perm_findings`/`_apply_perm_fix`** —
+  file_perm, audit_perm and perm_glob evaluated mode/owner/group in
+  three near-identical implementations; the shared logic now lives in
+  one helper (messages unchanged, 761 tests green).
+- **GRUB superuser password rotates at first boot** — the build-time
+  random password in /root/ohbs-image-grub-password was shared by every
+  instance from an image; a firstboot entry (`grub_rotate`) regenerates
+  a per-instance password at the consumer's first boot, and the
+  docstring no longer claims the password lands in the image report.
+
+### Added (tests)
+- **`TestWindowsEngineSync`** — sha256 guard for the 4 Windows
+  ohbs_engine.ps1 copies (previously the only unsync-guarded channel).
+- **`tests/test_engine_family_smoke.py`** — behavior tests for kv_conf,
+  svc_enabled, pkg_present, pkg_absent, pam_module, login_defs,
+  sudo_defaults, plus the Ctx.cached retry contract.
+- **main() orchestration contract documented** (phases, pkg/file/command
+  locks, cache invalidation, deferred restarts, firstboot defer).
+
+
+### Added (repo hygiene / build-host hardening)
+- **`scripts/check_install.py`** — detects a stale non-editable install
+  by diffing the checkout's `ohbs_image/roles` against site-packages
+  (a plain `pip install .` + `git pull` silently ran the old engine for
+  a whole build round).
+- **`scripts/fleet_report.py`** — the per-OS fleet delivery report
+  generator (score table, fail/error detail, manual-item reason hints),
+  previously an ad-hoc script.
+- **`examples/queue-builds.sh`** — fleet build runner with the build-host
+  lessons baked in: `check_install` gate, per-OS config + workdir,
+  status file, optional `MAX_PARALLEL` concurrency.
+- **firstboot defer documentation** — the two engines share one pattern:
+  rules that would sever the build channel (sudo NOPASSWD stripping,
+  WinRM lockdown, FUTURE crypto policy, user-rights) are recorded in a
+  manifest and applied by a one-shot service/task at the consumer's
+  first boot; checkers trust the manifest for golden-image scoring.
+
+### Fixed (repo hygiene)
+- **README recommends `pip install -e .`** for source installs and
+  explains the stale-install failure mode.
+- **build `--log-file` is chmod 0600** — build logs can carry sensitive
+  provisioner details.
+- **MANIFEST.in excludes `__pycache__`/`*.pyc`** — local py_compile
+  runs left stale bytecode that would otherwise ship in sdist/wheel.
+
+
 ### Added
 - **Linux firstboot defer** — rules tagged `"defer": "firstboot"` are
   recorded in `/etc/ohbs-image/firstboot-deferred.json` and applied by a

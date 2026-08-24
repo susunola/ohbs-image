@@ -3690,6 +3690,15 @@ class TestRuleIdAndBenchmark:
             hashes.add(hashlib.sha256(data).hexdigest())
         assert len(hashes) == 1, "Linux engines drifted out of sync"
 
+    def test_all_windows_engines_in_sync(self):
+        import hashlib
+        hashes = set()
+        for role in ("cis-win2016", "cis-win2019", "cis-win2022", "cis-win2025"):
+            with open(f"ohbs_image/roles/{role}/files/ohbs_engine.ps1", "rb") as fh:
+                data = fh.read()
+            hashes.add(hashlib.sha256(data).hexdigest())
+        assert len(hashes) == 1, "Windows engines drifted out of sync"
+
     def test_none_risk_rules_never_applied(self):
         """v0.16.15: run_rule() must gate risk=none rules out of apply —
         a none-risk rule with a real fixer (e.g. the /tmp partition rule)
