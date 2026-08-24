@@ -6238,12 +6238,38 @@ def c_audit_rules_valid(ctx, p):
 def f_audit_rules_valid(ctx, p):
     if not pkg_installed("audit"):
         return False, "the audit package is not installed"
+    # Comment out lines the running kernel can never load: rhel's stock
+    # audit.rules ships '--backlog_wait_time 60000', a directive removed
+    # from the kernel audit interface in 5.14 — its presence aborts the
+    # whole augenrules load (rhel8 6.3.3.20 / rhel10 6.3.3.35).
+    dropped = 0
+    for path in sorted(globmod.glob("/etc/audit/rules.d/*.rules")):
+        lines = readlines(path)
+        if lines is None:
+            continue
+        out_lines = []
+        changed = False
+        for ln in lines:
+            s = ln.strip()
+            if s and not s.startswith("#") \
+                    and s.split(None, 1)[0] not in _AUDIT_RULE_TOKENS:
+                out_lines.append("# ohbs-image: unloadable on this kernel, "
+                                 "commented out: " + ln.rstrip("\n"))
+                changed = True
+                dropped += 1
+            else:
+                out_lines.append(ln.rstrip("\n"))
+        if changed:
+            backup(ctx, path)
+            write_file(ctx, path, "\n".join(out_lines) + "\n", 0o600)
+            ctx.add_changed_file(path)
     with ctx.file_lock("__cmd__:augenrules"):
         rc, o, e = sh(["augenrules", "--load"], 120)
     ctx.invalidate("auditctl_l", "rulesd")
     if rc != 0:
         return False, "augenrules --load failed: %s" % (e or o)[:200]
-    return True, "reloaded audit rules from /etc/audit/rules.d"
+    return True, ("commented out %d unloadable rule line(s) and reloaded "
+                  "audit rules" % dropped)
 
 
 # ==========================================================================
