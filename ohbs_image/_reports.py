@@ -161,8 +161,14 @@ def _load_report_catalog(r: ResolvedConfig) -> tuple[list[dict[str, Any]], dict[
             raw_guidance = json.loads((catalog_path.parent / "guidance.json").read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             raw_guidance = {}
-        guidance = {str(rule_id): entry for rule_id, entry in raw_guidance.items()
-                    if isinstance(entry, dict)} if isinstance(raw_guidance, dict) else {}
+        if isinstance(raw_guidance, dict):
+            guidance = {str(rule_id): entry for rule_id, entry in raw_guidance.items()
+                        if isinstance(entry, dict)}
+        elif isinstance(raw_guidance, list):
+            guidance = {str(entry["id"]): entry for entry in raw_guidance
+                        if isinstance(entry, dict) and isinstance(entry.get("id"), str)}
+        else:
+            guidance = {}
         return catalog, guidance
     except (OSError, json.JSONDecodeError):
         return [], {}

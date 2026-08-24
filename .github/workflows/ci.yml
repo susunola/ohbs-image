@@ -75,6 +75,11 @@ jobs:
       - name: Verify rules.json canonical format
         run: python3 scripts/format_rules.py --check
 
+      # Delivery reports merge rules.json + guidance.json + runtime evidence.
+      # Validate that relationship independently of the CLI test suite.
+      - name: Verify catalog and CIS guidance integrity
+        run: python3 scripts/check_catalog_guidance.py
+
       # Role payloads are self-contained for Ansible, but their engines have
       # shared ownership. Fail fast if a bulk fix lands in only some profiles.
       - name: Verify shared engine payloads have not drifted
