@@ -17,6 +17,10 @@ can be traced across rebuilds.
 - **`ohbs-image configure --edit`** — open the generated config in
   `$VISUAL`/`$EDITOR` right after writing it (skipped with a warning when
   neither is set).
+- **`configure --discover` picks the instance type** — when discovering,
+  the instance type is now selected from live `instance-types` discovery
+  (interactively in a TTY, first match otherwise) instead of a hard-coded
+  default; falls back to the default when credentials are missing.
 
 ### Added (doctor redesign — roadmap B)
 - **28 new diagnostics, grouped into 6 stable groups** — `toolchain`

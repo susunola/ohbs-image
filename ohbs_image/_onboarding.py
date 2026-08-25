@@ -853,7 +853,29 @@ def cmd_configure(args: argparse.Namespace) -> int:
                   if args.discover else _ask(args.subnet, "Subnet ID"))
         sg = (args.security_group or _choose_resource("security-groups", region)
               if args.discover else _ask(args.security_group, "Security group ID"))
-        instance = args.instance_type or ("S5.LARGE4" if PROFILES[profile].get("family") == "windows" else "S5.MEDIUM2")
+        if args.instance_type:
+            instance = args.instance_type
+        elif args.discover:
+            default_type = ("S5.LARGE4" if PROFILES[profile].get("family") == "windows" else "S5.MEDIUM2")
+            try:
+                rows = discover_resources("instance-types", region, zone=zone)
+            except OSError:
+                rows = []
+            if rows and sys.stdin.isatty():
+                for index, row in enumerate(rows[:15], 1):
+                    print(f"  {index}. {row.get('id')}  {row.get('cpu')} vCPU  {row.get('memory')} GiB  {row.get('status')}")
+                raw = input("Select instance type [1]: ").strip() or "1"
+                try:
+                    instance = str(rows[int(raw) - 1]["id"])
+                except (ValueError, IndexError):
+                    raise ConfigError(f"Invalid instance type selection: {raw}") from None
+            elif rows:
+                instance = str(rows[0]["id"])
+            else:
+                info("Instance-type discovery unavailable (no credentials) — using default")
+                instance = default_type
+        else:
+            instance = "S5.LARGE4" if PROFILES[profile].get("family") == "windows" else "S5.MEDIUM2"
         profile = _toml_value(profile, "profile")
         region = _toml_value(region, "region")
         zone = _toml_value(zone, "zone")

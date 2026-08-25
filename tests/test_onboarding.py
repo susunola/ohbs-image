@@ -56,6 +56,40 @@ def test_configure_edit_skips_without_editor(tmp_path, monkeypatch):
     assert target.exists()
 
 
+def test_configure_discover_picks_first_instance_type_noninteractive(tmp_path, monkeypatch):
+    """Non-interactive --discover must auto-pick the first discoverable
+    instance type instead of falling back to the hard-coded default."""
+    target = tmp_path / "ohbs-image.toml"
+    monkeypatch.setattr("ohbs_image._onboarding.sys.stdin.isatty", lambda: False)
+    monkeypatch.setattr("ohbs_image._onboarding.discover_resources",
+                        lambda kind, region, zone="": [
+                            {"id": "S5.MEDIUM2", "cpu": 2, "memory": 4, "status": "AVAILABLE"},
+                            {"id": "S5.LARGE4", "cpu": 4, "memory": 4, "status": "AVAILABLE"}]
+                        if kind == "instance-types" else [])
+    args = _configure_args(target)
+    args.discover = True
+    assert cmd_configure(args) == 0
+    text = target.read_text(encoding="utf-8")
+    assert 'instance_type = "S5.MEDIUM2"' in text
+
+
+def test_configure_discover_falls_back_without_credentials(tmp_path, monkeypatch):
+    """When instance-type discovery fails (no credentials) the default
+    instance type must still be used so configure never hard-errors."""
+    target = tmp_path / "ohbs-image.toml"
+    monkeypatch.setattr("ohbs_image._onboarding.sys.stdin.isatty", lambda: False)
+
+    def boom(kind, region, zone=""):
+        raise OSError("TENCENTCLOUD_SECRET_ID and TENCENTCLOUD_SECRET_KEY are required")
+
+    monkeypatch.setattr("ohbs_image._onboarding.discover_resources", boom)
+    args = _configure_args(target)
+    args.discover = True
+    assert cmd_configure(args) == 0
+    text = target.read_text(encoding="utf-8")
+    assert 'instance_type = "S5.MEDIUM2"' in text
+
+
 def test_plan_json_is_read_only(tmp_path, capsys):
     target = tmp_path / "ohbs-image.toml"
     assert cmd_configure(_configure_args(target)) == 0
