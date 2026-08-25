@@ -35,7 +35,11 @@ in the changelog.
 
 | Command | Notes |
 |---------|-------|
-| `state sync` | `0` synced · `1` backend failure |
+| `state sync` | `0` synced · `1` backend failure (or `--check` on a non-local backend) |
+| `state path` | always `0` |
+| `state status` | always `0` |
+| `state init` | `0` layout ready · `1` filesystem failure |
+| `state prune` | `0` pruned or previewed · `1` no criteria given or rewrite failure |
 | `config schema` / `explain` | `0` ok · `1` key not documented or key missing |
 | `config validate` | `0` valid · `1` invalid configuration · `2` file missing/unreadable |
 | `config diff` | `0` identical · `1` differences found (or either file unreadable) |

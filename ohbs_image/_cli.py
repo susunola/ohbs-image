@@ -42,7 +42,7 @@ from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._report_diff import cmd_report_diff, cmd_report_list, cmd_report_show
-from ._state import cmd_state_sync
+from ._state import cmd_state_init, cmd_state_path, cmd_state_prune, cmd_state_status, cmd_state_sync
 
 # Roadmap D-91 — commands grouped by lifecycle in --help output.
 COMMAND_GROUPS: dict[str, list[str]] = {
@@ -196,14 +196,35 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Print the plan JSON Schema and exit (roadmap D-117)")
     p_plan.set_defaults(func=cmd_plan)
 
-    p_state = sub.add_parser("state", help="Synchronize team evidence state")
+    p_state = sub.add_parser("state", help="Inspect, initialize and synchronize evidence state")
     state_sub = p_state.add_subparsers(dest="state_command")
     p_sync = state_sub.add_parser("sync", help="Push or pull the evidence directory")
     p_sync.add_argument("direction", choices=["push", "pull"])
     p_sync.add_argument("--backend", choices=["local", "cos"], required=True)
     p_sync.add_argument("--location", required=True,
                         help="Local directory or cos://bucket/prefix")
+    p_sync.add_argument("--check", action="store_true",
+                        help="Preview transfers without copying (local backend only)")
     p_sync.set_defaults(func=cmd_state_sync)
+    p_st_path = state_sub.add_parser("path", help="Print the evidence state directory")
+    p_st_path.set_defaults(func=cmd_state_path)
+    p_st_status = state_sub.add_parser(
+        "status", help="Summarize evidence counts and disk usage")
+    p_st_status.add_argument("--output", choices=["text", "json"], default="text")
+    p_st_status.set_defaults(func=cmd_state_status)
+    p_st_init = state_sub.add_parser(
+        "init", help="Create the evidence directory layout (idempotent)")
+    p_st_init.set_defaults(func=cmd_state_init)
+    p_st_prune = state_sub.add_parser(
+        "prune", help="Retain recent lineage, drop superseded per-run evidence")
+    p_st_prune.add_argument("--keep", type=int, default=0,
+                            help="Keep only the newest N lineage records (0 = no limit)")
+    p_st_prune.add_argument("--older-than", type=int, default=0,
+                            help="Drop records older than N days (0 = disabled)")
+    p_st_prune.add_argument("--dry-run", action="store_true",
+                            help="Preview what would be removed without changing anything")
+    p_st_prune.add_argument("--output", choices=["text", "json"], default="text")
+    p_st_prune.set_defaults(func=cmd_state_prune)
 
     p_config = sub.add_parser("config", help="Inspect, validate and migrate configuration contracts")
     config_sub = p_config.add_subparsers(dest="config_command")

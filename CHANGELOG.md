@@ -7,6 +7,28 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (state backend — roadmap G)
+- **`state path`** — prints the absolute evidence root
+  (`OHBS_IMAGE_STATE_DIR` or `~/.ohbs-image`); script-friendly, no
+  decorations (G-191).
+- **`state status`** — summarizes the evidence root: per-bucket counts
+  (lineage records, runs, plans, releases, provenance, reports), disk
+  usage, newest lineage timestamp; `--output json` emits
+  `state-status/v1` (G-192..G-198).
+- **`state init`** — idempotently creates the evidence layout
+  (`lineage.jsonl` 0600, `plans/` `runs/` `releases/` `provenance/`
+  `reports/` all 0700); safe to run in CI and never touches existing
+  evidence (G-199..G-203).
+- **`state prune`** — retention policy for the lineage index: `--keep N`
+  retains the newest N records, `--older-than DAYS` drops records older
+  than the cutoff, both compose; the lineage file is rewritten atomically
+  under a lock and each dropped record takes its per-run evidence with it
+  (`runs/`, `plans/`, `provenance/` incl. `.sig`). The permanent release
+  approval trail in `releases/` is never pruned; `--dry-run` previews and
+  `--output json` emits `state-prune/v1` (G-204..G-215).
+- **`state sync --check`** — previews push/pull transfers (added/changed
+  files, nothing copied) for the local backend (G-216..G-220).
+
 ### Added (report & governance — roadmap F)
 - **`report list`** — indexes the JSONL lineage evidence store: filters by
   `--profile`, `--status`, `--mode` (dry-run/build/apply), `--limit` for

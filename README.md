@@ -170,10 +170,18 @@ ohbs-image config get ohbs.level              # effective value of one key (defa
 ohbs-image config explain --all               # full configuration key reference
 ohbs-image config migrate --apply             # atomic legacy config migration
 ohbs-image report diff --before RUN --after RUN # compare lineage metadata
+ohbs-image report list [--profile P] [--status ok|failed] [--limit N]
+ohbs-image report show RUN_ID              # single-run evidence + run manifest
 ohbs-image doctor [--output text|json|sarif] [--only GROUP] [--offline] [--report-path FILE]
 ohbs-image plan [--output json]                # read-only build/resource/gate preview
+ohbs-image state path                          # print the evidence directory
+ohbs-image state status [--output json]        # evidence counts + disk usage
+ohbs-image state init                          # create the evidence layout (idempotent)
+ohbs-image state prune --keep 30 [--dry-run]   # retain recent lineage, drop old per-run evidence
+ohbs-image state prune --older-than 90 [--dry-run]
 ohbs-image state sync push --backend local --location /shared/ohbs-state
 ohbs-image state sync push --backend cos --location cos://bucket/ohbs-state
+ohbs-image state sync push --backend local --location /shared/ohbs-state --check
 ohbs-image preflight                          # validate config, credentials, prerequisites
 ohbs-image validate                           # render templates + packer validate
 ohbs-image build                              # render + packer build → custom image
@@ -254,12 +262,20 @@ CVM, placement, maximum duration, release gates, distribution and cost caveat.
 
 ### Team state and cloud Canary
 
-`state sync` copies the evidence directory (`OHBS_IMAGE_STATE_DIR` or
-`~/.ohbs-image`) to/from a local team directory or Tencent COS. The COS backend
-uses the official `coscli` binary and its credential/config mechanism, so
-secrets are never passed on the command line. Orchestration should pull before
-a state-aware operation and push afterwards. Set `OHBS_IMAGE_COSCLI_CONFIG`
-when CI uses a non-default coscli configuration file.
+`state` manages the evidence directory (`OHBS_IMAGE_STATE_DIR` or
+`~/.ohbs-image`): `state path` prints it, `state status` reports evidence
+counts and disk usage, `state init` creates the layout idempotently (safe in
+CI), and `state prune` retains recent lineage while dropping superseded
+per-run evidence (runs/plans/provenance — the permanent release approval
+trail in `releases/` is never pruned). Use `--dry-run` to preview.
+
+`state sync` copies the evidence directory to/from a local team directory or
+Tencent COS. The COS backend uses the official `coscli` binary and its
+credential/config mechanism, so secrets are never passed on the command line.
+`--check` previews transfers without copying (local backend only).
+Orchestration should pull before a state-aware operation and push afterwards.
+Set `OHBS_IMAGE_COSCLI_CONFIG` when CI uses a non-default coscli
+configuration file.
 
 The opt-in `.github/workflows/cloud-canary.yml` runs a weekly real-cloud
 TencentOS 3 L1 acceptance only when repository variable

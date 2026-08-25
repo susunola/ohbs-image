@@ -149,10 +149,18 @@ ohbs-image clean
 | `ohbs-image config explain --all` | 输出全部配置键参考 |
 | `ohbs-image config migrate --apply` | 原子迁移旧配置到 schema v1 |
 | `ohbs-image report diff --before RUN --after RUN` | 比较两次构建元数据差异 |
+| `ohbs-image report list [--profile P] [--status ok\|failed] [--limit N]` | 列出血缘证据索引 |
+| `ohbs-image report show RUN_ID` | 查看单次运行的证据摘要 + 运行清单 |
 | `ohbs-image doctor --output json` | 结构化诊断工具链、配置、凭据和只读云访问 |
 | `ohbs-image plan --output json` | 不创建资源的构建预览 |
+| `ohbs-image state path` | 打印证据目录路径 |
+| `ohbs-image state status [--output json]` | 证据计数与磁盘占用汇总 |
+| `ohbs-image state init` | 幂等创建证据目录结构（适合 CI） |
+| `ohbs-image state prune --keep 30 [--dry-run]` | 保留近期血缘、清理过期单次运行证据 |
+| `ohbs-image state prune --older-than 90 [--dry-run]` | 按天数清理 |
 | `ohbs-image state sync push --backend local --location /shared/state` | 同步团队本地证据目录 |
 | `ohbs-image state sync push --backend cos --location cos://bucket/state` | 通过官方 `coscli` 同步腾讯云 COS |
+| `ohbs-image state sync push --backend local --location ... --check` | 预览传输而不复制（仅 local 后端） |
 | `ohbs-image preflight` | 校验配置、凭据和前置条件 |
 | `ohbs-image validate` | 渲染模板并执行 `packer validate` |
 | `ohbs-image build` | 渲染 + `packer build`（产出镜像） |
@@ -213,9 +221,14 @@ ohbs-image clean
 `configure` 生成最小配置；`doctor` 一次返回全部阻断项与修复建议（支持
 `--only <分组>` / `--offline` / `--output json|sarif` / `--report-path`，
 退出码 0=就绪、1=有失败项、2=配置无法解析，输出自动脱敏）；
-`plan` 保证只读，不创建云资源。`state sync` 可将证据目录同步到团队目录
-或腾讯云 COS，COS 模式使用官方 `coscli` 的凭据机制，不把密钥放入命令行。
-CI 使用非默认配置文件时设置 `OHBS_IMAGE_COSCLI_CONFIG`。
+`plan` 保证只读，不创建云资源。`state` 命令管理证据目录
+（`OHBS_IMAGE_STATE_DIR` 或 `~/.ohbs-image`）：`state path` 打印路径、
+`state status` 汇总证据计数与磁盘占用、`state init` 幂等创建目录结构、
+`state prune` 保留近期血缘并清理过期单次运行证据（runs/plans/provenance；
+`releases/` 中的永久发布审批轨迹永不清理），支持 `--dry-run` 预览。
+`state sync` 可将证据目录同步到团队目录或腾讯云 COS，COS 模式使用官方
+`coscli` 的凭据机制，不把密钥放入命令行；`--check` 可预览传输而不复制
+（仅 local 后端）。CI 使用非默认配置文件时设置 `OHBS_IMAGE_COSCLI_CONFIG`。
 
 `.github/workflows/cloud-canary.yml` 提供真实云 Canary，默认关闭。只有仓库变量
 `OHBS_ENABLE_CLOUD_CANARY=true` 时才会定时创建收费 CVM；手动执行也必须显式确认成本。
