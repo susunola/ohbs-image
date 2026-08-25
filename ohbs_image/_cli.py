@@ -41,7 +41,7 @@ from ._discover import cmd_discover
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
-from ._report_diff import cmd_report_diff
+from ._report_diff import cmd_report_diff, cmd_report_list, cmd_report_show
 from ._state import cmd_state_sync
 
 # Roadmap D-91 — commands grouped by lifecycle in --help output.
@@ -239,13 +239,28 @@ def build_parser() -> argparse.ArgumentParser:
                            help="Atomically update --config in place")
     p_migrate.set_defaults(func=cmd_config_migrate)
 
-    p_report = sub.add_parser("report", help="Compare build evidence")
+    p_report = sub.add_parser("report", help="Compare and inspect build evidence")
     report_sub = p_report.add_subparsers(dest="report_command")
     p_diff = report_sub.add_parser("diff", help="Compare two lineage run IDs")
     p_diff.add_argument("--before", required=True)
     p_diff.add_argument("--after", required=True)
     p_diff.add_argument("--output", choices=["text", "json"], default="text")
     p_diff.set_defaults(func=cmd_report_diff)
+    p_list = report_sub.add_parser(
+        "list", help="List lineage records (newest first) with filters")
+    p_list.add_argument("--limit", type=int, default=20)
+    p_list.add_argument("--profile", help="Filter by profile name")
+    p_list.add_argument("--status", choices=["ok", "failed"],
+                        help="Filter by run status")
+    p_list.add_argument("--mode", choices=["build", "scan", "test"],
+                        help="Filter by run mode")
+    p_list.add_argument("--output", choices=["text", "json"], default="text")
+    p_list.set_defaults(func=cmd_report_list)
+    p_show = report_sub.add_parser(
+        "show", help="Show one run's evidence summary (lineage + manifest)")
+    p_show.add_argument("run_id")
+    p_show.add_argument("--output", choices=["text", "json"], default="text")
+    p_show.set_defaults(func=cmd_report_show)
 
     p_pre = sub.add_parser("preflight", parents=[common], help="Run pre-flight checks")
     p_pre.set_defaults(func=cmd_preflight)

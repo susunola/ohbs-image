@@ -7,6 +7,16 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (report & governance — roadmap F)
+- **`report list`** — indexes the JSONL lineage evidence store: filters by
+  `--profile`, `--status`, `--mode` (dry-run/build/apply), `--limit` for
+  paging; text output is aligned columns, `--output json` emits a
+  CI-ready `{"schema": "report-list/v1", "count", "records"}` envelope.
+- **`report show <run_id>`** — renders a single lineage entry with its
+  full evidence payload (`report-show/v1`), enriched with the persisted
+  run manifest (`plans/<run_id>-plan.json` and the raw record) so audits
+  can trace inputs → plan → outcome from one command.
+
 ### Added (configuration system — roadmap E)
 - **Schema version gate** — `load_config` now reads `schema_version`
   (missing = v1, legacy): versions above 1 fail with a precise error
