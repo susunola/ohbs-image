@@ -29,6 +29,19 @@ can be traced across rebuilds.
   --no-isolation`: rebuilding the same tag yields the same artifact
   hashes, so release provenance is verifiable.
 
+### Added (single-page HTML compliance reports)
+- **`report html RUN_ID [-o FILE]`** — re-renders any recorded run as a
+  self-contained HTML compliance page straight from the evidence state
+  (lineage + archived audit JSON + provenance): no rebuild, no cloud
+  access, works months after the build VM is gone. Useful for re-exporting
+  a delivery report to a customer or GRC mailbox.
+- **`scan --html FILE`** — mirrors `scan --sarif` / `--xccdf`: writes the
+  same delivery page for the just-completed audit-only run to an
+  operator-chosen path for CI archiving.
+- **README: "Which command should I use?"** — build/scan/audit/verify-image
+  decision guide plus a five-command quick start for the 90% case, so new
+  users are not buried under the full command surface.
+
 ### Added (profiles)
 - **Rocky Linux 9 profile (`rocky9`, L1/L2)** — new `cis-rocky9` role with
   the CIS Rocky Linux 9 Benchmark v2.0.0 identity. The v2.0.0 rule catalogs

@@ -7,7 +7,7 @@ from typing import Any
 
 from ._config import _lineage_path
 from ._logging import fail, ok
-from ._reports import _read_run_manifest
+from ._reports import _read_run_manifest, _render_lineage_html_report
 
 REPORT_LIST_SCHEMA = "https://ohbs-image.dev/report-list/v1"
 REPORT_SHOW_SCHEMA = "https://ohbs-image.dev/report-show/v1"
@@ -129,4 +129,30 @@ def cmd_report_diff(args: argparse.Namespace) -> int:
     else:
         for change in changes:
             print(f"{change['field']}: {change['before']} -> {change['after']}")
+    return 0
+
+
+def cmd_report_html(args: argparse.Namespace) -> int:
+    """Roadmap F — re-render one run as a self-contained HTML compliance page.
+
+    Reproduces the delivery report for a recorded run from the evidence
+    state (lineage + archived audit JSON + provenance), so it works offline
+    and long after the build VM is gone.  Useful for re-exporting a report
+    to a customer or a GRC mailbox without touching the cloud.
+    """
+    try:
+        rows = _records(_lineage_path())
+    except OSError as exc:
+        fail(f"Could not read lineage: {exc}")
+        return 1
+    rec = next((r for r in rows if str(r.get("run_id", "")) == args.run_id), None)
+    if rec is None:
+        fail(f"No lineage record for run {args.run_id}")
+        return 1
+    dest = Path(args.output) if getattr(args, "output", None) else None
+    out = _render_lineage_html_report(rec, dest=dest)
+    if out is None:
+        fail(f"Could not render HTML report for run {args.run_id}")
+        return 1
+    print(f"HTML report written -> {out}")
     return 0

@@ -158,6 +158,41 @@ ohbs-image --version
 
 ## Commands
 
+### Which command should I use?
+
+Four commands overlap at first glance; they serve four different moments of
+the image lifecycle — pick by what you are trying to *do*:
+
+| If you want to… | Use | What it does |
+|---|---|---|
+| Harden a source image into a **golden image** (apply remediations, re-audit, sign) | `build` | render + packer build → image + provenance + HTML delivery report |
+| Check a source image against the benchmark **without changing anything** | `scan` | same engine, audit-only; score gate (default 85%); SARIF/XCCDF/HTML export |
+| Independently verify with a **third-party tool** (OpenSCAP / InSpec / HardeningKitty) | `audit` | external audit tool, same `--min-score` gate, same SARIF/XCCDF export |
+| Confirm a *produced* image still passes after a **clean boot** | `verify-image` | boots a probe from the image and re-audits it |
+| Check an already-running instance against the baseline | `drift` | config drift on a live host vs the image baseline |
+
+`build` and `scan` run the identical bundled engine — `scan` is simply
+`build` with remediation switched off, which is why its score is a fair
+"before" snapshot for a migration or a quarterly compliance review.
+
+### The five commands you will use 90% of the time
+
+New to ohbs-image? Ignore the full reference below; start here:
+
+```bash
+ohbs-image init          # generate ohbs-image.toml (interactive)
+ohbs-image preflight     # validate config + credentials before spending money
+ohbs-image build         # produce the hardened golden image
+ohbs-image images        # list what you have built (lineage)
+ohbs-image scan          # audit-only check when you just need a score
+```
+
+Everything else — `config` tooling, `report` evidence, `state` management,
+`cleanup-*` hygiene, `audit` cross-checks — is there when you need it, and
+documented in the full reference below.
+
+### Full command reference
+
 ```bash
 ohbs-image                                    # show help (exits 2)
 ohbs-image init                               # generate ohbs-image.toml
@@ -173,6 +208,7 @@ ohbs-image config merge base.toml env.toml    # deep-merge layered configs (vali
 ohbs-image report diff --before RUN --after RUN # compare lineage metadata
 ohbs-image report list [--profile P] [--status ok|failed] [--limit N]
 ohbs-image report show RUN_ID              # single-run evidence + run manifest
+ohbs-image report html RUN_ID [-o FILE]    # re-render one run as a self-contained HTML page
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
 ohbs-image engine version                  # ohbs-image + per-family engine versions
@@ -195,6 +231,7 @@ ohbs-image build --skip-if-unchanged          # ... skip when inputs are unchang
 ohbs-image scan [--min-score 85]              # audit-only build (no remediation) + score gate
 ohbs-image scan --sarif out.sarif             # ... plus a SARIF 2.1.0 failure report
 ohbs-image scan --xccdf out.xml               # ... plus an XCCDF 1.2 TestResult (GRC ingestion)
+ohbs-image scan --html report.html            # ... plus a self-contained HTML compliance page
 ohbs-image test --idempotency                 # re-run apply, fail if 2nd pass changes anything
 ohbs-image list                               # enumerate available profiles with metadata
 ohbs-image images [--latest] [-n N]           # list recorded builds (lineage)
@@ -234,6 +271,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | `--min-score <pct>` | scan, audit, verify-image | Gate threshold (default `85`; below it → exit 1) |
 | `--sarif <path>` | scan, audit | Write findings as SARIF 2.1.0 |
 | `--xccdf <path>` | scan, audit | Write findings as XCCDF 1.2 (enterprise GRC ingestion) |
+| `--html <path>` | scan | Write a self-contained HTML compliance report (single page, no external assets) |
 | `--host <ip>` | audit | Target host to audit (oscap/inspec) |
 | `--datastream <path>` | audit | oscap SCAP datastream on the target (e.g. `/usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml`) |
 | `--baseline <name>` | audit | inspec baseline (default `dev-sec/linux-baseline`) |
@@ -1024,6 +1062,7 @@ accepted the associated cloud cost and change-control policy.
 - [x] Config tooling (`config validate` / `diff` / `get` / `explain` / `migrate` / `schema`)
 - [x] Layered configuration (`config merge` + repeatable `--overlay` deep-merge; tables recurse, lists/scalars replace)
 - [x] Report evidence index (`report list` / `report show` / `report diff` lineage trail)
+- [x] Self-contained HTML compliance report (`report html RUN_ID` re-render from evidence, `scan --html`)
 - [x] State management (`state path` / `status` / `init` / `prune`, `sync --check`)
 - [x] Engine tooling (`engine list` / `engine verify` — syntax + SHA-256 drift gate)
 - [x] Catalog tooling (`catalog list` / `catalog verify` — supply-chain integrity gate)

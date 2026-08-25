@@ -11,6 +11,7 @@ import urllib.error
 import urllib.request
 import uuid
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,29 @@ import ohbs_image
 from ._config import ResolvedConfig
 from ._logging import VERSION, info, ok, warn
 from ._models import DeliveryReportView
+
+
+@dataclass
+class _ReportContext:
+    """Minimal render context for the delivery-report renderer.
+
+    Attribute-compatible with :class:`ResolvedConfig` for everything the
+    HTML renderer touches, so a stored lineage record can re-render a
+    single-run compliance page (`report html`) without a rebuild or any
+    cloud access. ``role_dir`` drives catalog/guidance lookup for the
+    per-rule detail rows; it degrades to an empty catalog when a legacy
+    record predates profile resolution.
+    """
+
+    profile_name: str
+    level: int
+    region: str
+    zone: str
+    source_image_id: str
+    image_benchmark: str
+    run_id: str
+    role_dir: str
+    attestation_required: bool = True
 
 
 def _new_run_id() -> str:
@@ -300,7 +324,7 @@ def _cis_rule_order_key(rule_id: object) -> tuple[int, ...]:
         return (10**9,)
 
 
-def _load_report_catalog(r: ResolvedConfig) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+def _load_report_catalog(r: ResolvedConfig | _ReportContext) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
     """Load the active catalog and optional CIS guidance for delivery output."""
     try:
         catalog_path = ohbs_image._catalog_path(r.role_dir, r.image_benchmark)
@@ -372,11 +396,16 @@ def _save_build_report(r: ResolvedConfig, image_name: str,
         return None
 
 
-def _write_build_html_report(r: ResolvedConfig, image_ids: list[str], image_name: str,
+def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list[str], image_name: str,
                              score: float | None, audit_report: Path | None,
-                             provenance: Path | None, signed: bool) -> Path | None:
-    """Write one portable, human-readable delivery report for an image build."""
-    if not isinstance(r, ResolvedConfig):
+                             provenance: Path | None, signed: bool,
+                             dest: Path | None = None) -> Path | None:
+    """Write one portable, human-readable delivery report for an image build.
+
+    *dest* overrides the default ``<state-dir>/reports/<image>.<run>.html``
+    location — used by `scan --html` (arbitrary CI path) and `report html`.
+    """
+    if not isinstance(r, (ResolvedConfig, _ReportContext)):
         return None
     audit: dict[str, Any] = {}
     if audit_report:
@@ -583,12 +612,84 @@ body{background:var(--bg);font:14px/1.5 Arial,"Helvetica Neue",sans-serif}main{m
 </style>''')
     try:
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", image_name) or "image"
-        path = ohbs_image._reports_dir() / f"{safe_name}.{r.run_id}.html"
+        path = dest if dest is not None else (
+            ohbs_image._reports_dir() / f"{safe_name}.{r.run_id}.html")
         _atomic_write_bytes(path, html_doc.encode("utf-8"))
         return path
     except OSError as exc:
         warn(f"Could not write build HTML report: {exc}")
         return None
+
+
+def _render_lineage_html_report(record: dict[str, Any],
+                                dest: Path | None = None) -> Path | None:
+    """Re-render one stored lineage record as a self-contained HTML report.
+
+    `report html RUN_ID` entry point: everything needed to reproduce the
+    delivery page already lives in the evidence state (lineage + the per-run
+    audit JSON + optional provenance), so no rebuild and no cloud access is
+    required. The catalog is resolved from the record's profile when
+    possible; legacy records degrade to an empty catalog (rule rows then
+    come from the audit results alone).
+    """
+    run_id = str(record.get("run_id") or "")
+    if not run_id:
+        warn("Cannot render HTML report: lineage record has no run_id")
+        return None
+    image_name = str(record.get("image_name") or "")
+    # The audit JSON is archived next to the lineage as
+    # <state-dir>/reports/<image-name>.<run-id>.json by the build/scan.
+    audit_report: Path | None = None
+    if image_name:
+        cand = ohbs_image._reports_dir() / f"{image_name}.{run_id}.json"
+        if cand.is_file():
+            audit_report = cand
+    if audit_report is None:
+        for cand in sorted(ohbs_image._reports_dir().glob(f"*.{run_id}.json")):
+            audit_report = cand
+            break
+    if audit_report is None:
+        warn(f"No archived audit JSON for run {run_id} — the report will show "
+             "structure only (no per-rule results)")
+    # Best-effort profile -> role_dir lookup for catalog/guidance detail rows.
+    role_dir = ""
+    try:
+        from ._profiles import PROFILES
+        meta = PROFILES.get(str(record.get("profile") or ""))
+        if isinstance(meta, dict):
+            role_dir = str(meta.get("role_dir") or "")
+    except Exception:
+        role_dir = ""
+    level = record.get("cis_level")
+    try:
+        level_i = int(level) if level is not None else 1
+    except (TypeError, ValueError):
+        level_i = 1
+    image_ids = record.get("image_ids")
+    if not isinstance(image_ids, list):
+        image_ids = [str(image_ids)] if image_ids else []
+    image_ids = [str(value) for value in image_ids]
+    # A recorded provenance signature flips the release stamp to APPROVED.
+    provenance: Path | None = None
+    for image_id in image_ids:
+        found = _find_provenance(image_id)
+        if found:
+            provenance = found[0]
+            break
+    ctx = _ReportContext(
+        profile_name=str(record.get("profile") or ""),
+        level=level_i,
+        region=str(record.get("region") or ""),
+        zone=str(record.get("zone") or ""),
+        source_image_id=str(record.get("source_image_id") or ""),
+        image_benchmark=str(record.get("benchmark") or "CIS"),
+        run_id=run_id,
+        role_dir=role_dir,
+    )
+    return _write_build_html_report(
+        ctx, image_ids, image_name, record.get("score"),
+        audit_report, provenance, signed=provenance is not None, dest=dest)
+
 
 def _record_lineage(r: ResolvedConfig, image_ids: list[str], image_name: str,
                     score: float | None, ok: bool,

@@ -1329,6 +1329,20 @@ def cmd_scan(args: argparse.Namespace) -> int:
         ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False, mode="scan")
         _send_notification(r, False, image_ids, score, image_name)
         return 1
+    # Self-contained HTML compliance report (optional) — mirrors the build
+    # delivery page but with an operator-chosen path for CI archiving.
+    # (isinstance guard: the CLI always passes str/None; test stubs and
+    # library callers may pass objects that would break path handling.)
+    html_dest = getattr(args, "html", None)
+    if isinstance(html_dest, str) and html_dest:
+        if rep:
+            out = ohbs_image._write_build_html_report(
+                r, image_ids, image_name, score, rep, provenance,
+                signed=True, dest=Path(html_dest))
+            if out:
+                info(f"HTML report written -> {out}")
+        else:
+            warn("--html requested but no audit report was produced; skipped")
     ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True, mode="scan")
     info(f"Audit report archived -> {rep}")
     _send_notification(r, True, image_ids, score, image_name)

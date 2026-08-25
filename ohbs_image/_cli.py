@@ -44,7 +44,7 @@ from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
-from ._report_diff import cmd_report_diff, cmd_report_list, cmd_report_show
+from ._report_diff import cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
 from ._state import cmd_state_init, cmd_state_path, cmd_state_prune, cmd_state_status, cmd_state_sync
 
 # Roadmap D-91 — commands grouped by lifecycle in --help output.
@@ -299,6 +299,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_show.add_argument("run_id")
     p_show.add_argument("--output", choices=["text", "json"], default="text")
     p_show.set_defaults(func=cmd_report_show)
+    p_html = report_sub.add_parser(
+        "html", help="Re-render one run as a self-contained HTML compliance page")
+    p_html.add_argument("run_id")
+    p_html.add_argument("-o", "--output", default=None,
+                        help="Write to PATH (default: "
+                             "<state-dir>/reports/<image>.<run>.html)")
+    p_html.set_defaults(func=cmd_report_html)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")
@@ -416,6 +423,8 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Write a SARIF 2.1.0 report of failed rules to PATH")
     p_scn.add_argument("--xccdf", default=None,
                        help="Write an XCCDF 1.2 TestResult report of failed rules to PATH")
+    p_scn.add_argument("--html", default=None,
+                       help="Write a self-contained HTML compliance report to PATH")
     p_scn.set_defaults(func=cmd_scan)
 
     p_pnd = sub.add_parser("pending", parents=[common],
