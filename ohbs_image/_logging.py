@@ -8,8 +8,17 @@ VERSION = "0.18.0"
 
 logger = logging.getLogger("ohbs-image")
 
-def _setup_logging(*, verbose: bool = False) -> None:
-    level = logging.DEBUG if verbose else logging.INFO
+_COLOR_DISABLED = False
+
+
+def disable_color() -> None:
+    """Force plain output (roadmap D-96: unified --no-color)."""
+    global _COLOR_DISABLED
+    _COLOR_DISABLED = True
+
+
+def _setup_logging(*, verbose: bool = False, quiet: bool = False) -> None:
+    level = logging.WARNING if quiet else logging.DEBUG if verbose else logging.INFO
     if logger.handlers:
         logger.setLevel(level)
         for h in logger.handlers:
@@ -22,7 +31,7 @@ def _setup_logging(*, verbose: bool = False) -> None:
     logger.setLevel(level)
 
 def _color(text: str, code: int) -> str:
-    if os.environ.get("NO_COLOR") or not sys.stderr.isatty():
+    if _COLOR_DISABLED or os.environ.get("NO_COLOR") or not sys.stderr.isatty():
         return text
     return f"\033[{code}m{text}\033[0m"
 

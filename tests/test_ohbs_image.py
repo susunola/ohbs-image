@@ -5,7 +5,6 @@ from __future__ import annotations
 import ast
 import glob
 import hashlib
-
 import json
 import logging
 import os
@@ -635,7 +634,7 @@ class TestRenderAll:
                 continue  # quoted shell string (inline list element)
             if stripped.startswith(("#", "//")):
                 continue  # comment
-            assert ";" not in ln, "semicolons are not valid in HCL: %r" % ln
+            assert ";" not in ln, f"semicolons are not valid in HCL: {ln!r}"
 
     def test_banner_and_report_provisioner_present(self, valid_toml, tmp_path):
         """v0.10.0+: the HCL must collect the audit JSON and run the finalize
@@ -1517,7 +1516,7 @@ class TestRunPacker:
         with (
             mock.patch("subprocess.run", side_effect=_init_behavior) as mock_run,
             mock.patch("subprocess.Popen") as mock_popen,
-            mock.patch("ohbs_image._packer.time.sleep") as mock_sleep,
+            mock.patch("ohbs_image._packer.time.sleep"),
         ):
             mock_proc = mock.MagicMock()
             mock_proc.returncode = 0
@@ -2217,7 +2216,7 @@ class TestAllProfilesRender:
         blocks = list(re.finditer(r"inline\s*=\s*\[(.*?)\]\s*\n", hcl, re.S))
         assert blocks, f"{profile_name}: no inline blocks found in HCL"
         for blk in blocks:
-            lines = [l for l in blk.group(1).splitlines() if l.strip()]
+            lines = [ln for ln in blk.group(1).splitlines() if ln.strip()]
             for i in range(len(lines) - 1):
                 prev = lines[i].rstrip()
                 assert not prev.endswith('"') or prev.endswith('",'), (
@@ -2817,6 +2816,7 @@ class TestRunManifests:
 
     def test_heartbeat_refreshes_active_lease(self, valid_toml, monkeypatch):
         import time
+
         from ohbs_image import resolve
         from ohbs_image._commands import _start_run_lease_heartbeat
         r = resolve(valid_toml)
@@ -3262,7 +3262,7 @@ class TestAuditDedup:
 
     def test_4_1_3_24_key_not_privileged(self):
         import json
-        d = json.load(open("ohbs_image/roles/cis-tencentos4/files/rules.json"))
+        d = json.loads(Path("ohbs_image/roles/cis-tencentos4/files/rules.json").read_text(encoding="utf-8"))
         rules = d if isinstance(d, list) else d.get("rules", [])
         for r in rules:
             if r.get("id") == "4.1.3.24":
@@ -3289,13 +3289,15 @@ class TestRemotePathCoverage:
 
     def test_all_shell_provisioners_have_remote_path(self):
         # HCL templates live in the _templates submodule after the split.
-        src = open("ohbs_image/_templates.py").read()
+        src = Path("ohbs_image/_templates.py").read_text(encoding="utf-8")
         start = src.find("HCL_LINUX_TEMPLATE")
         end = src.find("HCL_WIN_TEMPLATE")
         hcl = src[start:end]
         missing = []
         for m in __import__("re").finditer(r'provisioner "shell" \{', hcl):
-            depth = 0; i = m.end() - 1; j = None
+            depth = 0
+            i = m.end() - 1
+            j = None
             while i < len(hcl):
                 if hcl[i] == "{":
                     depth += 1
@@ -3313,7 +3315,7 @@ class TestRemotePathCoverage:
         # v0.14.33: smoke uploads via the __REMOTE_DIR__ placeholder so
         # ubuntu (non-root) profiles get /home/ubuntu instead of /root.
         assert 'remote_path = "__REMOTE_DIR__/ohbs-image-smoke.sh"' in \
-            open("ohbs_image/_templates.py").read()
+            Path("ohbs_image/_templates.py").read_text(encoding="utf-8")
 
 
 # ===========================================================================
@@ -3576,7 +3578,9 @@ class TestBuildReportArchive:
     in the packer log, Windows via the role-fetched result.json."""
 
     def test_extract_from_linux_marker(self, tmp_path, monkeypatch):
-        import base64, gzip
+        import base64
+        import gzip
+
         from ohbs_image import _save_build_report
         monkeypatch.setattr("ohbs_image._reports_dir", lambda: tmp_path)
         doc = json.dumps({"summary": {"all": {"score": 95.0}}, "results": []}).encode()
@@ -3620,10 +3624,10 @@ class TestWindowsShipAuditResult:
     def test_all_windows_roles_support_ship_result(self):
         import glob
         for run_yml in glob.glob("ohbs_image/roles/cis-win*/tasks/run.yml"):
-            content = open(run_yml, encoding="utf-8").read()
+            content = Path(run_yml).read_text(encoding="utf-8")
             assert "cis_ship_result_path" in content, run_yml
         for defaults in glob.glob("ohbs_image/roles/cis-win*/defaults/main.yml"):
-            content = open(defaults, encoding="utf-8").read()
+            content = Path(defaults).read_text(encoding="utf-8")
             assert 'cis_ship_result_path: ""' in content, defaults
 
 
@@ -4565,8 +4569,12 @@ class TestProvenanceSbom:
         assert "Example failed rule" in text
 
     def test_release_manifest_tracks_promotion_and_rollback(self, valid_toml, tmp_path, monkeypatch):
-        from ohbs_image import (_read_release_manifest, _release_transition,
-                                _verify_release_manifest, _write_release_manifest)
+        from ohbs_image import (
+            _read_release_manifest,
+            _release_transition,
+            _verify_release_manifest,
+            _write_release_manifest,
+        )
         r = resolve(valid_toml)
         r.run_id = "12345678-1234-1234-1234-123456789abc"
         monkeypatch.setattr("ohbs_image._lineage_path", lambda: tmp_path / "lineage.jsonl")
@@ -5775,7 +5783,7 @@ class TestLinuxRulePolicyConsistency:
         L2 audit section scores ~26%)."""
         for path in self.CATALOGS:
             blob = json.dumps(self._rules(path))
-            for m in re.finditer(r'-F(?=")', blob):
+            if re.search(r'-F(?=")', blob):
                 raise AssertionError(
                     f"{path}: audit rule truncated with bare -F")
 
@@ -6077,8 +6085,8 @@ class TestEngineSummarizeCounts:
 
     @staticmethod
     def _load_engine():
-        import importlib.util as _ilu
         import glob as _g
+        import importlib.util as _ilu
         path = sorted(_g.glob("ohbs_image/roles/cis-*/files/ohbs_engine.py"))[0]
         spec = _ilu.spec_from_file_location("ohbs_engine_under_test", path)
         mod = _ilu.module_from_spec(spec)
@@ -6118,7 +6126,7 @@ class TestEngineSummarizeCounts:
         apply_failed bucket key, matching the Windows engine.)"""
         import re as _re
         eng = self._load_engine()
-        src = open(eng.__file__, encoding="utf-8").read()
+        src = Path(eng.__file__).read_text(encoding="utf-8")
         written = set(_re.findall(r'res\["apply_status"\] = "([a-z_]+)"', src))
         written |= set(_re.findall(r'apply_status = "([a-z_]+)"', src))
         written.discard("n/a")
@@ -6139,7 +6147,7 @@ class TestOutputYmlListsSkippedManual:
         outputs = sorted(_g.glob("ohbs_image/roles/cis-*/tasks/output.yml"))
         assert len(outputs) == 12
         for p in outputs:
-            content = open(p, encoding="utf-8").read()
+            content = Path(p).read_text(encoding="utf-8")
             assert "skipped_manual" in content, p
 
 
@@ -6151,8 +6159,8 @@ class TestEngineScoreFormula:
 
     @staticmethod
     def _engine():
-        import importlib.util as _ilu
         import glob as _g
+        import importlib.util as _ilu
         path = sorted(_g.glob("ohbs_image/roles/cis-*/files/ohbs_engine.py"))[0]
         spec = _ilu.spec_from_file_location("ohbs_engine_score_test", path)
         mod = _ilu.module_from_spec(spec)
@@ -6197,7 +6205,8 @@ class TestEngineDocStructure:
         assert '"score": _summary["all"]["score"]' in src
 
     def test_crash_doc_has_full_summary(self):
-        import re as _re, textwrap as _tw, json as _json
+        import json as _json
+        import textwrap as _tw
         src = self._src()
         start = src.index("        # The roles access")
         end = src.index("        _sys.exit(1)")
@@ -6228,7 +6237,7 @@ class TestLinuxRunYmlSurvivesEngineCrash:
                  if "cis-win" not in p]
         assert len(linux) == 8
         for p in linux:
-            content = open(p, encoding="utf-8").read()
+            content = Path(p).read_text(encoding="utf-8")
             assert "failed_when: false" in content, p
 
     def test_windows_run_yml_untouched(self):
@@ -6237,7 +6246,7 @@ class TestLinuxRunYmlSurvivesEngineCrash:
                if "cis-win" in p]
         assert len(win) == 4
         for p in win:
-            content = open(p, encoding="utf-8").read()
+            content = Path(p).read_text(encoding="utf-8")
             assert "failed_when" not in content, p
 
     def test_linux_run_yml_fails_fast_on_crash(self):
@@ -6251,7 +6260,7 @@ class TestLinuxRunYmlSurvivesEngineCrash:
         linux = [p for p in _g.glob("ohbs_image/roles/cis-*/tasks/run.yml")
                  if "cis-win" not in p]
         for p in linux:
-            content = open(p, encoding="utf-8").read()
+            content = Path(p).read_text(encoding="utf-8")
             assert "Fail fast when the engine crashed" in content, p
             assert "when: cis_result.mode == 'error'" in content, p
             # the fail task must sit AFTER the slurp/set_fact (so the
@@ -6274,7 +6283,7 @@ class TestPreflightRangeValidation:
                  if "cis-win" not in p]
         assert len(linux) == 8
         for p in linux:
-            content = open(p, encoding="utf-8").read()
+            content = Path(p).read_text(encoding="utf-8")
             assert "Validate cis_min_score range" in content, p
             assert "cis_min_score | int < 0 or cis_min_score | int > 100" in content, p
             assert "Validate ohbs_engine_timeout" in content, p
@@ -6286,7 +6295,7 @@ class TestPreflightRangeValidation:
                if "cis-win" in p]
         assert len(win) == 4
         for p in win:
-            content = open(p, encoding="utf-8").read()
+            content = Path(p).read_text(encoding="utf-8")
             assert "Validate cis_min_score range" in content, p
             assert "cis_min_score | int >= 0 and cis_min_score | int <= 100" in content, p
             assert "Validate ohbs_engine_timeout" in content, p

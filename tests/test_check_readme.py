@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import check_readme  # noqa: E402
+
 import ohbs_image  # noqa: E402
 
 ALL_CMDS = {"audit", "build", "check-source", "clean", "cleanup-images", "cleanup-runs", "config", "configure", "discover", "doctor", "drift", "plan", "promote", "report", "rollback", "state", "verify-release",

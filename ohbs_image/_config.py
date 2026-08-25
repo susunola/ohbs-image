@@ -578,7 +578,9 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         ssh_username=str(p.get("ssh_username", "")),
         ssh_debug_password=str(meta.get("ssh_debug_password", "")),
         winrm_username=str(p.get("winrm_username", "")),
-        winrm_password_env=str(data.get("cloud", {}).get("winrm_password_env", "WINRM_PASSWORD")),
+        winrm_password_env=str(data.get("cloud", {}).get(
+            "winrm_password_env",
+            "WINRM_PASSWORD" if family == "windows" else "")),
         image_name_prefix=_read_required_str(data, "image", "name_prefix"),
         image_name_override=image_name_override,
         instance_name=instance_name,

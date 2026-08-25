@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections.abc import Iterable
 
 import ohbs_image
 
@@ -30,11 +31,58 @@ from ._commands import (
 )
 from ._config_tools import cmd_config_explain, cmd_config_migrate, cmd_config_schema
 from ._discover import cmd_discover
-from ._logging import VERSION, _setup_logging, fail
-from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan
+from ._logging import VERSION, _setup_logging, disable_color, fail
+from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._report_diff import cmd_report_diff
 from ._state import cmd_state_sync
+
+# Roadmap D-91 — commands grouped by lifecycle in --help output.
+COMMAND_GROUPS: dict[str, list[str]] = {
+    "build lifecycle": [
+        "init", "configure", "doctor", "discover", "plan", "preflight",
+        "validate", "build", "scan", "test",
+    ],
+    "manage & evidence": [
+        "state", "config", "report", "list", "images", "clean",
+        "cleanup-images", "cleanup-runs", "pending", "audit", "drift",
+        "check-source", "verify", "verify-image",
+    ],
+    "release": ["promote", "rollback", "verify-release"],
+}
+
+
+class GroupedHelpFormatter(argparse.HelpFormatter):
+    """Render subcommands under lifecycle headings (roadmap D-91)."""
+
+    def _format_action(self, action: argparse.Action) -> str:
+        if not isinstance(action, argparse._SubParsersAction):
+            return super()._format_action(action)
+        # `add_parser(help=...)` text lives on the pseudo-actions, not on
+        # the subparsers themselves (which only expose `description`).
+        help_by_name = {act.dest: act.help
+                        for act in action._choices_actions}
+        parts: list[str] = []
+        for group, names in COMMAND_GROUPS.items():
+            rows = []
+            for name in names:
+                sub = action._name_parser_map.get(name)
+                if sub is None:
+                    continue
+                rows.append((name, help_by_name.get(name, "") or ""))
+            if not rows:
+                continue
+            parts.append(f"\n  {group}:")
+            for name, help_text in rows:
+                parts.append(f"    {name:<16} {help_text}")
+        return "\n".join(parts) + "\n"
+
+    def _format_usage(self, usage: str | None,
+                      actions: Iterable[argparse.Action],
+                      groups: Iterable[argparse._MutuallyExclusiveGroup],
+                      prefix: str | None) -> str:
+        return super()._format_usage(
+            "ohbs-image COMMAND [options]", actions, groups, prefix)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -46,14 +94,27 @@ def build_parser() -> argparse.ArgumentParser:
                         help=f"Rendered working directory (default ./{DEFAULT_WORKDIR})")
     common.add_argument("--state-dir", default=argparse.SUPPRESS,
                         help="Evidence state directory (default $OHBS_IMAGE_STATE_DIR or ~/.ohbs-image)")
+    common.add_argument("--timeout", type=int, default=None, metavar="MINUTES",
+                        help="Override the build wall-clock limit (overrides "
+                             "[build].max_build_minutes); roadmap D-98")
+    common.add_argument("--dry-run", action="store_true",
+                        help="Render and report, but never invoke Packer or any "
+                             "write API (roadmap D-99)")
 
     parser = argparse.ArgumentParser(
         prog="ohbs-image",
         description="ohbs-hardened Golden Image Builder (Packer × Tencent Cloud CVM)",
         epilog=f"Supported profiles: {PROFILE_NAMES_HELP}",
+        formatter_class=GroupedHelpFormatter,
     )
     parser.add_argument("--version", action="version", version=f"ohbs-image {VERSION}")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
+    parser.add_argument("-q", "--quiet", action="store_true",
+                        help="Suppress info output; show warnings and errors only")
+    parser.add_argument("--no-color", action="store_true",
+                        help="Disable ANSI colors (equivalent to NO_COLOR=1)")
+    parser.add_argument("--non-interactive", action="store_true",
+                        help="Never prompt; use defaults and fail on ambiguity")
     parser.add_argument("--state-dir", default=None,
                         help="Evidence state directory (may be placed before any command)")
 
@@ -113,7 +174,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_plan = sub.add_parser("plan", parents=[common],
                             help="Preview resources, gates, duration and outputs without changes")
-    p_plan.add_argument("--output", choices=["text", "json"], default="text")
+    p_plan.add_argument("--output", choices=["text", "json"], default="text",
+                        help="Output format (json keeps the plan/v1 contract)")
+    p_plan.add_argument("--check", action="store_true",
+                        help="CI gate: exit non-zero when the plan contains "
+                             "high-risk settings (roadmap D-116)")
+    p_plan.add_argument("--save", action="store_true",
+                        help="Persist the plan as evidence under the state "
+                             "directory (roadmap D-118)")
+    p_plan.add_argument("--diff-last", action="store_true",
+                        help="Compare inputs against the last recorded build "
+                             "(roadmap D-119)")
+    p_plan.add_argument("--schema", action="store_true",
+                        help="Print the plan JSON Schema and exit (roadmap D-117)")
     p_plan.set_defaults(func=cmd_plan)
 
     p_state = sub.add_parser("state", help="Synchronize team evidence state")
@@ -334,6 +407,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     """Entry point — parse args, dispatch to subcommand, return exit code."""
+    _deprecation_prog(argv)
     _setup_logging()
     parser = ohbs_image.build_parser()
     args = parser.parse_args(argv)
@@ -342,7 +416,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if getattr(args, "state_dir", None):
         os.environ["OHBS_IMAGE_STATE_DIR"] = args.state_dir
-    _setup_logging(verbose=args.verbose)
+    if getattr(args, "no_color", False):
+        disable_color()
+    if getattr(args, "non_interactive", False):
+        set_non_interactive()
+    _setup_logging(verbose=getattr(args, "verbose", False),
+                   quiet=getattr(args, "quiet", False))
     try:
         return int(args.func(args))
     except KeyboardInterrupt:
@@ -356,3 +435,16 @@ def main(argv: list[str] | None = None) -> int:
         fail(f"internal error: {type(exc).__name__}: {exc} "
              "(rerun with -v for the full traceback)")
         return 70
+
+
+def _deprecation_prog(argv: list[str] | None) -> None:
+    """Roadmap D-92/93 — keep the pre-rebrand entry name as a deprecated alias.
+
+    `cis-image` (the pre-0.16.25 package name) still works but prints a
+    deprecation notice; it is scheduled for removal in 0.19.0.
+    """
+    first = argv[0] if argv else sys.argv[0]
+    name = os.path.basename(str(first)).lower()
+    if name in ("cis-image", "cis_image"):
+        print("warning: 'cis-image' is deprecated, use 'ohbs-image' "
+              "(scheduled for removal in 0.19.0)", file=sys.stderr)

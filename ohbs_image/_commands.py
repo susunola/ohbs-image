@@ -150,6 +150,24 @@ def _load_resolve_preflight(config_path: str, workdir: str) -> tuple[ResolvedCon
     return r, wd
 
 
+def _prep_for(args: argparse.Namespace) -> tuple[ResolvedConfig, Path] | None:
+    """Roadmap D-99 — unified --dry-run: skip pre-flight credential checks.
+
+    A dry-run only renders locally and never touches the cloud, so cloud
+    readiness must not block it; the config still has to resolve.
+    Note: `vars(args).get(...)` (not getattr) so argparse Namespaces and
+    MagicMock-based test doubles behave the same.
+    """
+    if vars(args).get("dry_run", False):
+        r = _load_resolved(args.config)
+        if r is None:
+            return None
+        wd = Path(args.workdir).resolve()
+        wd.mkdir(parents=True, exist_ok=True)
+        return r, wd
+    return ohbs_image._load_resolve_preflight(args.config, args.workdir)
+
+
 def _load_resolved(config_path: str) -> ResolvedConfig | None:
     """Load configuration without build-only Packer or connectivity checks."""
     try:
@@ -165,12 +183,16 @@ def cmd_preflight(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """Render templates and run packer validate."""
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    prep = _prep_for(args)
     if prep is None:
         return 1
     r, workdir = prep
 
     ohbs_image.render_all(workdir, r)
+
+    if vars(args).get("dry_run", False):
+        info("--dry-run: rendered working directory only; packer validate skipped")
+        return 0
 
     banner("validate")
     info(f"Rendered working directory: {workdir}")
@@ -197,6 +219,16 @@ def _open_build_log(args: argparse.Namespace) -> logging.FileHandler | None:
     return fh
 
 
+def _build_timeout(args: argparse.Namespace, r: ResolvedConfig) -> int:
+    """Roadmap D-98 — unified --timeout: CLI override wins over the config.
+
+    `vars(args).get(...)` (not getattr) keeps MagicMock test doubles honest.
+    """
+    override = vars(args).get("timeout")
+    minutes = override if override else r.max_build_minutes
+    return int(minutes) * 60
+
+
 def _close_build_log(fh: logging.FileHandler | None) -> None:
     """Detach and close the build log handler without leaking it."""
     if fh is not None:
@@ -206,7 +238,7 @@ def _close_build_log(fh: logging.FileHandler | None) -> None:
 
 def cmd_build(args: argparse.Namespace) -> int:
     """Render templates and run packer build."""
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    prep = _prep_for(args)
     if prep is None:
         return 1
     r, workdir = prep
@@ -237,6 +269,11 @@ def cmd_build(args: argparse.Namespace) -> int:
     # roll the timestamp forward).
     image_name = ohbs_image.render_all(workdir, r)
 
+    if vars(args).get("dry_run", False):
+        info("--dry-run: rendered working directory only; no CVM, image or "
+             "other cloud resource would be created")
+        return 0
+
     # Confirmation prompt (skip with -y or in non-interactive mode)
     if not args.yes:
         communicator = "winrm" if r.family == "windows" else "ssh"
@@ -266,7 +303,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     heartbeat_stop, heartbeat_worker = _start_run_lease_heartbeat(r)
     try:
         result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
-                            log_file=args.log_file, timeout=r.max_build_minutes * 60)
+                            log_file=args.log_file, timeout=_build_timeout(args, r))
     finally:
         heartbeat_stop.set()
         heartbeat_worker.join(timeout=5)
@@ -572,6 +609,7 @@ def cmd_check_source(args: argparse.Namespace) -> int:
     vendor OS image update automatically triggers a rebuild.
     """
     prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+
     if prep is None:
         return 1
     r, _workdir = prep
@@ -627,6 +665,7 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
     """
     if resolved is None:
         prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+
         if prep is None:
             return 1
         r, _workdir = prep
@@ -804,6 +843,7 @@ def cmd_drift(args: argparse.Namespace) -> int:
     if getattr(args, "save_baseline", False):
         return cmd_save_baseline(args)
     prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+
     if prep is None:
         return 1
     r, _workdir = prep
@@ -870,6 +910,7 @@ def cmd_drift(args: argparse.Namespace) -> int:
 def cmd_save_baseline(args: argparse.Namespace) -> int:
     """ohbs-image drift --save-baseline — persist the current host scan as a baseline."""
     prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+
     if prep is None:
         return 1
     r, _workdir = prep
@@ -1060,7 +1101,7 @@ def cmd_cleanup_images(args: argparse.Namespace) -> int:
 def cmd_test(args: argparse.Namespace) -> int:
     """ohbs-image test --idempotency: re-run apply and assert the second pass
     makes no changes (Applied: 0 / Pending: 0 in the role summary)."""
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    prep = _prep_for(args)
     if prep is None:
         return 1
     r, workdir = prep
@@ -1071,12 +1112,15 @@ def cmd_test(args: argparse.Namespace) -> int:
         return 0
 
     image_name = ohbs_image.render_all(workdir, r, idempotency=args.idempotency)
+    if vars(args).get("dry_run", False):
+        info("--dry-run: rendered working directory only; idempotency build skipped")
+        return 0
     banner("test")
     info(f"Idempotency — re-running apply must make 0 changes "
          f"({r.profile_name} L{r.level}, region {r.region})")
 
     result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
-                                   timeout=r.max_build_minutes * 60)
+                                   timeout=_build_timeout(args, r))
     if result.exit_code != 0:
         fail("build failed during idempotency test")
         return result.exit_code
@@ -1113,6 +1157,7 @@ def cmd_pending(args: argparse.Namespace) -> int:
     verifies the previous image still exists before skipping.
     """
     prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+
     if prep is None:
         return 1
     r, _workdir = prep
@@ -1197,7 +1242,7 @@ def cmd_scan(args: argparse.Namespace) -> int:
     is gated against --min-score (default 85%); below it the command fails
     (non-zero exit) so CI can block on compliance.
     """
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    prep = _prep_for(args)
     if prep is None:
         return 1
     r, workdir = prep
@@ -1205,12 +1250,15 @@ def cmd_scan(args: argparse.Namespace) -> int:
 
     # See cmd_build: reuse the image name render_all baked into the build.
     image_name = ohbs_image.render_all(workdir, r, scan=True)
+    if vars(args).get("dry_run", False):
+        info("--dry-run: rendered working directory only; audit-only build skipped")
+        return 0
     banner("scan")
     info(f"Audit-only (no remediation) — {r.profile_name} L{r.level}, region {r.region}")
     info(f"Gate: score >= {args.min_score:g}%")
 
     result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
-                                   timeout=r.max_build_minutes * 60)
+                                   timeout=_build_timeout(args, r))
     image_ids = _extract_image_ids(result.stdout_lines)
     score = _extract_score(result.stdout_lines)
 

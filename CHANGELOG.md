@@ -7,6 +7,38 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (CLI product experience — roadmap D)
+- **Lifecycle-grouped `--help`** — subcommands render under three stable
+  headings (`build lifecycle` / `manage & evidence` / `release`) so the
+  flow is discoverable for new users (D-91).
+- **Deprecated `cis-image` entry alias** — the pre-rebrand executable name
+  still works but prints a deprecation notice; scheduled for removal in
+  0.19.0 (D-92/93).
+- **Unified global flags** — `--no-color` (plain output, D-96),
+  `--non-interactive` (defaults instead of prompts, D-97), `--timeout
+  MINUTES` (overrides `[build].max_build_minutes` on every command that
+  runs Packer, D-98), `--dry-run` (render locally, never touch the cloud;
+  skips credential pre-flight, D-99), and `-q/--quiet` plus `-v/--verbose`
+  log-level control (D-100).
+- **`docs/exit-codes.md`** — the stable exit-code contract is documented
+  per command (0 ready / 1 blocked / 2 config / 70 internal /
+  130 interrupt / 255 packer subprocess) (D-101).
+- **Plan risk surface** — `plan` output now includes a `risks` array
+  covering public-IP exposure, disruptive remediation, rule-subset
+  approval (scoped-rules/scoped-approval), per-rule overrides and the
+  WinRM password env var, each with a severity (D-102..D-115).
+- **`plan --check`** — CI-ready gate that exits `1` when the plan carries
+  high-risk settings, `0` otherwise (D-116).
+- **`plan --schema`** — prints the `plan/v1` JSON Schema (D-117).
+- **`plan --save`** — writes the plan as evidence under
+  `$OHBS_IMAGE_STATE_DIR/plans/<run_id>-plan.json` (mode 0600) (D-118).
+- **`plan --diff-last`** — diffs the current inputs (fingerprint, profile,
+  region, zone, source image, benchmark) against the last recorded lineage
+  entry (D-119).
+- **`plan` is read-only** — it never invokes render/build/packer/lineage
+  write APIs; `mutates_cloud: false` is part of the `plan/v1` contract
+  (D-120).
+
 ### Added (unified output — roadmap D)
 - **`ohbs-image list --output text|json`** — plain-text and machine-readable
   output for the profiles command. JSON follows the `list/v1` contract

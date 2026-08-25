@@ -17,10 +17,11 @@ from typing import Any
 
 import ohbs_image
 
-from ._config import ResolvedConfig, load_config, resolve
+from ._config import ResolvedConfig, _lineage_path, _state_dir, load_config, resolve
 from ._discover import discover_resources
 from ._logging import ConfigError, banner, fail, info, ok, warn
 from ._profiles import PROFILES
+from ._reports import _new_run_id
 
 # Doctor diagnostic groups (also the `--only` filter choices).
 DOCTOR_GROUPS = ("toolchain", "config", "credentials", "cloud", "network", "permissions")
@@ -799,10 +800,21 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return exit_code
 
 
+_NON_INTERACTIVE = False
+
+
+def set_non_interactive() -> None:
+    """Roadmap D-97: unified --non-interactive — never prompt, use defaults."""
+    global _NON_INTERACTIVE
+    _NON_INTERACTIVE = True
+
+
 def _ask(value: str | None, prompt: str, default: str = "") -> str:
     if value:
         return value
-    if not sys.stdin.isatty():
+    if _NON_INTERACTIVE or not sys.stdin.isatty():
+        if default:
+            return default
         raise ConfigError(f"{prompt} is required in non-interactive mode")
     suffix = f" [{default}]" if default else ""
     answer = input(f"{prompt}{suffix}: ").strip()
@@ -821,7 +833,7 @@ def _choose_resource(kind: str, region: str, *, zone: str = "", profile: str = "
     rows = discover_resources(kind, region, zone=zone, profile=profile, vpc_id=vpc_id)
     if not rows:
         raise ConfigError(f"No matching {kind} found in {region}")
-    if not sys.stdin.isatty():
+    if _NON_INTERACTIVE or not sys.stdin.isatty():
         if len(rows) == 1:
             return str(rows[0]["id"])
         raise ConfigError(f"Discovery found {len(rows)} {kind}; specify the ID in non-interactive mode")
@@ -930,6 +942,86 @@ benchmark = "{PROFILES[profile].get('benchmark', '')}"
     return 0
 
 
+PLAN_SCHEMA: dict[str, Any] = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://ohbs-image.dev/plan/v1.schema.json",
+    "title": "ohbs-image build plan",
+    "type": "object",
+    "required": ["schema", "mutates_cloud", "profile", "family", "cis_level",
+                 "placement", "source_image_id", "temporary_resources",
+                 "outputs", "gates", "distribution", "limits"],
+    "properties": {
+        "schema": {"const": "https://ohbs-image.dev/plan/v1"},
+        "mutates_cloud": {"const": False},
+        "profile": {"type": "string"},
+        "family": {"type": "string"},
+        "cis_level": {"type": "integer", "minimum": 1, "maximum": 2},
+        "placement": {"type": "object"},
+        "source_image_id": {"type": "string"},
+        "temporary_resources": {"type": "array"},
+        "outputs": {"type": "array", "items": {"type": "string"}},
+        "gates": {"type": "object"},
+        "distribution": {"type": "object"},
+        "limits": {"type": "object"},
+        "risks": {"type": "array", "items": {"type": "object"}},
+    },
+}
+
+
+def _plan_risks(r: ResolvedConfig) -> list[dict[str, str]]:
+    """Roadmap D-112..D-115 — surface sensitive or high-risk settings.
+
+    severities: high (blocks `plan --check`), medium (operator awareness),
+    info (informational).
+    """
+    risks: list[dict[str, str]] = []
+    if r.associate_public_ip:
+        risks.append({
+            "id": "public-ip", "severity": "medium",
+            "title": "Build CVM will receive a public IP",
+            "detail": "[build].associate_public_ip = true exposes the temporary "
+                      "instance; keep the security group locked down.",
+        })
+    if r.allow_disruptive:
+        risks.append({
+            "id": "disruptive-remediation", "severity": "medium",
+            "title": "Disruptive remediations are enabled",
+            "detail": "[ohbs].allow_disruptive = true may reboot the instance or "
+                      "change firewall state mid-build.",
+        })
+    if r.rules_include or r.rules_exclude:
+        detail = (f"rules_include={sorted(r.rules_include)} "
+                  f"rules_exclude={sorted(r.rules_exclude)}")
+        if r.allow_scoped_approval:
+            risks.append({
+                "id": "scoped-approval", "severity": "high",
+                "title": "Rule-subset image with explicit scoped approval",
+                "detail": f"{detail} — image is not a full-benchmark baseline.",
+            })
+        else:
+            risks.append({
+                "id": "scoped-rules", "severity": "high",
+                "title": "Rule subset requested without approval",
+                "detail": f"{detail} — build fails unless "
+                          "[ohbs].allow_scoped_approval = true.",
+            })
+    if r.rules_overrides:
+        risks.append({
+            "id": "rule-overrides", "severity": "medium",
+            "title": "Per-rule parameter overrides in effect",
+            "detail": f"{len(r.rules_overrides)} override(s) under "
+                      "[ohbs.overrides] change the default rule behaviour.",
+        })
+    if r.winrm_password_env:
+        risks.append({
+            "id": "winrm-password-env", "severity": "info",
+            "title": "Windows build reads the WinRM password from the environment",
+            "detail": f"controller env var {r.winrm_password_env} must be set "
+                      "and kept out of the config file.",
+        })
+    return risks
+
+
 def _plan_doc(r: ResolvedConfig) -> dict[str, Any]:
     return {
         "schema": "https://ohbs-image.dev/plan/v1", "mutates_cloud": False,
@@ -941,11 +1033,44 @@ def _plan_doc(r: ResolvedConfig) -> dict[str, Any]:
                                  "lifecycle": "terminated after build"}],
         "outputs": ["custom image", "audit report", "lineage record", "release evidence"],
         "gates": {"minimum_score": r.min_score, "smoke_test": r.smoke_test,
-                  "clean_boot_verify": r.verify_boot, "attestation_required": r.attestation_required},
+                  "clean_boot_verify": r.verify_boot, "attestation_required": r.attestation_required,
+                  "cve_scan": r.cve_scan, "sbom": r.sbom},
         "distribution": {"copy_regions": r.image_copy_regions, "share_accounts": r.image_share_accounts},
         "limits": {"maximum_minutes": r.max_build_minutes},
+        "risks": _plan_risks(r),
         "cost": {"status": "provider-price-not-queried", "note": "CVM and image storage charges may apply"},
     }
+
+
+def _plan_diff_last(r: ResolvedConfig) -> list[dict[str, str]]:
+    """Roadmap D-119 — compare this plan against the last recorded build."""
+    rows: list[dict[str, Any]] = []
+    try:
+        for line in _lineage_path().read_text(encoding="utf-8").splitlines():
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(row, dict):
+                rows.append(row)
+    except OSError:
+        return []
+    if not rows:
+        return []
+    last = rows[-1]
+    changes: list[dict[str, str]] = []
+    current_fp = ohbs_image._build_fingerprint(r)
+    if last.get("fingerprint") != current_fp:
+        changes.append({"field": "fingerprint", "before": last.get("fingerprint", ""),
+                        "after": current_fp})
+    record_fields = {"profile": "profile_name", "region": "region", "zone": "zone",
+                     "source_image_id": "source_image_id", "benchmark": "image_benchmark"}
+    for key, attr in record_fields.items():
+        current = getattr(r, attr)
+        if last.get(key) != current:
+            changes.append({"field": key, "before": last.get(key, ""),
+                            "after": str(current)})
+    return changes
 
 
 def cmd_plan(args: argparse.Namespace) -> int:
@@ -954,17 +1079,58 @@ def cmd_plan(args: argparse.Namespace) -> int:
     except ConfigError as exc:
         fail(str(exc))
         return 2
+    if getattr(args, "schema", False):
+        print(json.dumps(PLAN_SCHEMA, ensure_ascii=False, indent=2))
+        return 0
     doc = _plan_doc(r)
+    exit_code = 0
+    if getattr(args, "diff_last", False):
+        changes = _plan_diff_last(r)
+        doc["diff_last_build"] = {"changed": bool(changes), "changes": changes}
+        if args.output == "json":
+            print(json.dumps(doc, ensure_ascii=False, indent=2))
+            return 0
+        if not changes:
+            ok("No inputs changed since the last recorded build")
+        else:
+            warn("Inputs changed since the last recorded build:")
+            for change in changes:
+                warn(f"  {change['field']}: {change['before']} -> {change['after']}")
+        return 0
     if args.output == "json":
         print(json.dumps(doc, ensure_ascii=False, indent=2))
-        return 0
-    banner("plan — read only")
-    info(f"Build: {r.profile_name} CIS L{r.level} in {r.zone} ({r.region})")
-    info(f"Source: {r.source_image_id} -> {r.image_name_prefix}-<timestamp>")
-    info(f"Temporary: 1 × {r.instance_type} CVM; terminated after build")
-    info(f"Maximum duration: {r.max_build_minutes} minutes")
-    info(f"Gates: score >= {r.min_score}%, smoke={r.smoke_test}, clean-boot={r.verify_boot}")
-    info(f"Distribution: {len(r.image_copy_regions)} copy region(s), {len(r.image_share_accounts)} account(s)")
-    warn("Cost: live provider pricing is not queried; CVM and image storage charges may apply")
-    ok("No cloud resources were created or modified")
-    return 0
+    else:
+        banner("plan — read only")
+        info(f"Build: {r.profile_name} CIS L{r.level} in {r.zone} ({r.region})")
+        info(f"Source: {r.source_image_id} -> {r.image_name_prefix}-<timestamp>")
+        info(f"Temporary: 1 × {r.instance_type} CVM; terminated after build")
+        info(f"Maximum duration: {r.max_build_minutes} minutes")
+        info(f"Gates: score >= {r.min_score}%, smoke={r.smoke_test}, "
+             f"clean-boot={r.verify_boot}, cve={r.cve_scan}, sbom={r.sbom}")
+        info(f"Distribution: {len(r.image_copy_regions)} copy region(s), "
+             f"{len(r.image_share_accounts)} account(s)")
+        for risk in doc["risks"]:
+            marker = "!" if risk["severity"] == "high" else "-"
+            warn(f"[{risk['severity']}] {marker} {risk['title']}: {risk['detail']}")
+        if doc["risks"]:
+            warn("Cost: live provider pricing is not queried; CVM and image storage "
+                 "charges may apply")
+        ok("No cloud resources were created or modified")
+    if getattr(args, "check", False):
+        high = [risk for risk in doc["risks"] if risk["severity"] == "high"]
+        if high:
+            fail(f"plan --check blocked: {len(high)} high-risk setting(s) "
+                 f"({', '.join(risk['id'] for risk in high)})")
+            exit_code = 1
+        else:
+            ok("plan --check: no high-risk settings")
+    if getattr(args, "save", False):
+        run_id = _new_run_id()
+        plans_dir = _state_dir() / "plans"
+        plans_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        out = plans_dir / f"{run_id}-plan.json"
+        out.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n",
+                       encoding="utf-8")
+        os.chmod(out, 0o600)
+        ok(f"Plan saved as evidence: {out}")
+    return exit_code

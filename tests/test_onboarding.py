@@ -193,8 +193,12 @@ def test_plan_v1_contract_shape(tmp_path, capsys):
     doc = json.loads(capsys.readouterr().out)
     assert list(doc) == ["schema", "mutates_cloud", "profile", "family", "cis_level",
                          "placement", "source_image_id", "temporary_resources", "outputs",
-                         "gates", "distribution", "limits", "cost"]
+                         "gates", "distribution", "limits", "risks", "cost"]
     assert doc["schema"] == "https://ohbs-image.dev/plan/v1"
+    # roadmap D-110/D-111 — the CVE and SBOM gates are part of the plan.
+    assert doc["gates"]["cve_scan"] is False
+    assert doc["gates"]["sbom"] is False
+    assert isinstance(doc["risks"], list)
 
 
 def test_list_v1_json_contract(capsys):
