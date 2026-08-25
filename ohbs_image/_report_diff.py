@@ -11,6 +11,7 @@ from ._reports import _read_run_manifest, _render_lineage_html_report
 
 REPORT_LIST_SCHEMA = "https://ohbs-image.dev/report-list/v1"
 REPORT_SHOW_SCHEMA = "https://ohbs-image.dev/report-show/v1"
+REPORT_COST_SCHEMA = "https://ohbs-image.dev/report-cost/v1"
 
 # Fields shown in `report list` text output, in order.
 _LIST_COLUMNS = ("ts", "status", "mode", "profile", "cis_level", "score",
@@ -155,4 +156,96 @@ def cmd_report_html(args: argparse.Namespace) -> int:
         fail(f"Could not render HTML report for run {args.run_id}")
         return 1
     print(f"HTML report written -> {out}")
+    return 0
+
+
+def _fmt_duration(seconds: float) -> str:
+    """Format a wall-clock duration as m:ss or h:mm."""
+    total = int(round(seconds))
+    minutes, secs = divmod(total, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m"
+    return f"{minutes}m{secs:02d}s"
+
+
+def cmd_report_cost(args: argparse.Namespace) -> int:
+    """Aggregate build cost from lineage facts (instance type, spot, time).
+
+    No billing API is called and no stale price table is bundled: the
+    command reports the *facts* every record now carries (build VM type,
+    spot flag, Packer wall time).  Pass ``--hourly-price USD`` to estimate
+    spend (spot runs are billed at 10% of on-demand).  Legacy records that
+    predate cost tracking are shown but excluded from totals.
+    """
+    try:
+        rows = _records(_lineage_path())
+    except OSError as exc:
+        fail(f"Could not read lineage: {exc}")
+        return 1
+    price = getattr(args, "hourly_price", None)
+    priced = isinstance(price, (int, float)) and price > 0
+    records: list[dict[str, Any]] = []
+    total_seconds = 0.0
+    total_cost = 0.0
+    for rec in rows:
+        if not isinstance(rec, dict):
+            continue
+        seconds = rec.get("build_seconds")
+        seconds_f = float(seconds) if isinstance(seconds, (int, float)) and seconds > 0 else None
+        spot = bool(rec.get("spot", False))
+        est = None
+        if seconds_f is not None:
+            total_seconds += seconds_f
+            if priced and isinstance(price, (int, float)):
+                est = price * (seconds_f / 3600) * (0.1 if spot else 1.0)
+                total_cost += est
+        records.append({
+            "ts": str(rec.get("ts") or "?"),
+            "run_id": str(rec.get("run_id") or ""),
+            "status": str(rec.get("status") or "?"),
+            "mode": str(rec.get("mode") or "build"),
+            "profile": str(rec.get("profile") or "?"),
+            "region": str(rec.get("region") or "?"),
+            "instance_type": str(rec.get("instance_type") or ""),
+            "spot": spot,
+            "build_seconds": seconds_f,
+            "estimated_cost_usd": est,
+        })
+    totals: dict[str, Any] = {
+        "runs": len(records),
+        "runs_with_duration": sum(1 for r in records if r["build_seconds"] is not None),
+        "wall_hours": round(total_seconds / 3600, 3) if total_seconds else None,
+        "estimated_cost_usd": round(total_cost, 4) if priced else None,
+    }
+    doc: dict[str, Any] = {
+        "schema": REPORT_COST_SCHEMA,
+        "hourly_price_usd": price if priced else None,
+        "records": records,
+        "totals": totals,
+    }
+    if getattr(args, "output", "text") == "json":
+        print(json.dumps(doc, ensure_ascii=False, indent=2))
+        return 0
+    if not records:
+        print("No lineage records.")
+        return 0
+    for rec in records:
+        dur = _fmt_duration(rec["build_seconds"]) if rec["build_seconds"] is not None else "-"
+        est_s = f"${rec['estimated_cost_usd']:.4f}" if rec["estimated_cost_usd"] is not None else "-"
+        spot_s = " spot" if rec["spot"] else ""
+        print(f"{rec['ts']}  {rec['status']:6s}  {rec['profile']:12s}  "
+              f"{rec['region']:16s}  {rec['instance_type'] or '-':14s}  "
+              f"{dur:>7s}  est {est_s:>9s}{spot_s}")
+    totals = doc["totals"]
+    print("-" * 78)
+    print(f"runs tracked: {totals['runs']}  |  with duration: "
+          f"{totals['runs_with_duration']}  |  wall hours: "
+          f"{totals['wall_hours'] if totals['wall_hours'] is not None else '-'}")
+    if priced:
+        print(f"estimated spend (on-demand ${price:g}/h, spot at 10%): "
+              f"${totals['estimated_cost_usd']:.4f}")
+    else:
+        print("pass --hourly-price USD to estimate spend from the recorded "
+              "durations (spot runs at 10% of on-demand)")
     return 0

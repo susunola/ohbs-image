@@ -4465,8 +4465,9 @@ class TestBuildNewFeatures:
         lineage = {}
         monkeypatch.setattr("ohbs_image._record_lineage",
                             lambda r_, ids, name, score, ok, sbom_sha=None,
-                            sbom_count=None: lineage.update(
-                                {"sha": sbom_sha, "count": sbom_count}) or None)
+                            sbom_count=None, build_seconds=None: lineage.update(
+                                {"sha": sbom_sha, "count": sbom_count,
+                                 "build_seconds": build_seconds}) or None)
         prov = {}
         monkeypatch.setattr("ohbs_image._write_provenance",
                             lambda r_, ids, name, score, sbom_sha=None,
@@ -4477,6 +4478,7 @@ class TestBuildNewFeatures:
         assert cmd_build(args) == 0
         assert lineage["sha"] == "b" * 64
         assert lineage["count"] == 42
+        assert lineage["build_seconds"] is not None  # cost tracking fact
         assert prov["sha"] == "b" * 64
         assert prov["count"] == 42
 

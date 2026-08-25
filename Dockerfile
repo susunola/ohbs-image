@@ -32,3 +32,19 @@ COPY README.md /app/README.md
 COPY scripts/check_readme.py /app/scripts/check_readme.py
 
 ENTRYPOINT ["python", "scripts/check_readme.py"]
+
+# --- stage 3: zero-cost demo (`ohbs-image try`) -------------------------------
+# The same wheel, but the container's job is the offline demo: engine +
+# catalog gates plus a sample single-page HTML compliance report, written
+# to a bind-mounted directory so the host gets the files with no spend.
+#
+# Usage:
+#   docker build --target try -t ohbs-image:try .
+#   docker run --rm -v "$(pwd)/out:/demo/out" ohbs-image:try
+#   # → ./out/demo-report.html + demo-audit.json + ohbs-image.toml
+FROM python:3.11-slim AS try
+WORKDIR /demo
+COPY --from=build /src/dist/*.whl /tmp/
+RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl \
+ && mkdir -p /demo/out
+ENTRYPOINT ["ohbs-image", "try", "--output", "/demo/out"]

@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import threading
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -313,12 +314,15 @@ def cmd_build(args: argparse.Namespace) -> int:
 
     _fh: logging.FileHandler | None = _open_build_log(args)
     heartbeat_stop, heartbeat_worker = _start_run_lease_heartbeat(r)
+    # Cost tracking: the build VM's billed lifetime is the Packer wall time.
+    _t0 = time.monotonic()
     try:
         result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
                             log_file=args.log_file, timeout=_build_timeout(args, r))
     finally:
         heartbeat_stop.set()
         heartbeat_worker.join(timeout=5)
+    _build_seconds = time.monotonic() - _t0
 
     # Sync file position: run_packer opened its own FD for appending,
     # so _fh's position is stale — seek to end before more logger writes.
@@ -446,7 +450,8 @@ def cmd_build(args: argparse.Namespace) -> int:
         # is emitted only after every enabled release gate, including an
         # explicitly requested automation result artifact, has passed.
         lin = ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True,
-                                         sbom_sha=sbom_sha, sbom_count=sbom_count)
+                                         sbom_sha=sbom_sha, sbom_count=sbom_count,
+                                         build_seconds=_build_seconds)
         if lin:
             info(f"Lineage recorded -> {lin}")
         # P2#9 — sharing occurs only after the evidence and clean-boot gates.
@@ -1276,8 +1281,11 @@ def cmd_scan(args: argparse.Namespace) -> int:
     info(f"Audit-only (no remediation) — {r.profile_name} L{r.level}, region {r.region}")
     info(f"Gate: score >= {args.min_score:g}%")
 
+    # Cost tracking: the ephemeral CVM's billed lifetime is the Packer time.
+    _t0 = time.monotonic()
     result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
                                    timeout=_build_timeout(args, r))
+    _build_seconds = time.monotonic() - _t0
     image_ids = _extract_image_ids(result.stdout_lines)
     score = _extract_score(result.stdout_lines)
 
@@ -1343,7 +1351,8 @@ def cmd_scan(args: argparse.Namespace) -> int:
                 info(f"HTML report written -> {out}")
         else:
             warn("--html requested but no audit report was produced; skipped")
-    ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True, mode="scan")
+    ohbs_image._record_lineage(r, image_ids, image_name, score, ok=True, mode="scan",
+                               build_seconds=_build_seconds)
     info(f"Audit report archived -> {rep}")
     _send_notification(r, True, image_ids, score, image_name)
     return 0

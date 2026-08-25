@@ -44,14 +44,15 @@ from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
-from ._report_diff import cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
+from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
 from ._state import cmd_state_init, cmd_state_path, cmd_state_prune, cmd_state_status, cmd_state_sync
+from ._try import cmd_try
 
 # Roadmap D-91 — commands grouped by lifecycle in --help output.
 COMMAND_GROUPS: dict[str, list[str]] = {
     "build lifecycle": [
         "init", "configure", "doctor", "discover", "plan", "preflight",
-        "validate", "build", "scan", "test",
+        "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
         "state", "config", "report", "catalog", "engine", "list", "images", "clean",
@@ -306,6 +307,14 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Write to PATH (default: "
                              "<state-dir>/reports/<image>.<run>.html)")
     p_html.set_defaults(func=cmd_report_html)
+    p_cost = report_sub.add_parser(
+        "cost", help="Aggregate build cost from lineage facts "
+                     "(instance type, spot, duration)")
+    p_cost.add_argument("--hourly-price", type=float, default=None,
+                        help="On-demand USD/hour to estimate spend from "
+                             "recorded durations (spot runs at 10%)")
+    p_cost.add_argument("--output", choices=["text", "json"], default="text")
+    p_cost.set_defaults(func=cmd_report_cost)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")
@@ -495,6 +504,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_tst.add_argument("--idempotency", action="store_true",
                        help="Re-run apply and fail if the second pass makes changes")
     p_tst.set_defaults(func=cmd_test)
+
+    p_try = sub.add_parser(
+        "try", help="Zero-cost offline demo: engine gates + a sample HTML report")
+    p_try.add_argument("-o", "--output", default="./ohbs-image-try",
+                       help="Directory for demo artifacts (default ./ohbs-image-try)")
+    p_try.add_argument("--profile", default="tencentos3",
+                       help="Profile to demo (default tencentos3)")
+    p_try.add_argument("--level", type=int, choices=[1, 2], default=1,
+                       help="CIS level for the sample report (default 1)")
+    p_try.set_defaults(func=cmd_try)
 
     p_clnimg = sub.add_parser(
         "cleanup-images",

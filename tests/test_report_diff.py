@@ -3,9 +3,17 @@ from __future__ import annotations
 import argparse
 import json
 
+import pytest
+
 import ohbs_image
-from ohbs_image._report_diff import (cmd_report_diff, cmd_report_html,
-                                     cmd_report_list, cmd_report_show)
+from ohbs_image._report_diff import (
+    _fmt_duration,
+    cmd_report_cost,
+    cmd_report_diff,
+    cmd_report_html,
+    cmd_report_list,
+    cmd_report_show,
+)
 
 
 def _lineage(tmp_path, rows):
@@ -218,3 +226,73 @@ class TestReportHtml:
         assert "html" in report_cmds
         html_sub = report_cmds["html"]
         assert {a.dest for a in html_sub._actions} >= {"run_id", "output"}
+
+
+# ------------------------------------------------------- roadmap F — cost
+class TestReportCost:
+    def _rows(self):
+        return [
+            {"ts": "2026-08-25T10:00:00Z", "run_id": "run-1", "status": "ok",
+             "mode": "build", "profile": "tencentos3", "region": "ap-guangzhou",
+             "instance_type": "S5.MEDIUM2", "spot": False, "build_seconds": 1800.0},
+            {"ts": "2026-08-25T11:00:00Z", "run_id": "run-2", "status": "ok",
+             "mode": "build", "profile": "ubuntu2404", "region": "ap-singapore",
+             "instance_type": "S5.MEDIUM2", "spot": True, "build_seconds": 3600.0},
+            # Legacy record predating cost tracking: no instance/spot/duration.
+            {"ts": "2026-08-25T12:00:00Z", "run_id": "run-legacy", "status": "ok",
+             "mode": "build", "profile": "rhel9", "region": "ap-guangzhou"},
+        ]
+
+    def test_json_contract_with_spot_discount(self, tmp_path, monkeypatch, capsys):
+        lineage = _lineage(tmp_path, self._rows())
+        monkeypatch.setattr("ohbs_image._report_diff._lineage_path", lambda: lineage)
+        assert cmd_report_cost(argparse.Namespace(
+            hourly_price=1.0, output="json")) == 0
+        doc = json.loads(capsys.readouterr().out)
+        assert doc["schema"].endswith("/report-cost/v1")
+        assert doc["hourly_price_usd"] == 1.0
+        assert doc["totals"]["runs"] == 3
+        assert doc["totals"]["runs_with_duration"] == 2
+        assert doc["totals"]["wall_hours"] == pytest.approx(1.5)  # 1800s + 3600s
+        # run-1 on-demand 0.5h at $1 + run-2 spot 1h at 10% of $1
+        assert doc["totals"]["estimated_cost_usd"] == pytest.approx(0.6)
+        by_id = {r["run_id"]: r for r in doc["records"]}
+        assert by_id["run-2"]["spot"] is True
+        assert by_id["run-2"]["estimated_cost_usd"] == pytest.approx(0.1)
+        assert by_id["run-legacy"]["build_seconds"] is None
+        assert by_id["run-legacy"]["estimated_cost_usd"] is None
+
+    def test_text_output_reports_facts_without_price(self, tmp_path, monkeypatch,
+                                                     capsys):
+        lineage = _lineage(tmp_path, self._rows()[:1])
+        monkeypatch.setattr("ohbs_image._report_diff._lineage_path", lambda: lineage)
+        assert cmd_report_cost(argparse.Namespace(
+            hourly_price=None, output="text")) == 0
+        out = capsys.readouterr().out
+        assert "S5.MEDIUM2" in out
+        assert "30m00s" in out  # 1800s -> 30m00s
+        assert "--hourly-price" in out  # hint when unpriced
+        # every row shows the est column even when unpriced
+        assert "est" in out and "est $0" not in out
+
+    def test_empty_lineage(self, tmp_path, monkeypatch, capsys):
+        lineage = _lineage(tmp_path, [])
+        monkeypatch.setattr("ohbs_image._report_diff._lineage_path", lambda: lineage)
+        assert cmd_report_cost(argparse.Namespace(
+            hourly_price=None, output="text")) == 0
+        assert "No lineage records." in capsys.readouterr().out
+
+    def test_report_cost_flag_registered(self):
+        parser = ohbs_image.build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        report_parser = choices["report"]
+        report_cmds = report_parser._subparsers._group_actions[0].choices
+        assert "cost" in report_cmds
+        cost_parser = report_cmds["cost"]
+        assert {a.dest for a in cost_parser._actions} >= {"hourly_price", "output"}
+
+
+def test_fmt_duration():
+    assert _fmt_duration(30) == "0m30s"
+    assert _fmt_duration(1800) == "30m00s"
+    assert _fmt_duration(3661) == "1h01m"

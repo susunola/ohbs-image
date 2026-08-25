@@ -695,12 +695,18 @@ def _record_lineage(r: ResolvedConfig, image_ids: list[str], image_name: str,
                     score: float | None, ok: bool,
                     sbom_sha: str | None = None,
                     sbom_count: int | None = None,
-                    mode: str = "build", run_id: str | None = None) -> Path | None:
+                    mode: str = "build", run_id: str | None = None,
+                    build_seconds: float | None = None) -> Path | None:
     """Append one lineage record. Returns the file path, or None on failure.
 
     *mode* — "build" (real hardening build), "scan" (audit-only) or "test"
     (idempotency run).  Readers that must only see real builds filter on it;
     records written before this field existed are treated as "build".
+
+    *build_seconds* — wall-clock time of the Packer run (the build VM's
+    billed lifetime), recorded so `report cost` can estimate spend without
+    a billing API.  The instance type and spot flag always come from the
+    resolved config.
     """
     if not isinstance(r, ResolvedConfig):
         return None  # defensive: only real resolved configs are recorded
@@ -731,12 +737,18 @@ def _record_lineage(r: ResolvedConfig, image_ids: list[str], image_name: str,
             # #20 — the source image's CreatedTime at build time, so
             # 'ohbs-image check-source' can detect a vendor image refresh.
             "source_image_created": ohbs_image._source_image_created(r),
+            # Cost facts (for `report cost`): the build VM's type, spot flag
+            # and Packer wall time.  Legacy records predate these fields.
+            "instance_type": getattr(r, "instance_type", None),
+            "spot": bool(getattr(r, "spot", False)),
         }
         # P2#10 — SBOM pinning: hash + package count of the emitted SBOM.
         if sbom_sha:
             rec["sbom_sha256"] = sbom_sha
         if sbom_count is not None:
             rec["sbom_packages"] = sbom_count
+        if build_seconds is not None and build_seconds >= 0:
+            rec["build_seconds"] = round(build_seconds, 1)
         lock = _state_lock(path)
         try:
             with open(path, "a", encoding="utf-8") as fh:

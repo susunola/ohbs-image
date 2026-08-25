@@ -85,6 +85,20 @@ ohbs-image build       # produce the hardened custom image
 ohbs-image clean       # remove build artifacts
 ```
 
+> **No Tencent Cloud account yet? Try before you build — free.**
+> `ohbs-image try` runs the same engine + catalog gates CI runs, then renders
+> a sample single-page HTML compliance report, entirely offline:
+>
+> ```bash
+> ohbs-image try                 # demo report in ./ohbs-image-try/
+> # ...or inside the shipped container image:
+> docker build --target try -t ohbs-image:try . && \
+> docker run --rm -v "$(pwd)/out:/demo/out" ohbs-image:try
+> ```
+>
+> It touches no cloud resources and spends nothing; a real `build` adds the
+> ephemeral CVM, remediation, clean-boot verification and signed provenance.
+
 ```bash
 # Set credentials (environment variables only — never in config files)
 export TENCENTCLOUD_SECRET_ID=AKIDxxxx
@@ -195,6 +209,7 @@ documented in the full reference below.
 
 ```bash
 ohbs-image                                    # show help (exits 2)
+ohbs-image try [-o DIR] [--profile P] [--level 1|2]  # zero-cost offline demo: gates + sample HTML report
 ohbs-image init                               # generate ohbs-image.toml
 ohbs-image configure                          # interactive/non-interactive minimal config generator
 ohbs-image discover images --region ap-guangzhou --profile ubuntu2404
@@ -209,6 +224,7 @@ ohbs-image report diff --before RUN --after RUN # compare lineage metadata
 ohbs-image report list [--profile P] [--status ok|failed] [--limit N]
 ohbs-image report show RUN_ID              # single-run evidence + run manifest
 ohbs-image report html RUN_ID [-o FILE]    # re-render one run as a self-contained HTML page
+ohbs-image report cost [--hourly-price USD]  # aggregate build spend from lineage facts (no billing API; spot at 10%)
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
 ohbs-image engine version                  # ohbs-image + per-family engine versions
@@ -272,6 +288,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | `--sarif <path>` | scan, audit | Write findings as SARIF 2.1.0 |
 | `--xccdf <path>` | scan, audit | Write findings as XCCDF 1.2 (enterprise GRC ingestion) |
 | `--html <path>` | scan | Write a self-contained HTML compliance report (single page, no external assets) |
+| `--hourly-price <usd>` | report cost | On-demand USD/hour used to estimate build spend from recorded durations; spot runs are billed at 10% (default: report the facts only, no estimate) |
 | `--host <ip>` | audit | Target host to audit (oscap/inspec) |
 | `--datastream <path>` | audit | oscap SCAP datastream on the target (e.g. `/usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml`) |
 | `--baseline <name>` | audit | inspec baseline (default `dev-sec/linux-baseline`) |
@@ -1063,6 +1080,8 @@ accepted the associated cloud cost and change-control policy.
 - [x] Layered configuration (`config merge` + repeatable `--overlay` deep-merge; tables recurse, lists/scalars replace)
 - [x] Report evidence index (`report list` / `report show` / `report diff` lineage trail)
 - [x] Self-contained HTML compliance report (`report html RUN_ID` re-render from evidence, `scan --html`)
+- [x] Zero-cost demo (`ohbs-image try` — offline engine + catalog gates, deterministic sample audit, real HTML report; also Docker `--target try`)
+- [x] Build cost tracking (`report cost` — instance type / spot / build duration facts in lineage; optional spend estimate, no billing API)
 - [x] State management (`state path` / `status` / `init` / `prune`, `sync --check`)
 - [x] Engine tooling (`engine list` / `engine verify` — syntax + SHA-256 drift gate)
 - [x] Catalog tooling (`catalog list` / `catalog verify` — supply-chain integrity gate)
@@ -1114,6 +1133,16 @@ docker run --rm -v "$(pwd):/app" ohbs-image:check-readme
 
 The container exit code matches the script: `0` = docs current, `1` = missing
 items (the missing subcommands/profiles are printed to stderr).
+
+To evaluate the *deliverable* itself — no cloud account, no spend — the same
+image also ships a `try` stage that runs the offline demo and writes the
+sample report into a bind-mounted directory:
+
+```bash
+docker build --target try -t ohbs-image:try .
+docker run --rm -v "$(pwd)/out:/demo/out" ohbs-image:try
+# → ./out/demo-report.html + demo-audit.json + ohbs-image.toml
+```
 
 ---
 

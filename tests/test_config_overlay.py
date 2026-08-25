@@ -148,7 +148,6 @@ class TestCmdConfigMerge:
     def _args(self, tmp_path: Path, *overlays: str, output: str | None = None,
               output_json: bool = False) -> argparse.Namespace:
         base = _write(tmp_path, "base.toml", BASE_TOML)
-        paths = [str(base)] + list(overlays)
         return argparse.Namespace(base=str(base), overlays=list(overlays),
                                   output=output, output_json=output_json)
 

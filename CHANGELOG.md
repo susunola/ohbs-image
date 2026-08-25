@@ -7,6 +7,21 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (zero-cost demo & build cost tracking)
+- **`ohbs-image try [-o DIR] [--profile P] [--level 1|2]`** — zero-cost,
+  fully offline demo of the pipeline: it runs the same bundled engine +
+  catalog gates CI runs, writes a ready-to-edit starter config, generates a
+  deterministic sample audit (pure function of the rule IDs, no RNG), and
+  renders the real single-page HTML delivery report. No Tencent Cloud
+  account, no CVM, no spend. The shipped Dockerfile gains a `--target try`
+  stage so evaluators get a clean, reproducible demo environment.
+- **Build cost tracking in lineage** — `_record_lineage` now records the
+  build VM's `instance_type`, the `spot` flag, and measured Packer wall
+  time (`build_seconds`); `report cost` aggregates these facts (no billing
+  API, no stale price table) and, given `--hourly-price USD`, estimates
+  spend with spot runs billed at 10% of on-demand. Legacy records that
+  predate cost tracking are shown but excluded from totals.
+
 ### Fixed (Windows guidance & catalog hygiene)
 - **Windows rule catalogs now ship complete guidance** — the four Windows
   roles' `guidance.json` were stale exports (missing 64–87 rules per role,

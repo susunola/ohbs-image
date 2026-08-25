@@ -3,12 +3,14 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import re
 import secrets
 import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import UTC
 from pathlib import Path
 from typing import Any
@@ -97,14 +99,21 @@ def _check_ansible_windows_collection() -> bool:
     without this collection the playbook dies at Gathering Facts with the
     opaque "ansible.legacy.setup was redirected ... could not be loaded".
     """
+    scratch = tempfile.mkdtemp(prefix="ohbs-colcheck-")
     try:
+        # `collection list` creates a scratch directory under ~/.ansible/tmp,
+        # which breaks the check on read-only HOME / sandboxed hosts even
+        # though the check itself only reads. Redirect it to a disposable dir.
+        env = {**os.environ, "ANSIBLE_LOCAL_TEMP": scratch}
         out = subprocess.run(
             ["ansible-galaxy", "collection", "list", "ansible.windows"],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True, text=True, timeout=30, env=env,
         )
         return out.returncode == 0 and "ansible.windows" in out.stdout
     except (OSError, subprocess.SubprocessError):
         return False
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
 
 def _check_pywinrm() -> bool:
     """Return True when pywinrm is importable (WinRM transport for ansible)."""
