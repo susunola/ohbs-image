@@ -21,12 +21,27 @@ Run the same checks CI runs (`.github/workflows/ci.yml`), in this order:
 ```bash
 ruff check ohbs_image
 mypy ohbs_image --ignore-missing-imports
+python3 scripts/check_readme.py --check-tests --check-translations
+python3 scripts/format_rules.py --check
+python3 scripts/check_catalog_guidance.py
+python3 scripts/generate_engines.py && python3 scripts/check_engine_drift.py
+ohbs-image engine verify
+ohbs-image catalog verify
 pytest -v --tb=short
 ```
 
 - `ruff` and `mypy` only lint/type-check `ohbs_image/` — `ohbs_image/roles/` is
   the vendored ohbs-os engine and is excluded (see `[tool.ruff]` /
   `[tool.mypy]` in `pyproject.toml`).
+- The **supply-chain gates** are two layers with distinct invariants:
+  - Script gates (`check_catalog_guidance.py`, `check_engine_drift.py`)
+    validate the repository *layout*: numeric CIS rule ordering, and
+    SHA-256 drift of shared engine payloads across role copies.
+  - CLI gates (`ohbs-image engine verify`, `catalog verify`) run the
+    shipped commands on the real bundled data — syntax/well-formedness of
+    every engine, catalog/guidance/sections integrity, and guidance
+    cross-reference drift. Both layers must stay green; they catch
+    different failure classes.
 - CI runs the matrix on Python 3.11–3.13; keep changes compatible with 3.11+
   (no 3.12-only syntax).
 - Add a test for every bug fix and every new flag/command. Regressions in

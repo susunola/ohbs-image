@@ -7,6 +7,16 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (documentation — roadmap K)
+- **CONTRIBUTING pre-PR checklist synced with CI** — the local checklist
+  now runs the full gate sequence CI executes, including the script gates
+  (`check_catalog_guidance.py`, `generate_engines.py` +
+  `check_engine_drift.py`) and the CLI supply-chain gates (`engine verify`,
+  `catalog verify`), with the two-layer division of labor spelled out:
+  script gates enforce repository-layout invariants (numeric CIS rule
+  ordering, cross-role engine SHA-256 drift), CLI gates run the shipped
+  commands on real bundled data (K-311..K-320).
+
 ### Added (canary & CI — roadmap J)
 - **CLI supply-chain gates in CI** — `ci.yml` now runs the shipped
   `engine verify` + `catalog verify` commands against the checked-out
