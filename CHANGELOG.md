@@ -7,6 +7,13 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (unified output — roadmap D)
+- **`ohbs-image list --output text|json`** — plain-text and machine-readable
+  output for the profiles command. JSON follows the `list/v1` contract
+  (`schema`/`version`/`profiles`; with `--versions` adds `catalog`,
+  `rules_sha256`, `engine_version`). `text` (default) matches the old
+  human-readable format.
+
 ### Added (discover instance types — roadmap C)
 - **`ohbs-image discover instance-types`** — list purchasable CVM instance
   types for a zone via `DescribeZoneInstanceConfigInfos`, with

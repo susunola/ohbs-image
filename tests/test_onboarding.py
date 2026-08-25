@@ -195,3 +195,26 @@ def test_plan_v1_contract_shape(tmp_path, capsys):
                          "placement", "source_image_id", "temporary_resources", "outputs",
                          "gates", "distribution", "limits", "cost"]
     assert doc["schema"] == "https://ohbs-image.dev/plan/v1"
+
+
+def test_list_v1_json_contract(capsys):
+    from ohbs_image import cmd_list
+    rc = cmd_list(argparse.Namespace(output="json", versions=False))
+    doc = json.loads(capsys.readouterr().out)
+    assert rc == 0
+    assert doc["schema"] == "https://ohbs-image.dev/list/v1"
+    profiles = {p["profile"] for p in doc["profiles"]}
+    assert {"tencentos3", "win2022", "ubuntu2404"} <= profiles
+    sample = next(p for p in doc["profiles"] if p["profile"] == "tencentos3")
+    assert set(sample) == {"profile", "family", "os_tag", "communicator",
+                           "user", "benchmark"}
+    assert sample["family"] == "linux"
+
+
+def test_list_v1_json_contract_with_versions(capsys):
+    from ohbs_image import cmd_list
+    rc = cmd_list(argparse.Namespace(output="json", versions=True))
+    doc = json.loads(capsys.readouterr().out)
+    assert rc == 0
+    sample = next(p for p in doc["profiles"] if p["profile"] == "tencentos3")
+    assert set(sample) >= {"catalog", "rules_sha256", "engine_version"}

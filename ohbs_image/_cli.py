@@ -219,6 +219,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_lst = sub.add_parser("list", help="Enumerate available profiles with metadata")
     p_lst.add_argument("--versions", action="store_true",
                        help="Show rule-catalog sha256 + engine version per profile")
+    p_lst.add_argument("--output", choices=["text", "json"], default="text",
+                       help="Output format (json keeps the list/v1 contract)")
     p_lst.set_defaults(func=cmd_list)
 
     p_scn = sub.add_parser("scan", parents=[common], help="Audit-only build (no remediation) with score gate")

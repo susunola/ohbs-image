@@ -1139,8 +1139,37 @@ def cmd_list(args: argparse.Namespace) -> int:
     *--versions* (#19): additionally show the bundled rule-catalog sha256
     and the ohbs-image version, so an audit can pin "this image was hardened
     with exactly this rule set".
+
+    *--output json* (roadmap D-95): emit the stable ``list/v1`` contract
+    instead of aligned text columns, so scripts can consume profile metadata
+    without parsing.
     """
+    out_format = getattr(args, "output", "text")
     show_versions = bool(getattr(args, "versions", False))
+    if out_format == "json":
+        items = []
+        for name, meta in sorted(PROFILES.items()):
+            role = str(meta.get("role_dir", ""))
+            bm = str(meta.get("benchmark", ""))
+            cat = ohbs_image._catalog_basename(role, bm) if role else "-"
+            entry: dict[str, Any] = {
+                "profile": name,
+                "family": "windows" if meta.get("family") == "windows" else "linux",
+                "os_tag": str(meta.get("os_tag", "")),
+                "communicator": "winrm" if meta.get("family") == "windows" else "ssh",
+                "user": meta.get("ssh_username", "") or meta.get("winrm_username", "") or "-",
+                "benchmark": bm,
+            }
+            if show_versions:
+                entry["catalog"] = cat
+                entry["rules_sha256"] = (ohbs_image._bundled_rules_hash(role, cat)[:16]
+                                         if role else "-")
+                entry["engine_version"] = VERSION
+            items.append(entry)
+        print(json.dumps({"schema": "https://ohbs-image.dev/list/v1",
+                          "version": VERSION, "profiles": items},
+                         ensure_ascii=False, indent=2))
+        return 0
     if show_versions:
         print(f"{'profile':<12} {'benchmark':<14} {'catalog':<22} {'rules_sha256':<18} engine")
         for name, meta in sorted(PROFILES.items()):
