@@ -897,6 +897,13 @@ benchmark = "{PROFILES[profile].get('benchmark', '')}"
     target.write_text(content, encoding="utf-8")
     banner("configure")
     ok(f"Generated: {target}")
+    if getattr(args, "edit", False):
+        editor = os.environ.get("VISUAL") or os.environ.get("EDITOR")
+        if editor:
+            subprocess.run([editor, str(target)], check=False)
+            ok(f"Edited with {editor}: {target}")
+        else:
+            warn("--edit given but neither VISUAL nor EDITOR is set; skipping")
     info(f"Next: ohbs-image doctor --config {target}")
     return 0
 

@@ -14,6 +14,9 @@ can be traced across rebuilds.
   Text output shows `id/cpu/memory/gpu/status`; JSON keeps the
   `discover/v1` contract. `doctor` now points at this command in its
   `cloud.instance_type` fix.
+- **`ohbs-image configure --edit`** — open the generated config in
+  `$VISUAL`/`$EDITOR` right after writing it (skipped with a warning when
+  neither is set).
 
 ### Added (doctor redesign — roadmap B)
 - **28 new diagnostics, grouped into 6 stable groups** — `toolchain`

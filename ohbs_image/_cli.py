@@ -107,6 +107,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_configure.add_argument("--instance-type")
     p_configure.add_argument("--level", type=int, choices=[1, 2], default=1)
     p_configure.add_argument("--public-ip", action="store_true")
+    p_configure.add_argument("--edit", action="store_true",
+                             help="Open the generated config in $VISUAL/$EDITOR")
     p_configure.set_defaults(func=cmd_configure)
 
     p_plan = sub.add_parser("plan", parents=[common],

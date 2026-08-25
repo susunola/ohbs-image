@@ -34,6 +34,28 @@ def test_configure_refuses_overwrite(tmp_path):
     assert target.read_text(encoding="utf-8") == "owned"
 
 
+def test_configure_edit_uses_editor_when_set(tmp_path, monkeypatch):
+    target = tmp_path / "ohbs-image.toml"
+    calls = []
+    monkeypatch.setenv("EDITOR", "/usr/bin/true")
+    monkeypatch.setattr("ohbs_image._onboarding.subprocess.run",
+                        lambda cmd, check: calls.append(cmd))
+    args = _configure_args(target)
+    args.edit = True
+    assert cmd_configure(args) == 0
+    assert calls == [["/usr/bin/true", str(target)]]
+
+
+def test_configure_edit_skips_without_editor(tmp_path, monkeypatch):
+    target = tmp_path / "ohbs-image.toml"
+    monkeypatch.delenv("EDITOR", raising=False)
+    monkeypatch.delenv("VISUAL", raising=False)
+    args = _configure_args(target)
+    args.edit = True
+    assert cmd_configure(args) == 0
+    assert target.exists()
+
+
 def test_plan_json_is_read_only(tmp_path, capsys):
     target = tmp_path / "ohbs-image.toml"
     assert cmd_configure(_configure_args(target)) == 0
