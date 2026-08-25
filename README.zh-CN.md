@@ -106,6 +106,20 @@ ohbs-image build
 ohbs-image clean
 ```
 
+> **还没有腾讯云账号？先零成本试用，再决定构建。**
+> `ohbs-image try` 会运行与 CI 完全相同的引擎 + 规则目录门禁，然后渲染一份
+> 示例版单页 HTML 合规报告，全程离线：
+>
+> ```bash
+> ohbs-image try                 # 演示报告输出到 ./ohbs-image-try/
+> # ...或使用随镜像发布的容器：
+> docker build --target try -t ohbs-image:try . && \
+> docker run --rm -v "$(pwd)/out:/demo/out" ohbs-image:try
+> ```
+>
+> 它不触碰任何云资源、不产生任何费用；真正的 `build` 会额外执行临时 CVM 构建、
+> 修复、干净启动验收与签名 provenance。
+
 **构建输出示例（`build`）**
 
 ```
@@ -137,8 +151,41 @@ ohbs-image clean
 
 ## 命令
 
+### 该用哪个命令？
+
+四条命令乍看重叠，其实对应镜像生命周期的四个不同时刻 —— 按你*想做什么*来选：
+
+| 想做什么 | 用 | 作用 |
+|---|---|---|
+| 把源镜像加固成**黄金镜像**（应用修复、复审、签名） | `build` | 渲染 + packer build → 镜像 + provenance + HTML 交付报告 |
+| 只对照基准**检查**源镜像、不做任何修改 | `scan` | 同一引擎、仅审计；分数闸门（默认 85%）；支持 SARIF/XCCDF/HTML 导出 |
+| 用**第三方工具**独立验证（OpenSCAP / InSpec / HardeningKitty） | `audit` | 外部审计工具，同样的 `--min-score` 闸门与 SARIF/XCCDF 导出 |
+| 确认*产出镜像*在**干净启动**后仍达标 | `verify-image` | 用镜像启动探针实例并重新审计 |
+| 对照基线检查**已运行的实例** | `drift` | 实时主机配置漂移 vs 镜像基线 |
+
+`build` 与 `scan` 运行完全相同的捆绑引擎 —— `scan` 只是关掉了修复的
+`build`，因此它的分数可作为迁移或季度合规复查的公平「迁移前」快照。
+
+### 90% 时间只会用到这 5 条命令
+
+刚接触 ohbs-image？先忽略下方完整参考，从这里开始：
+
+```bash
+ohbs-image init          # 生成 ohbs-image.toml（交互式）
+ohbs-image preflight     # 花钱之前校验配置 + 凭据
+ohbs-image build         # 产出加固黄金镜像
+ohbs-image images        # 列出已构建的镜像（血缘）
+ohbs-image scan          # 只需要分数时做只审计检查
+```
+
+其它命令 —— `config` 工具、`report` 证据、`state` 管理、`cleanup-*` 卫生、
+`audit` 交叉验证 —— 需要时再用，全部在下方完整参考中有说明。
+
+### 完整命令参考
+
 | 命令 | 说明 |
 |---|---|
+| `ohbs-image try [-o DIR] [--profile P] [--level 1\|2]` | 零成本离线演示：运行引擎 + 规则目录门禁并输出示例 HTML 合规报告 |
 | `ohbs-image init` | 在当前目录生成 `ohbs-image.toml` |
 | `ohbs-image configure` | 交互或非交互生成最小可用配置 |
 | `ohbs-image discover images --region ap-guangzhou` | 只读发现镜像和网络资源 |
@@ -152,6 +199,8 @@ ohbs-image clean
 | `ohbs-image report diff --before RUN --after RUN` | 比较两次构建元数据差异 |
 | `ohbs-image report list [--profile P] [--status ok\|failed] [--limit N]` | 列出血缘证据索引 |
 | `ohbs-image report show RUN_ID` | 查看单次运行的证据摘要 + 运行清单 |
+| `ohbs-image report html RUN_ID [-o FILE]` | 把某次运行重渲染为自包含的单页 HTML 合规报告（离线、无需重建） |
+| `ohbs-image report cost [--hourly-price USD]` | 按血缘事实汇总构建成本（不调用计费 API；竞价实例按 10% 计） |
 | `ohbs-image engine list` | 列出各 profile 捆绑引擎的版本 + sha256 |
 | `ohbs-image engine verify` | 语法校验全部捆绑引擎（CI 门禁） |
 | `ohbs-image engine version` | 输出 ohbs-image 与各系引擎版本 |
@@ -174,6 +223,7 @@ ohbs-image clean
 | `ohbs-image scan [--min-score 85]` | 仅审计（不修复）+ 分数闸门 |
 | `ohbs-image scan --sarif out.sarif` | 另输出 SARIF 2.1.0 失败报告 |
 | `ohbs-image scan --xccdf out.xml` | 另输出 XCCDF 1.2 结果（GRC 平台接入） |
+| `ohbs-image scan --html report.html` | 另输出自包含的 HTML 合规报告（单页、无外部资源） |
 | `ohbs-image test --idempotency` | 重复执行 apply，二次有变更即失败 |
 | `ohbs-image list` | 枚举可用 profile 及元数据 |
 | `ohbs-image images [--latest] [-n N]` | 列出历史构建（血缘） |
@@ -205,14 +255,18 @@ ohbs-image clean
 | `--config <path>` | `./ohbs-image.toml` | 全部 | 配置文件路径 |
 | `--overlay <toml>` | — | 所有接受 `--config` 的命令 | 在 `--config` 之上叠加配置文件（可重复；后层逐键覆盖前层） |
 | `--workdir <dir>` | `./.ohbs-image-build` | 全部 | 渲染输出目录 |
+| `--state-dir <dir>` | — | 所有有状态命令 | 证据状态目录（或 `OHBS_IMAGE_STATE_DIR`；可置于命令之前） |
 | `--quiet` | — | validate / build | 精简 packer 输出 |
 | `--debug` | — | validate / build | 启用 Packer 调试日志（`PACKER_LOG=1`） |
 | `-y` / `--yes` | — | build | 跳过构建确认提示 |
 | `--log-file <path>` | — | build | 将完整构建日志写入文件 |
+| `--result-file <path>` | — | build | 为 CI/CD 写出一份原子 JSON 结果契约 |
 | `--skip-if-unchanged` | — | build | 源镜像/规则/基准/等级未变化时跳过 |
 | `--min-score <pct>` | `85` | scan / audit / verify-image | 分数闸门（低于则退出 1） |
 | `--sarif <path>` | — | scan / audit | 输出 SARIF 2.1.0 |
 | `--xccdf <path>` | — | scan / audit | 输出 XCCDF 1.2（企业 GRC 接入） |
+| `--html <path>` | — | scan | 输出自包含的 HTML 合规报告（单页、无外部资源） |
+| `--hourly-price <usd>` | — | report cost | 按记录时长估算构建成本的按量价（美元/小时）；竞价实例按 10% 计（默认只报告事实、不做估算） |
 | `--host <ip>` | — | audit | 待审计目标主机（oscap/inspec） |
 | `--datastream <path>` | — | audit | 目标上的 oscap SCAP 数据流（如 `/usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml`） |
 | `--baseline <name>` | `dev-sec/linux-baseline` | audit | inspec 基线 |
@@ -221,6 +275,7 @@ ohbs-image clean
 | `--older-than <hours>` | `24` | cleanup-runs | 退役打标临时 CVM（N 小时前） |
 | `--include-legacy` | — | cleanup-runs | 包含无运行清单的旧探针（默认关闭） |
 | `--keep-latest <n>` | `1` | cleanup-images | 保留最新 N 个构建 |
+| `--unused-since <days>` | — | cleanup-images | 只删除未共享的镜像；共享镜像的血缘记录满 N 天后视为闲置照样退役（`0` = 关闭保护） |
 | `--apply` | — | cleanup-images | 实际删除（默认仅演练） |
 
 ### 首次成功流程与团队状态
@@ -510,6 +565,7 @@ ohbs-image build --log-file build.log
 - [x] CI 流水线（GitHub Actions + OIDC，零长时 AK/SK）
 - [x] 镜像治理闭环：smoke test / 血缘 / 通知 / SLSA 签名
 - [x] `ohbs-image list` — 枚举可用画像及元数据
+- [x] `ohbs-image scan` — 仅审计模式（不修复，按发现项做分数闸门）
 - [x] 自定义规则选择（`ohbs-image.toml` 中的 `rules_include` / `rules_exclude`）
 - [x] PyPI 发布（`pip install ohbs-image`）
 - [x] 自动镜像清理（按血缘年龄退役）
@@ -531,12 +587,48 @@ ohbs-image build --log-file build.log
 - [x] 共享防护（`[image].share_org_units` 会被告警并跳过 —— API 仅接受账号 ID，请使用 `share_accounts`）
 - [x] 规则集版本化（`ohbs-image list --versions`）
 - [x] 源镜像刷新检测（`ohbs-image check-source`）
-- [ ] SLSA L2：完全可复现构建（锁定构建环境）
+- [x] 配置工具链（`config validate` / `diff` / `get` / `explain` / `migrate` / `schema`）
+- [x] 分层配置（`config merge` + 可重复 `--overlay` 深度合并；表递归合并、列表/标量替换）
+- [x] 报告证据索引（`report list` / `report show` / `report diff` 血缘轨迹）
+- [x] 自包含 HTML 合规报告（`report html RUN_ID` 从证据重渲染，`scan --html`）
+- [x] 零成本演示（`ohbs-image try` —— 离线引擎 + 规则目录门禁、确定性示例审计、真实 HTML 报告；也支持 Docker `--target try`）
+- [x] 构建成本跟踪（`report cost` —— 血缘记录实例类型 / 竞价 / 构建时长；可选支出估算，不调用计费 API）
+- [x] 状态管理（`state path` / `status` / `init` / `prune`，`sync --check`）
+- [x] 引擎工具（`engine list` / `engine verify` —— 语法 + SHA-256 漂移门禁）
+- [x] 规则目录工具（`catalog list` / `catalog verify` —— 供应链完整性门禁）
+- [x] CI 中的 CLI 供应链门禁（`engine verify` + `catalog verify` 跑真实捆绑数据）
+- [x] 与 CI 同步的 PR 前门禁清单（CONTRIBUTING 运行完整九道门禁序列）
+- [x] SLSA L2：完全可复现构建（锁定构建环境 —— 固定 runner 镜像、精确 Python 补丁版、锁定构建后端、`--no-isolation`）
 - [ ] STIG 基准 profile（同一引擎，DISA 内容 — 路线图）
 
 ## 参与贡献
 
 欢迎提交 Bug 报告和 Pull Request。开发环境搭建、lint/类型检查/测试命令、项目硬性约束（零第三方运行时依赖、不存储长期凭证）以及新增 CIS profile 的指南，请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)（英文）。
+
+### 在干净的 Docker 环境中校验文档
+
+为避免依赖本地 Python 环境状态，也可以用隔离容器运行同样的检查
+（容器会从新构建的 wheel 安装 ohbs-image）：
+
+```bash
+# 构建镜像；构建过程本身会运行 check_readme.py，README.md 未同步即构建失败
+docker build -t ohbs-image:check-readme .
+
+# 对修改后的 checkout 复查，无需重新构建：
+docker run --rm -v "$(pwd):/app" ohbs-image:check-readme
+```
+
+容器退出码与脚本一致：`0` = 文档已同步，`1` = 有缺失项
+（缺失的子命令/profile 会打印到 stderr）。
+
+想直接体验*交付物本身* —— 无云账号、零费用 —— 同一镜像还带一个 `try`
+阶段，运行离线演示并把示例报告写入挂载目录：
+
+```bash
+docker build --target try -t ohbs-image:try .
+docker run --rm -v "$(pwd)/out:/demo/out" ohbs-image:try
+# → ./out/demo-report.html + demo-audit.json + ohbs-image.toml
+```
 
 ## 许可证
 
