@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -45,9 +46,8 @@ def canonical(text: str) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
-def iter_rules_files():
-    for path in sorted(REPO_ROOT.glob(RULES_GLOB)):
-        yield path
+def iter_rules_files() -> Iterator[Path]:
+    yield from sorted(REPO_ROOT.glob(RULES_GLOB))
 
 
 def main(argv: list[str] | None = None) -> int:

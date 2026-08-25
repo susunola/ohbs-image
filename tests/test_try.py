@@ -106,3 +106,62 @@ class TestCmdTry:
         try_parser = choices["try"]
         assert {a.dest for a in try_parser._actions} >= {"output", "profile",
                                                          "level"}
+
+
+class TestDemoMatchesRealCatalog:
+    """The demo pseudo-audit must be a pure function of the *real* bundled
+    rule catalog: if the shipped rules.json for a profile changes shape,
+    ordering or membership, the demo audit must track it exactly. This is
+    the offline equivalent of a golden-snapshot gate (no giant fixture file
+    to maintain — the catalog itself is the source of truth)."""
+
+    def _real_demo_audit(self, profile: str = "tencentos3",
+                         level: int = 1) -> dict:
+        from ohbs_image._profiles import PROFILES
+        from ohbs_image._reports import _load_report_catalog, _ReportContext
+        meta = PROFILES[profile]
+        ctx = _ReportContext(
+            profile_name=profile, level=level, region="demo-region",
+            zone="demo-zone", source_image_id="img-demo-source",
+            image_benchmark=str(meta["benchmark"]), run_id="try-demo",
+            role_dir=str(meta["role_dir"]))
+        catalog, _guidance = _load_report_catalog(ctx)
+        assert catalog, "bundled catalog must be non-empty"
+        results: list[dict] = []
+        counts = {"pass": 0, "fail": 0, "manual": 0, "error": 0}
+        for rule in catalog:
+            status = _demo_status(str(rule.get("id", "")))
+            counts[status] += 1
+            results.append({
+                "id": str(rule.get("id", "")),
+                "title": rule.get("title", ""),
+                "section": rule.get("section", ""),
+                "levels": rule.get("levels", []),
+                "assessment": rule.get("assessment", "Automated"),
+                "status": status,
+                "apply_status": ("applied" if status == "pass"
+                                 else "skipped_manual" if status == "manual"
+                                 else "apply_failed"),
+            })
+        return {"summary": {"all": counts}, "results": results}
+
+    def test_try_audit_matches_real_catalog(self, tmp_path, monkeypatch,
+                                            caplog):
+        """Running `ohbs-image try` on the real bundled data must produce
+        exactly the audit the catalog implies — no drift between the demo
+        and the shipped rules."""
+        import logging
+        # Only stub the cloud-touching gates; the catalog is real.
+        monkeypatch.setattr("ohbs_image._try.cmd_engine_verify", lambda args: 0)
+        monkeypatch.setattr("ohbs_image._try.cmd_catalog_verify", lambda args: 0)
+        caplog.set_level(logging.INFO)
+        out_dir = tmp_path / "out"
+        assert cmd_try(argparse.Namespace(
+            profile="tencentos3", level=1, output=str(out_dir))) == 0
+        audit = json.loads((out_dir / "demo-audit.json").read_text(
+            encoding="utf-8"))
+        expected = self._real_demo_audit()
+        assert audit["summary"] == expected["summary"]
+        assert audit["results"] == expected["results"]
+        # Sanity: the real catalog is not the 3-rule synthetic stub.
+        assert len(expected["results"]) > 100

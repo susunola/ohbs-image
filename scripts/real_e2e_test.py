@@ -75,20 +75,22 @@ Hard requirements (see CONTRIBUTING.md "Running the real end-to-end test"):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
 import os
 import re
-import shlex
 import secrets
+import shlex
 import subprocess
-import hashlib
 import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -480,8 +482,9 @@ def _is_retryable(exc: Exception) -> bool:
     return any(code.lower() in msg for code in _RETRYABLE_CODES)
 
 
-def _with_retry(fn, *args, retries: int = 3, base_delay: float = 1.0,
-                retry_on: list[type] | None = None, **kwargs):
+def _with_retry(fn: Callable[..., Any], *args: Any, retries: int = 3,
+                base_delay: float = 1.0,
+                retry_on: list[type] | None = None, **kwargs: Any) -> Any:
     """Call *fn* with exponential backoff on transient failures.
 
     Retries *retries* times (default 3 → waits 1s/2s/4s) when the failure is
@@ -559,12 +562,13 @@ def save_last_instance(instance_id: str, key_id: str, region: str) -> None:
         {"instance_id": instance_id, "key_id": key_id, "region": region}, indent=2))
 
 
-def load_last_instance() -> dict | None:
+def load_last_instance() -> dict[str, Any] | None:
     """Read the persisted jump-box state (instance_id, key_id, region)."""
     if not LAST_INSTANCE_FILE.exists():
         return None
     try:
-        return json.loads(LAST_INSTANCE_FILE.read_text())
+        raw = json.loads(LAST_INSTANCE_FILE.read_text())
+        return raw if isinstance(raw, dict) else None
     except (OSError, json.JSONDecodeError):
         return None
 
@@ -1308,7 +1312,7 @@ def run_remote_matrix(host: str, ssh_user: str, key_path: Path, branch: str,
             raise ConfigError(
                 f"E2E_TENCENT_PLUGIN_BIN set but file not found: {plugin_bin}")
         plugin_name = plugin_path.name
-        remote_plug_dir = f"/opt/packer-plugins/github.com/hashicorp/tencentcloud"
+        remote_plug_dir = "/opt/packer-plugins/github.com/hashicorp/tencentcloud"
         # SCP the plugin + its checksum to the jump box in one round-trip.
         _upload_packer_plugin(host, ssh_user, key_path, plugin_path,
                               remote_plug_dir)
@@ -2020,6 +2024,7 @@ def main() -> int:
             #   * otherwise       -> tear down.
             if args.keep:
                 if instance_id:
+                    assert key_id, "key_id missing while keeping jump box"
                     save_last_instance(instance_id, key_id, args.region)
                     warn(f"--keep: jump box {instance_id} KEPT for the next batch. "
                          f"Run with --reuse-last to attach to it, and "

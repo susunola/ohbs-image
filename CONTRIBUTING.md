@@ -19,7 +19,7 @@ This installs `ohbs-image` in editable mode plus the dev toolchain (`pytest`,
 Run the same checks CI runs (`.github/workflows/ci.yml`), in this order:
 
 ```bash
-ruff check ohbs_image
+ruff check ohbs_image tests
 mypy ohbs_image --ignore-missing-imports
 python3 scripts/check_readme.py --check-tests --check-translations
 python3 scripts/format_rules.py --check
@@ -42,7 +42,7 @@ pytest -v --tb=short
     every engine, catalog/guidance/sections integrity, and guidance
     cross-reference drift. Both layers must stay green; they catch
     different failure classes.
-- CI runs the matrix on Python 3.11–3.13; keep changes compatible with 3.11+
+- CI runs the matrix on Python 3.11–3.14; keep changes compatible with 3.11+
   (no 3.12-only syntax).
 - Add a test for every bug fix and every new flag/command. Regressions in
   this project have repeatedly come from untested edges in the Tencent

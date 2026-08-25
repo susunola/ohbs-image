@@ -121,9 +121,56 @@ class TestMainExitCodes:
                  f"\nhttps://img.shields.io/badge/version-{ohbs_image.VERSION}-blue"
         monkeypatch.setattr(check_readme, "registered_subcommands",
                             lambda: set(ALL_CMDS))
+        monkeypatch.setattr(check_readme, "check_profile_count_in_packaging",
+                            lambda: [])
         with monkeypatch_open(readme):
             rc = check_readme.main(["--readme", "/tmp/fake_readme.md"])
         assert rc == 0
+
+
+class TestCheckProfileCountInPackaging:
+    """The PyPI description and package docstring must agree with the live
+    profile count (guards "12 OS profiles" drift after a profile is added)."""
+
+    def _write_repo(self, tmp_path, count: int):
+        (tmp_path / "pyproject.toml").write_text(
+            f'description = "... CLI, {count} OS profiles, ..."\n',
+            encoding="utf-8")
+        (tmp_path / "ohbs_image").mkdir()
+        (tmp_path / "ohbs_image" / "__init__.py").write_text(
+            '"""\nSupported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9,\n'
+            '              TencentOS 3/4, Windows Server '
+            '2016/2019/2022/2025\n"""\n',
+            encoding="utf-8")
+
+    def test_clean_state_returns_empty(self, tmp_path, monkeypatch):
+        import ohbs_image
+        monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(ohbs_image, "PROFILES",
+                            dict.fromkeys(check_readme._PROFILE_NAMES))
+        self._write_repo(tmp_path, len(check_readme._PROFILE_NAMES))
+        assert check_readme.check_profile_count_in_packaging() == []
+
+    def test_stale_pyproject_count_reported(self, tmp_path, monkeypatch):
+        import ohbs_image
+        monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(ohbs_image, "PROFILES",
+                            dict.fromkeys(check_readme._PROFILE_NAMES))
+        self._write_repo(tmp_path, 12)
+        errors = check_readme.check_profile_count_in_packaging()
+        assert any("pyproject.toml" in e for e in errors)
+
+    def test_stale_init_os_list_reported(self, tmp_path, monkeypatch):
+        import ohbs_image
+        monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(ohbs_image, "PROFILES",
+                            dict.fromkeys(check_readme._PROFILE_NAMES))
+        self._write_repo(tmp_path, len(check_readme._PROFILE_NAMES))
+        init = tmp_path / "ohbs_image" / "__init__.py"
+        init.write_text('"""\nSupported OS: Ubuntu 20/22/24\n"""\n',
+                        encoding="utf-8")
+        errors = check_readme.check_profile_count_in_packaging()
+        assert any("__init__.py" in e for e in errors)
 
 
 class TestCheckTestConsistency:
@@ -211,6 +258,14 @@ class TestMainCheckTranslations:
                 "`ohbs-image init` and a stale `ohbs-image ghost-cmd`\n",
                 encoding="utf-8")
         monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
+        (tmp_path / "pyproject.toml").write_text(
+            'description = "13 OS profiles"\n', encoding="utf-8")
+        (tmp_path / "ohbs_image").mkdir()
+        (tmp_path / "ohbs_image" / "__init__.py").write_text(
+            '"""\nSupported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9,\n'
+            '              TencentOS 3/4, Windows Server '
+            '2016/2019/2022/2025\n"""\n',
+            encoding="utf-8")
         rc = check_readme.main(["--readme", str(tmp_path / "README.md"),
                                 "--check-translations"])
         assert rc == 1
@@ -233,6 +288,14 @@ class TestMainCheckTranslations:
             (tmp_path / name).write_text(
                 "`ohbs-image init` and `ohbs-image build`\n", encoding="utf-8")
         monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
+        (tmp_path / "pyproject.toml").write_text(
+            'description = "13 OS profiles"\n', encoding="utf-8")
+        (tmp_path / "ohbs_image").mkdir()
+        (tmp_path / "ohbs_image" / "__init__.py").write_text(
+            '"""\nSupported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9,\n'
+            '              TencentOS 3/4, Windows Server '
+            '2016/2019/2022/2025\n"""\n',
+            encoding="utf-8")
         rc = check_readme.main(["--readme", str(tmp_path / "README.md"),
                                 "--check-translations"])
         assert rc == 0

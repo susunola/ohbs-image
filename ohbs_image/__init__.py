@@ -6,8 +6,8 @@ Spins up an ephemeral CVM, applies the bundled ohbs-os engine role for CIS
 hardening, and captures the result as a custom image.  All configuration is
 driven by ohbs-image.toml — no manual template editing.
 
-Supported OS: Ubuntu 20/22/24, RHEL 8/9/10, TencentOS 3/4,
-              Windows Server 2016/2019/2022/2025
+Supported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9,
+              TencentOS 3/4, Windows Server 2016/2019/2022/2025
 
 Engine:  Bundled ohbs_engine.py (Linux) / ohbs_engine.ps1 (Windows).
          In-role gate via cis_min_score (post-reboot audit must score >= 85).

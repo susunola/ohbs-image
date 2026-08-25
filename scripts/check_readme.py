@@ -44,7 +44,11 @@ def registered_subcommands() -> set[str]:
     """Return the set of subcommand names the CLI actually registers."""
     import ohbs_image
     parser = ohbs_image.build_parser()
-    return set(parser._subparsers._group_actions[0].choices)
+    subparsers = parser._subparsers
+    assert subparsers is not None
+    group_actions = subparsers._group_actions
+    choices = group_actions[0].choices if group_actions else None
+    return set(choices or {})
 
 
 def readme_documented_subcommands(readme_text: str,
@@ -119,6 +123,46 @@ def check_readme(readme_text: str, registered: set[str],
     return errors
 
 
+_PROFILE_COUNT_RE = re.compile(r"(\d+)\s+OS profiles?\b")
+# "Supported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9, TencentOS 3/4, ..."
+# — each family contributes one profile per slash-separated version.
+_INIT_OS_RE = re.compile(
+    r"Supported OS:\s*((?:[A-Za-z][A-Za-z0-9 -]*?\s+\d[\d/ ]*,?\s*)+)")
+
+
+def check_profile_count_in_packaging() -> list[str]:
+    """The profile count appears in places a user actually sees (the PyPI
+    project description and the package docstring) and can silently drift
+    when a profile is added — e.g. "12 OS profiles" after rocky9 landed.
+    Guard both against the live PROFILES dict so a profile add/remove
+    without updating them fails CI the same way README drift does.
+    """
+    import ohbs_image
+
+    errors: list[str] = []
+    expected = len(ohbs_image.PROFILES)
+
+    pyproject = REPO_ROOT / "pyproject.toml"
+    if pyproject.exists():
+        m = _PROFILE_COUNT_RE.search(pyproject.read_text(encoding="utf-8"))
+        if m is None or int(m.group(1)) != expected:
+            errors.append(f"pyproject.toml description should say "
+                          f"{expected} OS profiles")
+
+    init_text = (REPO_ROOT / "ohbs_image" / "__init__.py").read_text(
+        encoding="utf-8")
+    m = _INIT_OS_RE.search(init_text)
+    if m is None:
+        errors.append("ohbs_image/__init__.py docstring has no "
+                      "Supported OS list")
+        return errors
+    listed = sum(len(ver.split("/")) for ver in m.group(1).split(","))
+    if listed != expected:
+        errors.append(f"ohbs_image/__init__.py Supported OS list should cover "
+                      f"{expected} profiles (found {listed})")
+    return errors
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--readme", default=str(REPO_ROOT / "README.md"),
@@ -151,6 +195,8 @@ def main(argv: list[str] | None = None) -> int:
 
     readme_text = readme_path.read_text(encoding="utf-8")
     errors = check_readme(readme_text, registered, profiles, ohbs_image.VERSION)
+
+    errors += check_profile_count_in_packaging()
 
     if args.check_tests:
         errors += check_test_consistency(registered, profiles)

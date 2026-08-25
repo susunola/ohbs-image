@@ -48,7 +48,9 @@ jobs:
           version: "1.16.0"
 
       - name: Run ruff (lint)
-        run: ruff check ohbs_image
+        # Tests are linted too — a dead variable or broken import in tests/
+        # previously reached main because CI only checked ohbs_image/.
+        run: ruff check ohbs_image tests
 
       - name: Run mypy (type-check)
         run: mypy ohbs_image --ignore-missing-imports
@@ -103,12 +105,13 @@ jobs:
           ohbs-image engine verify
           ohbs-image catalog verify
 
-      - name: Run tests (with coverage report)
-        # Coverage is reported but NOT gated (--cov-fail-under=0) on purpose:
-        # the number is the safety net for future refactors — it shows which
-        # modules are risky to touch. Raise the threshold once a baseline is
-        # established, do not block the pipeline on it today.
-        run: pytest -v --tb=short --cov=ohbs_image --cov-report=term-missing --cov-fail-under=0
+      - name: Run tests (with coverage gate)
+        # Coverage is gated by [tool.coverage.report] fail_under=80 (measured
+        # baseline 83% with the vendored roles/ omitted): a regression floor,
+        # not a target — it fails on a meaningful drop while tolerating the
+        # ±2-3% jitter of the real-IO tests. The per-module numbers still
+        # show which modules are risky to touch.
+        run: pytest -v --tb=short --cov=ohbs_image --cov-report=term-missing
 
   # Separate job: dependency vulnerability scan (runs once, on the newest
   # interpreter). The runtime is stdlib-only; this guards the dev extras

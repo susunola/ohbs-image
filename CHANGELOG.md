@@ -7,6 +7,44 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-08-25
+
+> First release since v0.17.0. The v0.18.0 publish stalled on an
+> attestation `subject-path` bug (never reached PyPI); the roadmap B–K
+> segments prepped as 0.18.1 ship here, together with the hardening below.
+
+### Changed (release & CI hardening)
+- **PyPI publish unblocked** — the attestation `subject-path` in
+  `publish.yml` is now one glob per line; the previous single-line,
+  space-separated form parsed as one pattern that matched nothing, aborting
+  the upload before it reached PyPI.
+- **CI coverage gate** — pytest runs with `--cov=ohbs_image` and
+  `fail_under = 80`, with vendored `roles/` engines omitted so the number
+  reflects real CLI/controller coverage; ruff now lints `tests` and
+  `scripts` in addition to `ohbs_image`.
+- **`check_readme.py` packaging guard** — the pyproject description profile
+  count and the `__init__.py` "Supported OS" list must match the live
+  `PROFILES` (13), so README-facing numbers can no longer drift silently.
+- **Container wheel verification in CI** — `docker.yml` builds the wheel
+  with the same pinned backend as `publish.yml`, installs it in a clean
+  `python:3.11-slim` container, and asserts version/help plus one engine
+  payload and `rules.json` per role (expected count derived from the
+  checkout so the check cannot drift when a profile is added).
+
+### Added (actionable Windows GPO guidance)
+- **Windows `guidance.json` upgraded from generic templates to actionable
+  GPO paths** — `scripts/generate_win_guidance.py` derives a concrete
+  "Computer Configuration\..." policy path for every rule from its section
+  and family (Account Policies, User Rights Assignment, Security Options,
+  System Services, Windows Defender Firewall, Advanced Audit Policy, Event
+  Log Service, Administrative Templates) and is idempotent — re-running
+  updates zero hints. 1,658 hints across the four Windows roles; `catalog
+  verify` and `check_catalog_guidance.py` stay green.
+- **Golden-snapshot regression for `try`** — a cross-check test runs the
+  real `try` command against the bundled tencentos3 catalog and asserts the
+  sample audit is exactly the pure function of the shipped rules, so demo
+  output cannot drift from the actual rule data.
+
 ### Added (zero-cost demo & build cost tracking)
 - **`ohbs-image try [-o DIR] [--profile P] [--level 1|2]`** — zero-cost,
   fully offline demo of the pipeline: it runs the same bundled engine +
@@ -79,8 +117,6 @@ can be traced across rebuilds.
   instance type, level) can live in small per-environment TOML files
   instead of a fork of the full configuration.
 
-## [0.18.1] - 2026-08-25
-
 ### Added (documentation — roadmap K)
 - **CONTRIBUTING pre-PR checklist synced with CI** — the local checklist
   now runs the full gate sequence CI executes, including the script gates
@@ -129,8 +165,8 @@ can be traced across rebuilds.
   `--output json` emits `engine-list/v1` (H-221..H-228).
 - **`engine verify`** — CI-ready syntax gate: Linux engines are parsed as
   Python (AST, no bytecode written), Windows engines are checked for
-  emptiness and NUL corruption; exit `0` only when all 12 bundled engines
-  pass, `engine-verify/v1` in JSON mode (H-229..H-240).
+  emptiness and NUL corruption; exit `0` only when every bundled engine
+  passes, `engine-verify/v1` in JSON mode (H-229..H-240).
 - **`engine version`** — prints ohbs-image plus per-family engine versions
   in one line (H-241..H-244).
 - **`list --versions` engine column fix** — the engine column previously

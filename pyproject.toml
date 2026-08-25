@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 name = "ohbs-image"
 # Single source of truth: ohbs_image/_logging.py VERSION (read via AST, no import).
 dynamic = ["version"]
-description = "ohbs-hardened golden image builder for Tencent Cloud — config-driven CLI, 12 OS profiles, bundled ohbs-os engine"
+description = "ohbs-hardened golden image builder for Tencent Cloud — config-driven CLI, 13 OS profiles, bundled ohbs-os engine"
 # PEP 621 table form: compatible with every setuptools >= 62.3 (the bare
 # "MIT" string needs setuptools >= 77 and breaks pinned-build environments).
 license = {text = "MIT"}
@@ -67,6 +67,18 @@ ohbs_image = ["roles/**/__pycache__/*", "roles/**/*.pyc", "roles/**/*.pyo"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.coverage.run]
+# The bundled ohbs-os engine under ohbs_image/roles/ is vendored verbatim and
+# excluded from lint/type checks; exclude it from coverage too so the reported
+# number measures the CLI/controller code CI actually owns.
+omit = ["ohbs_image/roles/*"]
+
+[tool.coverage.report]
+# Measured baseline 2026-08-26: 83% (838 tests, roles omitted). 80% is a
+# regression floor, not a target — it fails on a meaningful drop while
+# tolerating the ±2-3% jitter of the real-IO tests in CI.
+fail_under = 80
 
 [tool.mypy]
 strict = true
