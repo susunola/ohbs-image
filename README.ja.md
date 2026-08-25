@@ -108,7 +108,7 @@ ohbs-image clean
 
 ```
 ════════════════════════════════════════════════════════
-  ohbs-image 0.19.0 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.19.1 — tencentos3 (L1) → ap-guangzhou-4
 ════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: output will be in this color
 [packer]  ==> tencentcloud-cvm: Creating temporary keypair...

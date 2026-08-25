@@ -7,6 +7,17 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-08-25
+
+### Fixed (Python 3.14 compatibility)
+- **argparse help with a literal `%` broke the CLI on Python 3.14** — 3.14
+  validates help strings at `add_argument` time (`_check_help` expands
+  `%-format` eagerly, skipping the auto-escape `_get_help_string` applies
+  on ≤3.13), so the `report cost --hourly-price` help ("spot runs at 10%")
+  crashed `ohbs-image` on 3.14 while working elsewhere. The `%` is now
+  written as `%%`, with regression tests that walk the whole parser tree
+  (no bare `%` in any help string) and render every subparser's help.
+
 ## [0.19.0] - 2026-08-25
 
 > First release since v0.17.0. The v0.18.0 publish stalled on an
