@@ -152,9 +152,9 @@ the public internet:
 - `single` — one combination, e.g.
   `--target-mode single --profile rhel8 --level 1`.
 - `all-linux` — every Linux profile x the configured CIS Levels (default
-  Level 1 + Level 2, up to 16 real builds).
+  Level 1 + Level 2, up to 18 real builds).
 - `all` — every Linux **and** Windows profile x the configured levels (up
-  to 24 real builds).
+  to 26 real builds).
 
 In matrix mode (`single`/`all-linux`/`all`) the jump box skips
 `ruff`/`mypy`/`pytest` (that's the `toolchain` mode's job) and instead
@@ -168,8 +168,8 @@ Two batch-mode knobs can be set either on the CLI or in `scripts/e2e.env`:
 
 - **Which levels to build** — `--levels {1,2,both}` or `E2E_LEVELS`
   (default `both`). For example `--target-mode all-linux --levels 1` runs
-  only the Level-1 combination of every Linux profile (8 builds instead of
-  16). This only applies to `all-linux`/`all`; `single` mode always uses
+  only the Level-1 combination of every Linux profile (9 builds instead of
+  18). This only applies to `all-linux`/`all`; `single` mode always uses
   `--level`.
 - **How many concurrent builds** — `--max-parallel-builds` or
   `E2E_MAX_PARALLEL_BUILDS` (default `4`).
@@ -231,7 +231,7 @@ Additional requirements for matrix mode:
 
 ## Adding or updating a CIS profile
 
-There are 12 bundled profiles (8 Linux via `ansible-local` + SSH, 4 Windows
+There are 13 bundled profiles (9 Linux via `ansible-local` + SSH, 4 Windows
 via controller-side Ansible + WinRM). Each lives at
 `ohbs_image/roles/cis_<profile>/` and needs, at minimum:
 

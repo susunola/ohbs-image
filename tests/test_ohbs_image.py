@@ -2083,6 +2083,25 @@ class TestProfiles:
         for name, p in PROFILES.items():
             assert p.get("benchmark"), f"{name}: missing benchmark"
 
+    def test_benchmarks_match_role_defaults(self):
+        """Audit P0/P1 (benchmark field precision): Linux profiles all used
+        to label results "CIS-v1.0.0" while their roles ship different CIS
+        editions (v1.0.0..v4.0.0) — so audit rule_id/benchmark metadata
+        carried the wrong edition. Every profile's benchmark must equal the
+        role's cis_benchmark_version default; this guard keeps future
+        profiles (and benchmark bumps) honest."""
+        import re
+        for name, p in PROFILES.items():
+            defaults = Path(f"ohbs_image/roles/{p['role_dir']}/defaults/main.yml")
+            assert defaults.is_file(), f"{name}: missing {defaults}"
+            text = defaults.read_text(encoding="utf-8")
+            m = re.search(r'^cis_benchmark_version:\s*"?(v[\d.]+)"?\s*$',
+                          text, re.M)
+            assert m, f"{name}: cis_benchmark_version not found in {defaults}"
+            expected = "CIS-" + m.group(1)
+            assert p["benchmark"] == expected, \
+                f"{name}: PROFILES benchmark {p['benchmark']!r} != role default {expected!r}"
+
     def test_all_have_role_dir(self):
         for name, p in PROFILES.items():
             assert p.get("role_dir"), f"{name}: missing role_dir"
@@ -3932,6 +3951,20 @@ class TestRuleIdAndBenchmark:
                 data = fh.read()
             hashes.add(hashlib.sha256(data).hexdigest())
         assert len(hashes) == 1, "Linux engines drifted out of sync"
+
+    def test_all_windows_engines_in_sync(self):
+        """win2022 used to be a drift blind spot: its ohbs_engine.ps1 had
+        silently diverged (missing the local-user-disabled family that
+        win2016/win2019/win2025 gained in PR #21) and appeared in no drift
+        group. Every Windows role must carry the identical engine payload
+        (audit P0: win2022 drift blind spot)."""
+        import hashlib
+        hashes = set()
+        for role in ("cis-win2016", "cis-win2019", "cis-win2022", "cis-win2025"):
+            with open(f"ohbs_image/roles/{role}/files/ohbs_engine.ps1", "rb") as fh:
+                data = fh.read()
+            hashes.add(hashlib.sha256(data).hexdigest())
+        assert len(hashes) == 1, "Windows engines drifted out of sync"
 
     def test_none_risk_rules_never_applied(self):
         """v0.16.15: run_rule() must gate risk=none rules out of apply —

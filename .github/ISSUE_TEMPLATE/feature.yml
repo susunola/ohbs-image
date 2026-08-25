@@ -1,0 +1,41 @@
+name: Feature request
+description: Propose a new profile, rule family, command, or improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Before filing, please search
+        existing issues and PRs — the request may already be in flight.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What gap or pain point does this address? Describe the scenario concretely.
+      placeholder: e.g. "We need a CIS benchmark profile for Amazon Linux 2023, because..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should ohbs-image do? Outline the new profile, rule family, flag, or command surface.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else did you try or consider, and why is the proposed approach better?
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: |
+        For new profiles: the upstream CIS benchmark edition and how it maps
+        onto the existing `family` handlers (kmod, sysctl, mount_opt, file_perm,
+        svc_disabled, pkg_absent, sshd_param, ...) — most rules can reuse an
+        existing family; only genuinely new logic needs a new one.
+
+        For new commands/flags: expected output shape and how it should behave
+        under the project's "fail open on read-only/advisory checks" rule.

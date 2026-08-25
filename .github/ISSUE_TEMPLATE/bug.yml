@@ -1,0 +1,91 @@
+name: Bug report
+description: Report a bug in ohbs-image, the bundled engine, or the build artifacts
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report. Before
+        opening an issue, check the [Troubleshooting table](https://github.com/susunola/ohbs-image/blob/main/README.md#troubleshooting)
+        and the [FAQ](https://github.com/susunola/ohbs-image/blob/main/README.md#faq) —
+        several TencentOS/RHEL boot and SELinux/firewalld interactions are
+        already documented there.
+
+        **Security issues must NOT be reported here.** Use the private
+        security advisory flow instead — see
+        [SECURITY.md](https://github.com/susunola/ohbs-image/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: ohbs-image version
+      description: Output of `ohbs-image --version`, or the PyPI version / git commit you ran.
+      placeholder: e.g. 0.18.1
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Where did you run ohbs-image?
+      options:
+        - macOS (local)
+        - Linux (local)
+        - Linux (CI / GitHub Actions)
+        - Docker container
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      description: Output of `python3 --version`.
+      placeholder: e.g. 3.12.4
+  - type: input
+    id: profile
+    attributes:
+      label: Profile and level
+      description: Which profile(s) and CIS level triggered the bug?
+      placeholder: e.g. rhel8 / level 1, or win2022 / level 2
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Exact command
+      description: The full command that triggered the bug, with any flags.
+      placeholder: e.g. ohbs-image build --profile rhel8 --level 1 --image-id img-xxx
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include the full output with `-v`/`--verbose`, or the contents of `--log-file` if you used one.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: |
+        Relevant `ohbs-image.toml` fields (redact any secrets), how the
+        image was launched (CVM instance type, OS, region), and anything
+        else that might help reproduce the bug.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I checked the Troubleshooting table and FAQ before filing.
+          required: true
+        - label: I redacted any credentials or personal data from the logs I'm sharing.
+          required: true

@@ -24,8 +24,8 @@ profile+level combinations, each on its OWN temporary build CVM reached
 from the jump box over the private network):
     python3 scripts/real_e2e_test.py --target-mode single \\
         --profile rhel8 --level 1 ... (same region/zone/vpc/... flags)
-    python3 scripts/real_e2e_test.py --target-mode all-linux ...   # 8 profiles x --levels (default L1+L2)
-    python3 scripts/real_e2e_test.py --target-mode all ...         # +4 Windows profiles (default up to 24 builds)
+    python3 scripts/real_e2e_test.py --target-mode all-linux ...   # 9 profiles x --levels (default L1+L2)
+    python3 scripts/real_e2e_test.py --target-mode all ...         # +4 Windows profiles (default up to 26 builds)
     # To restrict which CIS Level(s) run, pass --levels 1 / --levels 2 /
     # --levels both, or set E2E_LEVELS / E2E_MAX_PARALLEL_BUILDS in scripts/e2e.env.
 
@@ -207,8 +207,8 @@ def parse_args() -> argparse.Namespace:
                     help="toolchain (default): only test this repo's own toolchain "
                          "(venv/ruff/mypy/pytest) on the jump box. single: trigger one "
                          "real `ohbs-image build` for --profile/--level. all-linux: every "
-                         "Linux profile x --levels (up to 16 real builds). all: +every "
-                         "Windows profile x --levels (up to 24 real builds).")
+                         "Linux profile x --levels (up to 18 real builds). all: +every "
+                         "Windows profile x --levels (up to 26 real builds).")
     p.add_argument("--profile", choices=list(PROFILES),
                     help="Required (and only used) with --target-mode single.")
     p.add_argument("--level", type=int, choices=[1, 2],

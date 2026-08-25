@@ -6,7 +6,10 @@ from typing import Any
 def _ubuntu_profile(role_dir: str, os_tag: str, **kw: Any) -> dict[str, Any]:
     return {
         "role_dir": role_dir, "ssh_username": "ubuntu", "os_tag": os_tag,
-        "benchmark": "CIS-v1.0.0",
+        # benchmark is deliberately NOT defaulted here: every profile must
+        # declare the exact CIS edition its role ships (see role
+        # cis_benchmark_version). A family default silently mislabels audit
+        # results with the wrong benchmark edition.
         "pkg_update": "sudo apt-get -o DPkg::Lock::Timeout=600 update -y",
         "pkg_install": "sudo apt-get -o DPkg::Lock::Timeout=600 install -y python3-pip python3-venv",
         # authselect is RHEL-only; harmless under `--no-install-recommends
@@ -18,7 +21,6 @@ def _ubuntu_profile(role_dir: str, os_tag: str, **kw: Any) -> dict[str, Any]:
 def _rhel_profile(role_dir: str, os_tag: str, **kw: Any) -> dict[str, Any]:
     return {
         "role_dir": role_dir, "ssh_username": "root", "os_tag": os_tag,
-        "benchmark": "CIS-v1.0.0",
         "pkg_update": "sudo dnf makecache",
         "pkg_install": "sudo dnf install -y python3-pip",
         "cis_pkg_batch": "sudo dnf install -y --skip-broken sudo pam authselect firewalld chrony rsyslog cronie aide systemd-journal-remote libselinux libselinux-utils || true",
@@ -28,7 +30,7 @@ def _rhel_profile(role_dir: str, os_tag: str, **kw: Any) -> dict[str, Any]:
 def _tlinux_profile(role_dir: str, os_tag: str, **kw: Any) -> dict[str, Any]:
     return {
         "role_dir": role_dir, "ssh_username": "root", "ssh_port": 36000,
-        "os_tag": os_tag, "benchmark": "CIS-v1.0.0",
+        "os_tag": os_tag,
         "pip_index_url": "https://mirrors.cloud.tencent.com/pypi/simple/",
         "pkg_update": "sudo dnf makecache",
         "pkg_install": "sudo dnf install -y python3-pip",
@@ -41,24 +43,32 @@ PROFILES: dict[str, dict[str, Any]] = {
                                    # focal ships python3.8; ansible-core 2.15+
                                    # needs 3.9+ — pin to the 2.11 line (same
                                    # as rhel8/tos3, proven in production).
-                                   ansible_core_spec="ansible-core>=2.11"),
-    "ubuntu2204":  _ubuntu_profile("cis-ubuntu2204", "ubuntu-22.04"),
-    "ubuntu2404":  _ubuntu_profile("cis-ubuntu2404", "ubuntu-24.04"),
-    "rhel8":       _rhel_profile("cis-rhel8", "rhel-8", ansible_core_spec="ansible-core>=2.11"),
-    "rhel9":       _rhel_profile("cis-rhel9", "rhel-9"),
-    "rhel10":      _rhel_profile("cis-rhel10", "rhel-10"),
+                                   ansible_core_spec="ansible-core>=2.11",
+                                   benchmark="CIS-v3.0.0"),
+    "ubuntu2204":  _ubuntu_profile("cis-ubuntu2204", "ubuntu-22.04",
+                                   benchmark="CIS-v3.0.0"),
+    "ubuntu2404":  _ubuntu_profile("cis-ubuntu2404", "ubuntu-24.04",
+                                   benchmark="CIS-v2.0.0"),
+    "rhel8":       _rhel_profile("cis-rhel8", "rhel-8",
+                                 ansible_core_spec="ansible-core>=2.11",
+                                 benchmark="CIS-v4.0.0"),
+    "rhel9":       _rhel_profile("cis-rhel9", "rhel-9", benchmark="CIS-v2.0.0"),
+    "rhel10":      _rhel_profile("cis-rhel10", "rhel-10", benchmark="CIS-v1.0.1"),
     # Rocky 9 ships the same EL9 userspace as RHEL 9 — the v2.0.0 rule
     # catalogs are rule-for-rule identical (297/297, 0 level diffs), so the
     # rhel9 payload is shared verbatim with only the benchmark identity
     # changed (CIS Rocky Linux 9 Benchmark v2.0.0, see role vars).
-    "rocky9":      _rhel_profile("cis-rocky9", "rocky-9"),
-    "tencentos3":  _tlinux_profile("cis-tencentos3", "tencentos-3", ansible_core_spec="ansible-core>=2.11"),
+    "rocky9":      _rhel_profile("cis-rocky9", "rocky-9", benchmark="CIS-v2.0.0"),
+    "tencentos3":  _tlinux_profile("cis-tencentos3", "tencentos-3",
+                                   ansible_core_spec="ansible-core>=2.11",
+                                   benchmark="CIS-v1.0.0"),
     # TencentOS Server 4's public images ship with sshd on the standard
     # port 22 (not 36000 like TencentOS 3). Verified empirically: the
     # img-6n21msk1 image listens only on :22 and accepts root key auth there,
     # while :36000 is not an sshd (connection closed). Override the shared
     # 36000 default or every tencentos4 build times out waiting for SSH.
-    "tencentos4":  _tlinux_profile("cis-tencentos4", "tencentos-4", ssh_port=22),
+    "tencentos4":  _tlinux_profile("cis-tencentos4", "tencentos-4", ssh_port=22,
+                                   benchmark="CIS-v1.0.0"),
     # ── Windows Server (winrm + controller-side ansible) ──
     "win2016": {
         "family": "windows",

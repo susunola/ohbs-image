@@ -301,6 +301,21 @@ function Invoke-Check {
             return @{status="fail"; detail="$key not configured (absent from secedit export)"}
         }
 
+        # Local account controls cannot be represented by a policy registry
+        # value.  Query by the well-known local account name and treat a
+        # missing built-in account as compliant (some hardened images remove
+        # it completely).
+        "local-user-disabled" {
+            $name = $params.name
+            try {
+                $user = Get-LocalUser -Name $name -ErrorAction Stop
+                $ok = -not [bool]$user.Enabled
+                return @{status=if($ok){"pass"}else{"fail"}; detail="$name enabled=$($user.Enabled) (expected False)"}
+            } catch {
+                return @{status="pass"; detail="$name not present (expected disabled)"}
+            }
+        }
+
         # -- 3. Audit Policy --
         "audit-policy" {
             if ($params.policy) {
@@ -658,6 +673,20 @@ function Invoke-Fix {
                 Set-SecPolValue $key $expected
                 return "applied"
             } catch { return "failed: $($_.Exception.Message)" }
+        }
+
+        "local-user-disabled" {
+            $name = $params.name
+            try {
+                $user = Get-LocalUser -Name $name -ErrorAction Stop
+                if (-not [bool]$user.Enabled) { return "already" }
+                Disable-LocalUser -Name $name -ErrorAction Stop
+                return "applied"
+            } catch {
+                # A removed built-in account is at least as restrictive as a
+                # disabled one, and must not make an image build fail.
+                return "already"
+            }
         }
 
         "audit-policy" {

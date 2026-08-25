@@ -24,7 +24,8 @@ GROUPS = {
          "cis-tencentos4"),
     ),
     "windows-legacy": (
-        "ohbs_engine.ps1", ("cis-win2016", "cis-win2019", "cis-win2025"),
+        "ohbs_engine.ps1", ("cis-win2016", "cis-win2019", "cis-win2022",
+                            "cis-win2025"),
     ),
 }
 
