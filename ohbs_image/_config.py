@@ -207,6 +207,22 @@ def load_config(path: Path) -> dict[str, Any]:
     except Exception as exc:
         raise ConfigError(f"Failed to parse {path}: {exc}") from exc
 
+    # Roadmap E — schema versioning: the version gate is read here so a
+    # config written by a newer ohbs-image fails loudly instead of being
+    # silently mis-resolved. Missing schema_version means v1 (legacy).
+    schema_version = data.get("schema_version", 1)
+    if not isinstance(schema_version, int) or isinstance(schema_version, bool):
+        raise ConfigError(
+            f"schema_version must be an integer, got {schema_version!r}.")
+    if schema_version < 1:
+        raise ConfigError(
+            f"schema_version {schema_version} is invalid (minimum 1).")
+    if schema_version > 1:
+        raise ConfigError(
+            f"Configuration schema_version {schema_version} is newer than "
+            f"this ohbs-image supports (max 1). Upgrade ohbs-image or run "
+            f"'ohbs-image config migrate'.")
+
     # Backward-compat: accept either [ohbs] (new) or [cis] (legacy) as the
     # hardening section. New configs should use [ohbs]; [cis] keeps working.
     if "ohbs" in data and "cis" not in data:

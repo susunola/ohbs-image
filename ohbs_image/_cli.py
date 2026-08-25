@@ -29,7 +29,14 @@ from ._commands import (
     cmd_verify_image,
     cmd_verify_release,
 )
-from ._config_tools import cmd_config_explain, cmd_config_migrate, cmd_config_schema
+from ._config_tools import (
+    cmd_config_diff,
+    cmd_config_explain,
+    cmd_config_get,
+    cmd_config_migrate,
+    cmd_config_schema,
+    cmd_config_validate,
+)
 from ._discover import cmd_discover
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
@@ -198,14 +205,33 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Local directory or cos://bucket/prefix")
     p_sync.set_defaults(func=cmd_state_sync)
 
-    p_config = sub.add_parser("config", help="Inspect and migrate configuration contracts")
+    p_config = sub.add_parser("config", help="Inspect, validate and migrate configuration contracts")
     config_sub = p_config.add_subparsers(dest="config_command")
     p_schema = config_sub.add_parser("schema", help="Print the JSON Schema")
     p_schema.add_argument("--output")
     p_schema.set_defaults(func=cmd_config_schema)
-    p_explain = config_sub.add_parser("explain", help="Explain one configuration key")
-    p_explain.add_argument("key")
+    p_explain = config_sub.add_parser("explain", help="Explain configuration keys")
+    p_explain.add_argument("key", nargs="?", help="Dotted key (e.g. build.max_build_minutes)")
+    p_explain.add_argument("--all", action="store_true",
+                           help="List every documented key, grouped by section")
     p_explain.set_defaults(func=cmd_config_explain)
+    p_validate_cfg = config_sub.add_parser(
+        "validate", help="Validate a config file locally (no cloud access)")
+    p_validate_cfg.add_argument("--config", default="ohbs-image.toml")
+    p_validate_cfg.add_argument("--output", choices=["text", "json"], default="text")
+    p_validate_cfg.set_defaults(func=cmd_config_validate)
+    p_diff_cfg = config_sub.add_parser(
+        "diff", help="Field-level diff of two config files (before/after)")
+    p_diff_cfg.add_argument("before")
+    p_diff_cfg.add_argument("after")
+    p_diff_cfg.add_argument("--output", choices=["text", "json"], default="text")
+    p_diff_cfg.set_defaults(func=cmd_config_diff)
+    p_get = config_sub.add_parser(
+        "get", help="Print the effective value of one configuration key")
+    p_get.add_argument("key", help="Dotted key (e.g. build.max_build_minutes)")
+    p_get.add_argument("--config", default="ohbs-image.toml")
+    p_get.add_argument("--output", choices=["text", "json"], default="text")
+    p_get.set_defaults(func=cmd_config_get)
     p_migrate = config_sub.add_parser("migrate", help="Migrate legacy configuration to schema v1")
     p_migrate.add_argument("--config", default="ohbs-image.toml")
     p_migrate.add_argument("--output")

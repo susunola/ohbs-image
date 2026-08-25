@@ -36,7 +36,10 @@ in the changelog.
 | Command | Notes |
 |---------|-------|
 | `state sync` | `0` synced · `1` backend failure |
-| `config schema` / `explain` | `0` ok · `1` key not documented |
+| `config schema` / `explain` | `0` ok · `1` key not documented or key missing |
+| `config validate` | `0` valid · `1` invalid configuration · `2` file missing/unreadable |
+| `config diff` | `0` identical · `1` differences found (or either file unreadable) |
+| `config get` | `0` printed · `1` unknown key or unreadable config |
 | `config migrate` | `0` migrated or already current · `1` could not read the file |
 | `report diff` | `0` compared · `1` lineage or run ID missing |
 | `list` | always `0` |

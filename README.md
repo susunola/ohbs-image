@@ -164,6 +164,10 @@ ohbs-image init                               # generate ohbs-image.toml
 ohbs-image configure                          # interactive/non-interactive minimal config generator
 ohbs-image discover images --region ap-guangzhou --profile ubuntu2404
 ohbs-image config schema                      # JSON Schema for editor/CI validation
+ohbs-image config validate                    # local-only config check (no cloud access)
+ohbs-image config diff a.toml b.toml          # field-level config comparison
+ohbs-image config get ohbs.level              # effective value of one key (defaults applied)
+ohbs-image config explain --all               # full configuration key reference
 ohbs-image config migrate --apply             # atomic legacy config migration
 ohbs-image report diff --before RUN --after RUN # compare lineage metadata
 ohbs-image doctor [--output text|json|sarif] [--only GROUP] [--offline] [--report-path FILE]

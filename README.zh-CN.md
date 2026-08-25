@@ -143,6 +143,10 @@ ohbs-image clean
 | `ohbs-image configure` | 交互或非交互生成最小可用配置 |
 | `ohbs-image discover images --region ap-guangzhou` | 只读发现镜像和网络资源 |
 | `ohbs-image config schema` | 输出配置 JSON Schema |
+| `ohbs-image config validate` | 本地校验配置（无需云访问） |
+| `ohbs-image config diff a.toml b.toml` | 逐字段对比两份配置 |
+| `ohbs-image config get ohbs.level` | 打印某个键的有效值（含默认值） |
+| `ohbs-image config explain --all` | 输出全部配置键参考 |
 | `ohbs-image config migrate --apply` | 原子迁移旧配置到 schema v1 |
 | `ohbs-image report diff --before RUN --after RUN` | 比较两次构建元数据差异 |
 | `ohbs-image doctor --output json` | 结构化诊断工具链、配置、凭据和只读云访问 |

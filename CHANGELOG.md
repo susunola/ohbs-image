@@ -7,6 +7,25 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (configuration system — roadmap E)
+- **Schema version gate** — `load_config` now reads `schema_version`
+  (missing = v1, legacy): versions above 1 fail with a precise error
+  pointing at `config migrate`; non-integer values are rejected. Generated
+  configs from `configure` now include `schema_version = 1`.
+- **`config validate`** — local-only validation (parse, load, resolve —
+  no credentials or cloud access), exit `0` valid / `1` invalid / `2`
+  missing or unreadable; `--output json` gives a CI-ready
+  `{"valid", "errors"}` report.
+- **`config diff <before> <after>`** — field-level comparison of two
+  config files; exit `0` identical / `1` different; `--output json`
+  emits `{"same", "changes"}` rows.
+- **`config get <dotted.key>`** — prints the effective value of one key
+  after resolution (defaults and overrides visible), e.g.
+  `config get build.max_build_minutes`; `--output json` supported.
+- **`config explain` expanded** — full key reference for all sections
+  (`build`/`image`/`ohbs`/`cloud`/`meta`/`state`/`notify`/`sign`/
+  `attestation`); `--all` prints the whole table grouped by section.
+
 ### Added (CLI product experience — roadmap D)
 - **Lifecycle-grouped `--help`** — subcommands render under three stable
   headings (`build lifecycle` / `manage & evidence` / `release`) so the
