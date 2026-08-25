@@ -20,8 +20,41 @@ def _credentials() -> tuple[str, str, str]:
 
 
 def discover_resources(kind: str, region: str, *, zone: str = "",
-                       profile: str = "", vpc_id: str = "") -> list[dict[str, Any]]:
+                       profile: str = "", vpc_id: str = "",
+                       min_cpu: int = 0, min_mem: int = 0,
+                       in_stock: bool = False) -> list[dict[str, Any]]:
     sid, key, token = _credentials()
+    if kind == "instance-types":
+        if not zone:
+            raise OSError("instance-types discovery requires --zone")
+        it_params: dict[str, Any] = {
+            "Filters": [{"Name": "zone", "Values": [zone]}],
+            "InstanceChargeType": "POSTPAID_BY_HOUR",
+        }
+        raw = ohbs_image._tc3_api("cvm", "DescribeZoneInstanceConfigInfos", "2017-03-12",
+                                  region, it_params, sid, key, token)
+        rows = raw.get("Response", {}).get("InstanceTypeQuotaSet", []) or []
+        result = []
+        for r in rows if isinstance(rows, list) else []:
+            cpu = r.get("Cpu", 0) or 0
+            mem = r.get("Memory", 0) or 0
+            status = str(r.get("Status", "")).upper()
+            if min_cpu and int(cpu) < min_cpu:
+                continue
+            if min_mem and float(mem) < min_mem:
+                continue
+            if in_stock and status in ("SOLD_OUT", "UNAVAILABLE"):
+                continue
+            result.append({
+                "id": r.get("InstanceType", ""),
+                "name": r.get("InstanceType", ""),
+                "zone": zone,
+                "cpu": int(cpu),
+                "memory": int(mem),
+                "gpu": int(r.get("GPU", 0) or 0),
+                "status": status,
+            })
+        return result
     if kind == "images":
         params: dict[str, Any] = {"ImageType": "PUBLIC_IMAGE", "Limit": 100}
         raw = ohbs_image._tc3_api("cvm", "DescribeImages", "2017-03-12", region,
@@ -76,7 +109,10 @@ def discover_resources(kind: str, region: str, *, zone: str = "",
 def cmd_discover(args: argparse.Namespace) -> int:
     try:
         rows = discover_resources(args.resource, args.region, zone=args.zone or "",
-                                  profile=args.profile or "", vpc_id=args.vpc or "")
+                                  profile=args.profile or "", vpc_id=args.vpc or "",
+                                  min_cpu=getattr(args, "min_cpu", 0) or 0,
+                                  min_mem=getattr(args, "min_mem", 0) or 0,
+                                  in_stock=bool(getattr(args, "in_stock", False)))
     except Exception as exc:
         fail(f"Discovery failed: {exc}")
         return 1
@@ -88,6 +124,7 @@ def cmd_discover(args: argparse.Namespace) -> int:
         if not rows:
             print("No matching resources found.")
         for row in rows:
-            print("\t".join(str(row.get(k, "")) for k in ("id", "name", "zone", "cidr")
-                            if k in row))
+            keys = ("id", "name", "zone", "cidr") if args.resource != "instance-types" \
+                else ("id", "cpu", "memory", "gpu", "status")
+            print("\t".join(str(row.get(k, "")) for k in keys if k in row))
     return 0

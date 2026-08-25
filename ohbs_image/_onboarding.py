@@ -446,7 +446,7 @@ def _check_cloud_instance(r: ResolvedConfig, sid: str, skey: str, tok: str | Non
         "cloud.instance_type", "pass" if available else "fail",
         f"Instance type {r.instance_type} is purchasable in {r.zone}" if available
         else f"Instance type {r.instance_type} is not purchasable in {r.zone}",
-        fix="Choose an instance type available in the configured zone" if not available else "",
+        fix="Run: ohbs-image discover instance-types --zone " + r.zone if not available else "",
         group="cloud"))
     checks.append(DoctorCheck(
         "cloud.instance_stock", "pass" if available else "fail",

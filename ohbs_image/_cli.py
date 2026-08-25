@@ -78,11 +78,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_doctor.set_defaults(func=cmd_doctor)
 
     p_discover = sub.add_parser("discover", help="Discover compatible Tencent Cloud resources")
-    p_discover.add_argument("resource", choices=["images", "vpcs", "subnets", "security-groups"])
+    p_discover.add_argument("resource", choices=["images", "vpcs", "subnets", "security-groups", "instance-types"])
     p_discover.add_argument("--region", required=True)
-    p_discover.add_argument("--zone")
+    p_discover.add_argument("--zone", help="Required for instance-types")
     p_discover.add_argument("--vpc", help="Limit subnet discovery to this VPC")
     p_discover.add_argument("--profile", choices=sorted(PROFILES))
+    p_discover.add_argument("--min-cpu", type=int, default=0,
+                            help="instance-types: minimum vCPU count")
+    p_discover.add_argument("--min-mem", type=int, default=0,
+                            help="instance-types: minimum memory in GiB")
+    p_discover.add_argument("--in-stock", action="store_true",
+                            help="instance-types: only list types with available stock")
     p_discover.add_argument("--output", choices=["text", "json"], default="text")
     p_discover.set_defaults(func=cmd_discover)
 

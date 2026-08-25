@@ -7,6 +7,14 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (discover instance types — roadmap C)
+- **`ohbs-image discover instance-types`** — list purchasable CVM instance
+  types for a zone via `DescribeZoneInstanceConfigInfos`, with
+  `--min-cpu`, `--min-mem`, `--in-stock` filters (sold-out types hidden).
+  Text output shows `id/cpu/memory/gpu/status`; JSON keeps the
+  `discover/v1` contract. `doctor` now points at this command in its
+  `cloud.instance_type` fix.
+
 ### Added (doctor redesign — roadmap B)
 - **28 new diagnostics, grouped into 6 stable groups** — `toolchain`
   (Python/Packer/Ansible versions, plugin discovery, gpg/coscli/trivy/
