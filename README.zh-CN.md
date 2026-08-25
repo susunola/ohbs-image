@@ -206,7 +206,9 @@ ohbs-image clean
 
 ### 首次成功流程与团队状态
 
-`configure` 生成最小配置；`doctor` 一次返回全部阻断项与修复建议；
+`configure` 生成最小配置；`doctor` 一次返回全部阻断项与修复建议（支持
+`--only <分组>` / `--offline` / `--output json|sarif` / `--report-path`，
+退出码 0=就绪、1=有失败项、2=配置无法解析，输出自动脱敏）；
 `plan` 保证只读，不创建云资源。`state sync` 可将证据目录同步到团队目录
 或腾讯云 COS，COS 模式使用官方 `coscli` 的凭据机制，不把密钥放入命令行。
 CI 使用非默认配置文件时设置 `OHBS_IMAGE_COSCLI_CONFIG`。

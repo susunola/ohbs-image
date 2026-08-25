@@ -48,10 +48,13 @@ def test_plan_json_is_read_only(tmp_path, capsys):
 
 def test_doctor_missing_config_json(tmp_path, capsys):
     args = argparse.Namespace(config=str(tmp_path / "missing.toml"),
-                              no_cloud=True, output="json")
-    assert cmd_doctor(args) == 1
+                              no_cloud=True, output="json",
+                              only="all", offline=False, report_path=None)
+    # EXIT_CONFIG=2 — the configuration could not be resolved.
+    assert cmd_doctor(args) == 2
     doc = json.loads(capsys.readouterr().out)
     assert doc["ready"] is False
+    assert doc["diagnostics"]["exit_code"] == 2
     assert any(c["id"] == "config" and c["status"] == "fail" for c in doc["checks"])
 
 
@@ -75,10 +78,13 @@ def test_doctor_cloud_contract_and_relationships(tmp_path, monkeypatch, capsys):
         raise AssertionError(action)
 
     monkeypatch.setattr("ohbs_image._tc3_api", fake_api)
-    args = argparse.Namespace(config=str(target), no_cloud=False, output="json")
+    args = argparse.Namespace(config=str(target), no_cloud=False, output="json",
+                              only="all", offline=False, report_path=None)
     cmd_doctor(args)
     doc = json.loads(capsys.readouterr().out)
-    assert set(doc) == {"schema", "ready", "checks"}
+    assert set(doc) == {"schema", "ready", "checks", "diagnostics"}
+    assert doc["diagnostics"]["redacted"] is True
+    assert doc["diagnostics"]["exit_code"] in (0, 1)
     statuses = {check["id"]: check["status"] for check in doc["checks"]}
     assert statuses["cloud.source_image"] == "pass"
     assert statuses["cloud.subnet_vpc"] == "pass"

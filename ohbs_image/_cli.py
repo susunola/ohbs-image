@@ -31,7 +31,7 @@ from ._commands import (
 from ._config_tools import cmd_config_explain, cmd_config_migrate, cmd_config_schema
 from ._discover import cmd_discover
 from ._logging import VERSION, _setup_logging, fail
-from ._onboarding import cmd_configure, cmd_doctor, cmd_plan
+from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._report_diff import cmd_report_diff
 from ._state import cmd_state_sync
@@ -66,7 +66,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_doctor = sub.add_parser("doctor", parents=[common],
                               help="Diagnose local toolchain, configuration and cloud access")
-    p_doctor.add_argument("--output", choices=["text", "json"], default="text")
+    p_doctor.add_argument("--output", choices=["text", "json", "sarif"], default="text")
+    p_doctor.add_argument("--only", choices=DOCTOR_GROUPS, default="all",
+                          help="Only run checks in this diagnostic group")
+    p_doctor.add_argument("--offline", action="store_true",
+                          help="Skip every network/cloud check (same as --no-cloud, plus no clock sync)")
+    p_doctor.add_argument("--report-path",
+                          help="Write a redacted diagnostic report to this file (text/json/sarif)")
     p_doctor.add_argument("--no-cloud", action="store_true",
                           help="Skip read-only Tencent Cloud API checks")
     p_doctor.set_defaults(func=cmd_doctor)

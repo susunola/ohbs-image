@@ -166,7 +166,7 @@ ohbs-image discover images --region ap-guangzhou --profile ubuntu2404
 ohbs-image config schema                      # JSON Schema for editor/CI validation
 ohbs-image config migrate --apply             # atomic legacy config migration
 ohbs-image report diff --before RUN --after RUN # compare lineage metadata
-ohbs-image doctor [--output json] [--no-cloud] # actionable readiness diagnosis
+ohbs-image doctor [--output text|json|sarif] [--only GROUP] [--offline] [--report-path FILE]
 ohbs-image plan [--output json]                # read-only build/resource/gate preview
 ohbs-image state sync push --backend local --location /shared/ohbs-state
 ohbs-image state sync push --backend cos --location cos://bucket/ohbs-state
@@ -235,8 +235,15 @@ for missing values; automation can supply `--profile`, `--region`, `--zone`,
 `--source-image`, `--vpc`, `--subnet`, and `--security-group`.
 
 `doctor` returns all detected problems in one run, with a suggested fix for
-each blocker. `--output json` emits the stable `doctor/v1` contract and
-`--no-cloud` disables its read-only `DescribeImages` access check.
+each blocker. Checks are grouped into `toolchain` / `config` / `credentials` /
+`cloud` / `network` / `permissions`; `--only <group>` runs a single group,
+`--offline` (or `--no-cloud`) disables cloud API checks for air-gapped
+machines, `--output json` emits the stable `doctor/v1` contract,
+`--output sarif` emits a SARIF 2.1.0 report, and `--report-path <file>`
+persists a redacted copy of the same output. Exit codes are stable:
+`0` = ready to build, `1` = at least one failing check, `2` = configuration
+could not be resolved. Every emitted string is redacted — credential-shaped
+values (AKID…, `secret_key=…`, PEM private keys) never leave the process.
 
 `plan` never creates or changes cloud resources. It previews the temporary
 CVM, placement, maximum duration, release gates, distribution and cost caveat.

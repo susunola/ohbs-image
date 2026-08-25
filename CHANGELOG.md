@@ -7,6 +7,34 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (doctor redesign — roadmap B)
+- **28 new diagnostics, grouped into 6 stable groups** — `toolchain`
+  (Python/Packer/Ansible versions, plugin discovery, gpg/coscli/trivy/
+  oscap/inspec/hardeningkitty availability), `config` (bundled role,
+  Windows controller prerequisites), `credentials` (env vars present,
+  server clock offset, OS/benchmark match), `cloud` (region/zone,
+  source image + OS/arch, instance-type purchasability, network,
+  security group, ingress/egress reachability, quotas, API permission),
+  `network`, `permissions`. Every Tencent API probe is read-only and
+  fails open — a broken endpoint degrades that check to `skip` instead
+  of failing the whole run.
+- **`--only <group>`** — run a single diagnostic group.
+- **`--offline`** — skip every network/cloud check (air-gapped machines).
+- **`--output sarif`** — SARIF 2.1.0 report (rule-per-check, level-mapped,
+  invocations with duration + redaction flag).
+- **`--report-path <file>`** — persist a redacted copy of the text/json/
+  sarif output to disk.
+- **Stable exit codes** — `0` ready, `1` blocked (a failing check),
+  `2` configuration could not be resolved.
+- **Credential redaction** — every summary/detail/fix and saved report is
+  scrubbed for AKID…, `secret_key=…`-style values and PEM private keys.
+- **JSON `doctor/v1` contract extended** — adds a `diagnostics` object
+  (`duration_ms`, `redacted`, `exit_code`); existing keys unchanged.
+
+### Fixed
+- `doctor` no longer needs a reachable cloud to be useful — offline mode
+  still validates the local toolchain and configuration.
+
 ## [0.18.0] — 2026-08-25 — first-success workflow and release hardening
 
 ### Added (rule-catalog automation, round 6)
