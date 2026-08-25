@@ -1,7 +1,7 @@
 [
   {
     "id": "1.1.1",
-    "title": "(L1) Ensure 'Enforce password history' is set to '24 or more password(s)'",
+    "title": "Ensure 'Enforce password history' is set to '24 or more password(s)'",
     "section": "1.1",
     "levels": [
       1
@@ -22,7 +22,7 @@
   },
   {
     "id": "1.1.2",
-    "title": "(L1) Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'",
+    "title": "Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'",
     "section": "1.1",
     "levels": [
       1
@@ -43,7 +43,7 @@
   },
   {
     "id": "1.1.3",
-    "title": "(L1) Ensure 'Minimum password age' is set to '1 or more day(s)'",
+    "title": "Ensure 'Minimum password age' is set to '1 or more day(s)'",
     "section": "1.1",
     "levels": [
       1
@@ -64,7 +64,7 @@
   },
   {
     "id": "1.1.4",
-    "title": "(L1) Ensure 'Minimum password length' is set to '14 or more character(s)'",
+    "title": "Ensure 'Minimum password length' is set to '14 or more character(s)'",
     "section": "1.1",
     "levels": [
       1
@@ -85,7 +85,7 @@
   },
   {
     "id": "1.1.5",
-    "title": "(L1) Ensure 'Password must meet complexity requirements' is set to 'Enabled'",
+    "title": "Ensure 'Password must meet complexity requirements' is set to 'Enabled'",
     "section": "1.1",
     "levels": [
       1
@@ -102,7 +102,7 @@
   },
   {
     "id": "1.1.6",
-    "title": "(L1) Ensure 'Store passwords using reversible encryption' is set to 'Disabled'",
+    "title": "Ensure 'Store passwords using reversible encryption' is set to 'Disabled'",
     "section": "1.1",
     "levels": [
       1
@@ -119,7 +119,7 @@
   },
   {
     "id": "1.2.1",
-    "title": "(L1) Ensure 'Account lockout duration' is set to '15 or more minute(s)'",
+    "title": "Ensure 'Account lockout duration' is set to '15 or more minute(s)'",
     "section": "1.2",
     "levels": [
       1
@@ -140,7 +140,7 @@
   },
   {
     "id": "1.2.2",
-    "title": "(L1) Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'",
+    "title": "Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'",
     "section": "1.2",
     "levels": [
       1
@@ -162,7 +162,7 @@
   },
   {
     "id": "1.2.3",
-    "title": "(L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled' (MS only)",
+    "title": "Ensure 'Allow Administrator account lockout' is set to 'Enabled' (MS only)",
     "section": "1.2",
     "levels": [
       1
@@ -183,7 +183,7 @@
   },
   {
     "id": "1.2.4",
-    "title": "(L1) Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'",
+    "title": "Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'",
     "section": "1.2",
     "levels": [
       1
@@ -204,7 +204,7 @@
   },
   {
     "id": "2.2.1",
-    "title": "(L1) Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'",
+    "title": "Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'",
     "section": "2.2",
     "levels": [
       1
@@ -224,7 +224,7 @@
   },
   {
     "id": "2.2.2",
-    "title": "(L1) Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users, ENTERPRISE DOMAIN CONTROLLERS' (DC only)",
+    "title": "Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users, ENTERPRISE DOMAIN CONTROLLERS' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -244,7 +244,7 @@
   },
   {
     "id": "2.2.3",
-    "title": "(L1) Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users' (MS only)",
+    "title": "Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users' (MS only)",
     "section": "2.2",
     "levels": [
       1
@@ -264,7 +264,7 @@
   },
   {
     "id": "2.2.4",
-    "title": "(L1) Ensure 'Act as part of the operating system' is set to 'No One'",
+    "title": "Ensure 'Act as part of the operating system' is set to 'No One'",
     "section": "2.2",
     "levels": [
       1
@@ -284,7 +284,7 @@
   },
   {
     "id": "2.2.5",
-    "title": "(L1) Ensure 'Add workstations to domain' is set to 'Administrators' (DC only)",
+    "title": "Ensure 'Add workstations to domain' is set to 'Administrators' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -304,7 +304,7 @@
   },
   {
     "id": "2.2.6",
-    "title": "(L1) Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'",
+    "title": "Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'",
     "section": "2.2",
     "levels": [
       1
@@ -324,7 +324,7 @@
   },
   {
     "id": "2.2.7",
-    "title": "(L1) Ensure 'Allow log on locally' is set to 'Administrators, ENTERPRISE DOMAIN CONTROLLERS' (DC only)",
+    "title": "Ensure 'Allow log on locally' is set to 'Administrators, ENTERPRISE DOMAIN CONTROLLERS' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -344,7 +344,7 @@
   },
   {
     "id": "2.2.8",
-    "title": "(L1) Ensure 'Allow log on locally' is set to 'Administrators' (MS only)",
+    "title": "Ensure 'Allow log on locally' is set to 'Administrators' (MS only)",
     "section": "2.2",
     "levels": [
       1
@@ -364,7 +364,7 @@
   },
   {
     "id": "2.2.9",
-    "title": "(L1) Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators' (DC only)",
+    "title": "Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -384,7 +384,7 @@
   },
   {
     "id": "2.2.10",
-    "title": "(L1) Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators, Remote Desktop Users' (MS only)",
+    "title": "Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators, Remote Desktop Users' (MS only)",
     "section": "2.2",
     "levels": [
       1
@@ -404,7 +404,7 @@
   },
   {
     "id": "2.2.11",
-    "title": "(L1) Ensure 'Back up files and directories' is set to 'Administrators'",
+    "title": "Ensure 'Back up files and directories' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -424,7 +424,7 @@
   },
   {
     "id": "2.2.12",
-    "title": "(L1) Ensure 'Change the system time' is set to 'Administrators, LOCAL SERVICE'",
+    "title": "Ensure 'Change the system time' is set to 'Administrators, LOCAL SERVICE'",
     "section": "2.2",
     "levels": [
       1
@@ -444,7 +444,7 @@
   },
   {
     "id": "2.2.13",
-    "title": "(L1) Ensure 'Change the time zone' is set to 'Administrators, LOCAL SERVICE'",
+    "title": "Ensure 'Change the time zone' is set to 'Administrators, LOCAL SERVICE'",
     "section": "2.2",
     "levels": [
       1
@@ -464,7 +464,7 @@
   },
   {
     "id": "2.2.14",
-    "title": "(L1) Ensure 'Create a pagefile' is set to 'Administrators'",
+    "title": "Ensure 'Create a pagefile' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -484,7 +484,7 @@
   },
   {
     "id": "2.2.15",
-    "title": "(L1) Ensure 'Create a token object' is set to 'No One'",
+    "title": "Ensure 'Create a token object' is set to 'No One'",
     "section": "2.2",
     "levels": [
       1
@@ -504,7 +504,7 @@
   },
   {
     "id": "2.2.16",
-    "title": "(L1) Ensure 'Create global objects' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE'",
+    "title": "Ensure 'Create global objects' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE'",
     "section": "2.2",
     "levels": [
       1
@@ -524,7 +524,7 @@
   },
   {
     "id": "2.2.17",
-    "title": "(L1) Ensure 'Create permanent shared objects' is set to 'No One'",
+    "title": "Ensure 'Create permanent shared objects' is set to 'No One'",
     "section": "2.2",
     "levels": [
       1
@@ -544,7 +544,7 @@
   },
   {
     "id": "2.2.18",
-    "title": "(L1) Ensure 'Create symbolic links' is set to 'Administrators' (DC only)",
+    "title": "Ensure 'Create symbolic links' is set to 'Administrators' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -564,7 +564,7 @@
   },
   {
     "id": "2.2.19",
-    "title": "(L1) Ensure 'Create symbolic links' is set to 'Administrators, NT VIRTUAL MACHINE\\Virtual Machines' (MS only)",
+    "title": "Ensure 'Create symbolic links' is set to 'Administrators, NT VIRTUAL MACHINE\\Virtual Machines' (MS only)",
     "section": "2.2",
     "levels": [
       1
@@ -584,7 +584,7 @@
   },
   {
     "id": "2.2.20",
-    "title": "(L1) Ensure 'Debug programs' is set to 'Administrators'",
+    "title": "Ensure 'Debug programs' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -604,7 +604,7 @@
   },
   {
     "id": "2.2.21",
-    "title": "(L1) Ensure 'Deny access to this computer from the network' to include 'Guests' (DC only)",
+    "title": "Ensure 'Deny access to this computer from the network' to include 'Guests' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -624,7 +624,7 @@
   },
   {
     "id": "2.2.22",
-    "title": "(L1) Ensure 'Deny access to this computer from the network' to include 'Guests, Local account and member of Administrators group' (MS only)",
+    "title": "Ensure 'Deny access to this computer from the network' to include 'Guests, Local account and member of Administrators group' (MS only)",
     "section": "2.2",
     "levels": [
       1
@@ -644,7 +644,7 @@
   },
   {
     "id": "2.2.23",
-    "title": "(L1) Ensure 'Deny log on as a batch job' to include 'Guests'",
+    "title": "Ensure 'Deny log on as a batch job' to include 'Guests'",
     "section": "2.2",
     "levels": [
       1
@@ -664,7 +664,7 @@
   },
   {
     "id": "2.2.24",
-    "title": "(L1) Ensure 'Deny log on as a service' to include 'Guests'",
+    "title": "Ensure 'Deny log on as a service' to include 'Guests'",
     "section": "2.2",
     "levels": [
       1
@@ -684,7 +684,7 @@
   },
   {
     "id": "2.2.25",
-    "title": "(L1) Ensure 'Deny log on locally' to include 'Guests'",
+    "title": "Ensure 'Deny log on locally' to include 'Guests'",
     "section": "2.2",
     "levels": [
       1
@@ -704,7 +704,7 @@
   },
   {
     "id": "2.2.26",
-    "title": "(L1) Ensure 'Deny log on through Remote Desktop Services' to include 'Guests' (DC only)",
+    "title": "Ensure 'Deny log on through Remote Desktop Services' to include 'Guests' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -724,7 +724,7 @@
   },
   {
     "id": "2.2.27",
-    "title": "(L1) Ensure 'Deny log on through Remote Desktop Services' is set to 'Guests, Local account' (MS only)",
+    "title": "Ensure 'Deny log on through Remote Desktop Services' is set to 'Guests, Local account' (MS only)",
     "section": "2.2",
     "levels": [
       1
@@ -744,7 +744,7 @@
   },
   {
     "id": "2.2.28",
-    "title": "(L1) Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'Administrators' (DC only)",
+    "title": "Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'Administrators' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -764,7 +764,7 @@
   },
   {
     "id": "2.2.29",
-    "title": "(L1) Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'No One' (MS only)",
+    "title": "Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'No One' (MS only)",
     "section": "2.2",
     "levels": [
       1
@@ -784,7 +784,7 @@
   },
   {
     "id": "2.2.30",
-    "title": "(L1) Ensure 'Force shutdown from a remote system' is set to 'Administrators'",
+    "title": "Ensure 'Force shutdown from a remote system' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -804,7 +804,7 @@
   },
   {
     "id": "2.2.31",
-    "title": "(L1) Ensure 'Generate security audits' is set to 'LOCAL SERVICE, NETWORK SERVICE'",
+    "title": "Ensure 'Generate security audits' is set to 'LOCAL SERVICE, NETWORK SERVICE'",
     "section": "2.2",
     "levels": [
       1
@@ -824,7 +824,7 @@
   },
   {
     "id": "2.2.32",
-    "title": "(L1) Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' (DC only)",
+    "title": "Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -844,7 +844,7 @@
   },
   {
     "id": "2.2.33",
-    "title": "(L1) Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' and (when the Web Server (IIS) Role with Web Services Role Service is installed) 'IIS_IUSRS' (MS only)",
+    "title": "Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' and (when the Web Server (IIS) Role with Web Services Role Service is installed) 'IIS_IUSRS' (MS only)",
     "section": "2.2",
     "levels": [
       1
@@ -864,7 +864,7 @@
   },
   {
     "id": "2.2.34",
-    "title": "(L1) Ensure 'Increase scheduling priority' is set to 'Administrators'",
+    "title": "Ensure 'Increase scheduling priority' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -884,7 +884,7 @@
   },
   {
     "id": "2.2.35",
-    "title": "(L1) Ensure 'Load and unload device drivers' is set to 'Administrators'",
+    "title": "Ensure 'Load and unload device drivers' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -904,7 +904,7 @@
   },
   {
     "id": "2.2.36",
-    "title": "(L1) Ensure 'Lock pages in memory' is set to 'No One'",
+    "title": "Ensure 'Lock pages in memory' is set to 'No One'",
     "section": "2.2",
     "levels": [
       1
@@ -924,7 +924,7 @@
   },
   {
     "id": "2.2.37",
-    "title": "(L2) Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only)",
+    "title": "Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only)",
     "section": "2.2",
     "levels": [
       2
@@ -944,7 +944,7 @@
   },
   {
     "id": "2.2.38",
-    "title": "(L1) Ensure 'Manage auditing and security log' is set to 'Administrators' (DC only)",
+    "title": "Ensure 'Manage auditing and security log' is set to 'Administrators' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -964,7 +964,7 @@
   },
   {
     "id": "2.2.39",
-    "title": "(L1) Ensure 'Manage auditing and security log' is set to 'Administrators' (MS only)",
+    "title": "Ensure 'Manage auditing and security log' is set to 'Administrators' (MS only)",
     "section": "2.2",
     "levels": [
       1
@@ -984,7 +984,7 @@
   },
   {
     "id": "2.2.40",
-    "title": "(L1) Ensure 'Modify an object label' is set to 'No One'",
+    "title": "Ensure 'Modify an object label' is set to 'No One'",
     "section": "2.2",
     "levels": [
       1
@@ -1004,7 +1004,7 @@
   },
   {
     "id": "2.2.41",
-    "title": "(L1) Ensure 'Modify firmware environment values' is set to 'Administrators'",
+    "title": "Ensure 'Modify firmware environment values' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -1024,7 +1024,7 @@
   },
   {
     "id": "2.2.42",
-    "title": "(L1) Ensure 'Perform volume maintenance tasks' is set to 'Administrators'",
+    "title": "Ensure 'Perform volume maintenance tasks' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -1044,7 +1044,7 @@
   },
   {
     "id": "2.2.43",
-    "title": "(L1) Ensure 'Profile single process' is set to 'Administrators'",
+    "title": "Ensure 'Profile single process' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -1064,7 +1064,7 @@
   },
   {
     "id": "2.2.44",
-    "title": "(L1) Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\\WdiServiceHost'",
+    "title": "Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\\WdiServiceHost'",
     "section": "2.2",
     "levels": [
       1
@@ -1084,7 +1084,7 @@
   },
   {
     "id": "2.2.45",
-    "title": "(L1) Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'",
+    "title": "Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'",
     "section": "2.2",
     "levels": [
       1
@@ -1104,7 +1104,7 @@
   },
   {
     "id": "2.2.46",
-    "title": "(L1) Ensure 'Restore files and directories' is set to 'Administrators'",
+    "title": "Ensure 'Restore files and directories' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -1124,7 +1124,7 @@
   },
   {
     "id": "2.2.47",
-    "title": "(L1) Ensure 'Shut down the system' is set to 'Administrators'",
+    "title": "Ensure 'Shut down the system' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -1144,7 +1144,7 @@
   },
   {
     "id": "2.2.48",
-    "title": "(L1) Ensure 'Synchronize directory service data' is set to 'No One' (DC only)",
+    "title": "Ensure 'Synchronize directory service data' is set to 'No One' (DC only)",
     "section": "2.2",
     "levels": [
       1
@@ -1164,7 +1164,7 @@
   },
   {
     "id": "2.2.49",
-    "title": "(L1) Ensure 'Take ownership of files or other objects' is set to 'Administrators'",
+    "title": "Ensure 'Take ownership of files or other objects' is set to 'Administrators'",
     "section": "2.2",
     "levels": [
       1
@@ -1184,7 +1184,7 @@
   },
   {
     "id": "2.3.1.1",
-    "title": "(L1) Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'",
+    "title": "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'",
     "section": "2.3.1",
     "levels": [
       1
@@ -1205,7 +1205,7 @@
   },
   {
     "id": "2.3.1.2",
-    "title": "(L1) Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only)",
+    "title": "Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only)",
     "section": "2.3.1",
     "levels": [
       1
@@ -1224,7 +1224,7 @@
   },
   {
     "id": "2.3.1.3",
-    "title": "(L1) Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'",
+    "title": "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'",
     "section": "2.3.1",
     "levels": [
       1
@@ -1245,7 +1245,7 @@
   },
   {
     "id": "2.3.1.4",
-    "title": "(L1) Configure 'Accounts: Rename administrator account'",
+    "title": "Configure 'Accounts: Rename administrator account'",
     "section": "2.3.1",
     "levels": [
       1
@@ -1262,7 +1262,7 @@
   },
   {
     "id": "2.3.1.5",
-    "title": "(L1) Configure 'Accounts: Rename guest account'",
+    "title": "Configure 'Accounts: Rename guest account'",
     "section": "2.3.1",
     "levels": [
       1
@@ -1279,7 +1279,7 @@
   },
   {
     "id": "2.3.2.1",
-    "title": "(L1) Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'",
+    "title": "Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'",
     "section": "2.3.2",
     "levels": [
       1
@@ -1298,7 +1298,7 @@
   },
   {
     "id": "2.3.2.2",
-    "title": "(L1) Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'",
+    "title": "Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'",
     "section": "2.3.2",
     "levels": [
       1
@@ -1317,7 +1317,7 @@
   },
   {
     "id": "2.3.4.1",
-    "title": "(L1) Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'",
+    "title": "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'",
     "section": "2.3.4",
     "levels": [
       1
@@ -1338,7 +1338,7 @@
   },
   {
     "id": "2.3.5.1",
-    "title": "(L1) Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only)",
+    "title": "Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only)",
     "section": "2.3.5",
     "levels": [
       1
@@ -1359,7 +1359,7 @@
   },
   {
     "id": "2.3.5.2",
-    "title": "(L1) Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured' (DC Only)",
+    "title": "Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured' (DC Only)",
     "section": "2.3.5",
     "levels": [
       1
@@ -1376,7 +1376,7 @@
   },
   {
     "id": "2.3.5.3",
-    "title": "(L1) Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only)",
+    "title": "Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only)",
     "section": "2.3.5",
     "levels": [
       1
@@ -1397,7 +1397,7 @@
   },
   {
     "id": "2.3.5.4",
-    "title": "(L1) Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing' (DC only)",
+    "title": "Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing' (DC only)",
     "section": "2.3.5",
     "levels": [
       1
@@ -1418,7 +1418,7 @@
   },
   {
     "id": "2.3.5.5",
-    "title": "(L1) Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled' (DC only)",
+    "title": "Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled' (DC only)",
     "section": "2.3.5",
     "levels": [
       1
@@ -1439,7 +1439,7 @@
   },
   {
     "id": "2.3.6.1",
-    "title": "(L1) Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'",
+    "title": "Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'",
     "section": "2.3.6",
     "levels": [
       1
@@ -1460,7 +1460,7 @@
   },
   {
     "id": "2.3.6.2",
-    "title": "(L1) Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'",
+    "title": "Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'",
     "section": "2.3.6",
     "levels": [
       1
@@ -1481,7 +1481,7 @@
   },
   {
     "id": "2.3.6.3",
-    "title": "(L1) Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'",
+    "title": "Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'",
     "section": "2.3.6",
     "levels": [
       1
@@ -1502,7 +1502,7 @@
   },
   {
     "id": "2.3.6.4",
-    "title": "(L1) Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'",
+    "title": "Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'",
     "section": "2.3.6",
     "levels": [
       1
@@ -1523,7 +1523,7 @@
   },
   {
     "id": "2.3.6.5",
-    "title": "(L1) Ensure 'Domain member: Maximum machine account password age' is set to '30 or fewer days, but not 0'",
+    "title": "Ensure 'Domain member: Maximum machine account password age' is set to '30 or fewer days, but not 0'",
     "section": "2.3.6",
     "levels": [
       1
@@ -1545,7 +1545,7 @@
   },
   {
     "id": "2.3.6.6",
-    "title": "(L1) Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'",
+    "title": "Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'",
     "section": "2.3.6",
     "levels": [
       1
@@ -1566,7 +1566,7 @@
   },
   {
     "id": "2.3.7.1",
-    "title": "(L1) Ensure 'Interactive logon: Do not display last user name' is set to 'Enabled'",
+    "title": "Ensure 'Interactive logon: Do not display last user name' is set to 'Enabled'",
     "section": "2.3.7",
     "levels": [
       1
@@ -1587,7 +1587,7 @@
   },
   {
     "id": "2.3.7.2",
-    "title": "(L1) Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'",
+    "title": "Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'",
     "section": "2.3.7",
     "levels": [
       1
@@ -1608,7 +1608,7 @@
   },
   {
     "id": "2.3.7.3",
-    "title": "(L1) Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'",
+    "title": "Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'",
     "section": "2.3.7",
     "levels": [
       1
@@ -1630,7 +1630,7 @@
   },
   {
     "id": "2.3.7.4",
-    "title": "(L1) Configure 'Interactive logon: Message text for users attempting to log on'",
+    "title": "Configure 'Interactive logon: Message text for users attempting to log on'",
     "section": "2.3.7",
     "levels": [
       1
@@ -1647,7 +1647,7 @@
   },
   {
     "id": "2.3.7.5",
-    "title": "(L1) Configure 'Interactive logon: Message title for users attempting to log on'",
+    "title": "Configure 'Interactive logon: Message title for users attempting to log on'",
     "section": "2.3.7",
     "levels": [
       1
@@ -1664,7 +1664,7 @@
   },
   {
     "id": "2.3.7.6",
-    "title": "(L2) Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)' (MS only)",
+    "title": "Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)' (MS only)",
     "section": "2.3.7",
     "levels": [
       2
@@ -1686,7 +1686,7 @@
   },
   {
     "id": "2.3.7.7",
-    "title": "(L1) Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'",
+    "title": "Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'",
     "section": "2.3.7",
     "levels": [
       1
@@ -1707,7 +1707,7 @@
   },
   {
     "id": "2.3.7.8",
-    "title": "(L1) Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled' (MS only)",
+    "title": "Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled' (MS only)",
     "section": "2.3.7",
     "levels": [
       1
@@ -1728,7 +1728,7 @@
   },
   {
     "id": "2.3.7.9",
-    "title": "(L1) Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher",
+    "title": "Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher",
     "section": "2.3.7",
     "levels": [
       1
@@ -1753,7 +1753,7 @@
   },
   {
     "id": "2.3.8.1",
-    "title": "(L1) Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'",
+    "title": "Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'",
     "section": "2.3.8",
     "levels": [
       1
@@ -1774,7 +1774,7 @@
   },
   {
     "id": "2.3.8.2",
-    "title": "(L1) Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'",
+    "title": "Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'",
     "section": "2.3.8",
     "levels": [
       1
@@ -1795,7 +1795,7 @@
   },
   {
     "id": "2.3.8.3",
-    "title": "(L1) Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled'",
+    "title": "Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled'",
     "section": "2.3.8",
     "levels": [
       1
@@ -1816,7 +1816,7 @@
   },
   {
     "id": "2.3.9.1",
-    "title": "(L1) Ensure 'Microsoft network server: Amount of idle time required before suspending session' is set to '15 or fewer minute(s)'",
+    "title": "Ensure 'Microsoft network server: Amount of idle time required before suspending session' is set to '15 or fewer minute(s)'",
     "section": "2.3.9",
     "levels": [
       1
@@ -1838,7 +1838,7 @@
   },
   {
     "id": "2.3.9.2",
-    "title": "(L1) Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'",
+    "title": "Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'",
     "section": "2.3.9",
     "levels": [
       1
@@ -1859,7 +1859,7 @@
   },
   {
     "id": "2.3.9.3",
-    "title": "(L1) Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'",
+    "title": "Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'",
     "section": "2.3.9",
     "levels": [
       1
@@ -1880,7 +1880,7 @@
   },
   {
     "id": "2.3.9.4",
-    "title": "(L1) Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'",
+    "title": "Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'",
     "section": "2.3.9",
     "levels": [
       1
@@ -1901,7 +1901,7 @@
   },
   {
     "id": "2.3.9.5",
-    "title": "(L1) Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher (MS only)",
+    "title": "Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher (MS only)",
     "section": "2.3.9",
     "levels": [
       1
@@ -1926,7 +1926,7 @@
   },
   {
     "id": "2.3.10.1",
-    "title": "(L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'",
+    "title": "Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'",
     "section": "2.3.10",
     "levels": [
       1
@@ -1947,7 +1947,7 @@
   },
   {
     "id": "2.3.10.2",
-    "title": "(L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only)",
+    "title": "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only)",
     "section": "2.3.10",
     "levels": [
       1
@@ -1968,7 +1968,7 @@
   },
   {
     "id": "2.3.10.3",
-    "title": "(L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled' (MS only)",
+    "title": "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled' (MS only)",
     "section": "2.3.10",
     "levels": [
       1
@@ -1989,7 +1989,7 @@
   },
   {
     "id": "2.3.10.4",
-    "title": "(L2) Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'",
+    "title": "Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'",
     "section": "2.3.10",
     "levels": [
       2
@@ -2010,7 +2010,7 @@
   },
   {
     "id": "2.3.10.5",
-    "title": "(L1) Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'",
+    "title": "Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'",
     "section": "2.3.10",
     "levels": [
       1
@@ -2031,7 +2031,7 @@
   },
   {
     "id": "2.3.10.6",
-    "title": "(L1) Ensure 'Network access: Named Pipes that can be accessed anonymously' is configured (DC only)",
+    "title": "Ensure 'Network access: Named Pipes that can be accessed anonymously' is configured (DC only)",
     "section": "2.3.10",
     "levels": [
       1
@@ -2056,7 +2056,7 @@
   },
   {
     "id": "2.3.10.7",
-    "title": "(L1) Ensure 'Network access: Named Pipes that can be accessed anonymously' is configured (MS only)",
+    "title": "Ensure 'Network access: Named Pipes that can be accessed anonymously' is configured (MS only)",
     "section": "2.3.10",
     "levels": [
       1
@@ -2077,7 +2077,7 @@
   },
   {
     "id": "2.3.10.8",
-    "title": "(L1) Ensure 'Network access: Remotely accessible registry paths' is configured",
+    "title": "Ensure 'Network access: Remotely accessible registry paths' is configured",
     "section": "2.3.10",
     "levels": [
       1
@@ -2102,7 +2102,7 @@
   },
   {
     "id": "2.3.10.9",
-    "title": "(L1) Ensure 'Network access: Remotely accessible registry paths and sub-paths' is configured",
+    "title": "Ensure 'Network access: Remotely accessible registry paths and sub-paths' is configured",
     "section": "2.3.10",
     "levels": [
       1
@@ -2135,7 +2135,7 @@
   },
   {
     "id": "2.3.10.10",
-    "title": "(L1) Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'",
+    "title": "Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'",
     "section": "2.3.10",
     "levels": [
       1
@@ -2156,7 +2156,7 @@
   },
   {
     "id": "2.3.10.11",
-    "title": "(L1) Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow' (MS only)",
+    "title": "Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow' (MS only)",
     "section": "2.3.10",
     "levels": [
       1
@@ -2177,7 +2177,7 @@
   },
   {
     "id": "2.3.10.12",
-    "title": "(L1) Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'",
+    "title": "Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'",
     "section": "2.3.10",
     "levels": [
       1
@@ -2198,7 +2198,7 @@
   },
   {
     "id": "2.3.10.13",
-    "title": "(L1) Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'",
+    "title": "Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'",
     "section": "2.3.10",
     "levels": [
       1
@@ -2219,7 +2219,7 @@
   },
   {
     "id": "2.3.11.1",
-    "title": "(L1) Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'",
+    "title": "Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2240,7 +2240,7 @@
   },
   {
     "id": "2.3.11.2",
-    "title": "(L1) Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'",
+    "title": "Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2261,7 +2261,7 @@
   },
   {
     "id": "2.3.11.3",
-    "title": "(L1) Ensure 'Network Security: Allow PKU2U authentication requests to this computer to use online identities' is set to 'Disabled'",
+    "title": "Ensure 'Network Security: Allow PKU2U authentication requests to this computer to use online identities' is set to 'Disabled'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2282,7 +2282,7 @@
   },
   {
     "id": "2.3.11.4",
-    "title": "(L1) Ensure 'Network security: Configure encryption types allowed for Kerberos' is set to 'AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'",
+    "title": "Ensure 'Network security: Configure encryption types allowed for Kerberos' is set to 'AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2303,7 +2303,7 @@
   },
   {
     "id": "2.3.11.5",
-    "title": "(L1) Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'",
+    "title": "Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2324,7 +2324,7 @@
   },
   {
     "id": "2.3.11.6",
-    "title": "(L1) Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'",
+    "title": "Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2345,7 +2345,7 @@
   },
   {
     "id": "2.3.11.7",
-    "title": "(L1) Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'",
+    "title": "Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2366,7 +2366,7 @@
   },
   {
     "id": "2.3.11.8",
-    "title": "(L1) Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher",
+    "title": "Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher",
     "section": "2.3.11",
     "levels": [
       1
@@ -2391,7 +2391,7 @@
   },
   {
     "id": "2.3.11.9",
-    "title": "(L1) Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption'",
+    "title": "Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2412,7 +2412,7 @@
   },
   {
     "id": "2.3.11.10",
-    "title": "(L1) Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) servers' is set to 'Require NTLMv2 session security, Require 128-bit encryption'",
+    "title": "Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) servers' is set to 'Require NTLMv2 session security, Require 128-bit encryption'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2433,7 +2433,7 @@
   },
   {
     "id": "2.3.11.11",
-    "title": "(L1) Ensure 'Network security: Restrict NTLM: Audit Incoming NTLM Traffic' is set to 'Enable auditing for all accounts'",
+    "title": "Ensure 'Network security: Restrict NTLM: Audit Incoming NTLM Traffic' is set to 'Enable auditing for all accounts'",
     "section": "2.3.11",
     "levels": [
       1
@@ -2454,7 +2454,7 @@
   },
   {
     "id": "2.3.11.12",
-    "title": "(L1) Ensure 'Network security: Restrict NTLM: Audit NTLM authentication in this domain' is set to 'Enable all' (DC only)",
+    "title": "Ensure 'Network security: Restrict NTLM: Audit NTLM authentication in this domain' is set to 'Enable all' (DC only)",
     "section": "2.3.11",
     "levels": [
       1
@@ -2475,7 +2475,7 @@
   },
   {
     "id": "2.3.11.13",
-    "title": "(L1) Ensure 'Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers' is set to 'Audit all' or higher",
+    "title": "Ensure 'Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers' is set to 'Audit all' or higher",
     "section": "2.3.11",
     "levels": [
       1
@@ -2500,7 +2500,7 @@
   },
   {
     "id": "2.3.13.1",
-    "title": "(L1) Ensure 'Shutdown: Allow system to be shut down without having to log on' is set to 'Disabled'",
+    "title": "Ensure 'Shutdown: Allow system to be shut down without having to log on' is set to 'Disabled'",
     "section": "2.3.13",
     "levels": [
       1
@@ -2521,7 +2521,7 @@
   },
   {
     "id": "2.3.15.1",
-    "title": "(L1) Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'",
+    "title": "Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'",
     "section": "2.3.15",
     "levels": [
       1
@@ -2542,7 +2542,7 @@
   },
   {
     "id": "2.3.15.2",
-    "title": "(L1) Ensure 'System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)' is set to 'Enabled'",
+    "title": "Ensure 'System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)' is set to 'Enabled'",
     "section": "2.3.15",
     "levels": [
       1
@@ -2563,7 +2563,7 @@
   },
   {
     "id": "2.3.17.1",
-    "title": "(L1) Ensure 'User Account Control: Admin Approval Mode for the Built-in Administrator account' is set to 'Enabled'",
+    "title": "Ensure 'User Account Control: Admin Approval Mode for the Built-in Administrator account' is set to 'Enabled'",
     "section": "2.3.17",
     "levels": [
       1
@@ -2584,7 +2584,7 @@
   },
   {
     "id": "2.3.17.2",
-    "title": "(L1) Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop' or higher",
+    "title": "Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop' or higher",
     "section": "2.3.17",
     "levels": [
       1
@@ -2606,7 +2606,7 @@
   },
   {
     "id": "2.3.17.3",
-    "title": "(L1) Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'",
+    "title": "Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'",
     "section": "2.3.17",
     "levels": [
       1
@@ -2627,7 +2627,7 @@
   },
   {
     "id": "2.3.17.4",
-    "title": "(L1) Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled'",
+    "title": "Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled'",
     "section": "2.3.17",
     "levels": [
       1
@@ -2648,7 +2648,7 @@
   },
   {
     "id": "2.3.17.5",
-    "title": "(L1) Ensure 'User Account Control: Only elevate UIAccess applications that are installed in secure locations' is set to 'Enabled'",
+    "title": "Ensure 'User Account Control: Only elevate UIAccess applications that are installed in secure locations' is set to 'Enabled'",
     "section": "2.3.17",
     "levels": [
       1
@@ -2669,7 +2669,7 @@
   },
   {
     "id": "2.3.17.6",
-    "title": "(L1) Ensure 'User Account Control: Run all administrators in Admin Approval Mode' is set to 'Enabled'",
+    "title": "Ensure 'User Account Control: Run all administrators in Admin Approval Mode' is set to 'Enabled'",
     "section": "2.3.17",
     "levels": [
       1
@@ -2690,7 +2690,7 @@
   },
   {
     "id": "2.3.17.7",
-    "title": "(L1) Ensure 'User Account Control: Switch to the secure desktop when prompting for elevation' is set to 'Enabled'",
+    "title": "Ensure 'User Account Control: Switch to the secure desktop when prompting for elevation' is set to 'Enabled'",
     "section": "2.3.17",
     "levels": [
       1
@@ -2711,7 +2711,7 @@
   },
   {
     "id": "2.3.17.8",
-    "title": "(L1) Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'",
+    "title": "Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'",
     "section": "2.3.17",
     "levels": [
       1
@@ -2732,7 +2732,7 @@
   },
   {
     "id": "5.1",
-    "title": "(L1) Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (DC only)",
+    "title": "Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (DC only)",
     "section": "5.1",
     "levels": [
       1
@@ -2753,7 +2753,7 @@
   },
   {
     "id": "5.2",
-    "title": "(L2) Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only)",
+    "title": "Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only)",
     "section": "5.2",
     "levels": [
       2
@@ -2774,7 +2774,7 @@
   },
   {
     "id": "9.1.1",
-    "title": "(L1) Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'",
+    "title": "Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'",
     "section": "9.1",
     "levels": [
       1
@@ -2794,7 +2794,7 @@
   },
   {
     "id": "9.1.2",
-    "title": "(L1) Ensure 'Windows Firewall: Domain: Inbound connections' is set to 'Block (default)'",
+    "title": "Ensure 'Windows Firewall: Domain: Inbound connections' is set to 'Block (default)'",
     "section": "9.1",
     "levels": [
       1
@@ -2814,7 +2814,7 @@
   },
   {
     "id": "9.1.3",
-    "title": "(L1) Ensure 'Windows Firewall: Domain: Settings: Display a notification' is set to 'No'",
+    "title": "Ensure 'Windows Firewall: Domain: Settings: Display a notification' is set to 'No'",
     "section": "9.1",
     "levels": [
       1
@@ -2835,7 +2835,7 @@
   },
   {
     "id": "9.1.4",
-    "title": "(L1) Ensure 'Windows Firewall: Domain: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\domainfw.log'",
+    "title": "Ensure 'Windows Firewall: Domain: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\domainfw.log'",
     "section": "9.1",
     "levels": [
       1
@@ -2856,7 +2856,7 @@
   },
   {
     "id": "9.1.5",
-    "title": "(L1) Ensure 'Windows Firewall: Domain: Logging: Size limit (KB)' is set to '16,384 KB or greater'",
+    "title": "Ensure 'Windows Firewall: Domain: Logging: Size limit (KB)' is set to '16,384 KB or greater'",
     "section": "9.1",
     "levels": [
       1
@@ -2877,7 +2877,7 @@
   },
   {
     "id": "9.1.6",
-    "title": "(L1) Ensure 'Windows Firewall: Domain: Logging: Log dropped packets' is set to 'Yes'",
+    "title": "Ensure 'Windows Firewall: Domain: Logging: Log dropped packets' is set to 'Yes'",
     "section": "9.1",
     "levels": [
       1
@@ -2898,7 +2898,7 @@
   },
   {
     "id": "9.1.7",
-    "title": "(L1) Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'",
+    "title": "Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'",
     "section": "9.1",
     "levels": [
       1
@@ -2919,7 +2919,7 @@
   },
   {
     "id": "9.2.1",
-    "title": "(L1) Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)'",
+    "title": "Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)'",
     "section": "9.2",
     "levels": [
       1
@@ -2939,7 +2939,7 @@
   },
   {
     "id": "9.2.2",
-    "title": "(L1) Ensure 'Windows Firewall: Private: Inbound connections' is set to 'Block (default)'",
+    "title": "Ensure 'Windows Firewall: Private: Inbound connections' is set to 'Block (default)'",
     "section": "9.2",
     "levels": [
       1
@@ -2959,7 +2959,7 @@
   },
   {
     "id": "9.2.3",
-    "title": "(L1) Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'",
+    "title": "Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'",
     "section": "9.2",
     "levels": [
       1
@@ -2980,7 +2980,7 @@
   },
   {
     "id": "9.2.4",
-    "title": "(L1) Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log'",
+    "title": "Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log'",
     "section": "9.2",
     "levels": [
       1
@@ -3001,7 +3001,7 @@
   },
   {
     "id": "9.2.5",
-    "title": "(L1) Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16,384 KB or greater'",
+    "title": "Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16,384 KB or greater'",
     "section": "9.2",
     "levels": [
       1
@@ -3022,7 +3022,7 @@
   },
   {
     "id": "9.2.6",
-    "title": "(L1) Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'",
+    "title": "Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'",
     "section": "9.2",
     "levels": [
       1
@@ -3043,7 +3043,7 @@
   },
   {
     "id": "9.2.7",
-    "title": "(L1) Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes'",
+    "title": "Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes'",
     "section": "9.2",
     "levels": [
       1
@@ -3064,7 +3064,7 @@
   },
   {
     "id": "9.3.1",
-    "title": "(L1) Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'",
+    "title": "Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'",
     "section": "9.3",
     "levels": [
       1
@@ -3084,7 +3084,7 @@
   },
   {
     "id": "9.3.2",
-    "title": "(L1) Ensure 'Windows Firewall: Public: Inbound connections' is set to 'Block (default)'",
+    "title": "Ensure 'Windows Firewall: Public: Inbound connections' is set to 'Block (default)'",
     "section": "9.3",
     "levels": [
       1
@@ -3104,7 +3104,7 @@
   },
   {
     "id": "9.3.3",
-    "title": "(L1) Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'No'",
+    "title": "Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'No'",
     "section": "9.3",
     "levels": [
       1
@@ -3125,7 +3125,7 @@
   },
   {
     "id": "9.3.4",
-    "title": "(L1) Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'",
+    "title": "Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'",
     "section": "9.3",
     "levels": [
       1
@@ -3146,7 +3146,7 @@
   },
   {
     "id": "9.3.5",
-    "title": "(L1) Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'",
+    "title": "Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'",
     "section": "9.3",
     "levels": [
       1
@@ -3167,7 +3167,7 @@
   },
   {
     "id": "9.3.6",
-    "title": "(L1) Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log'",
+    "title": "Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log'",
     "section": "9.3",
     "levels": [
       1
@@ -3188,7 +3188,7 @@
   },
   {
     "id": "9.3.7",
-    "title": "(L1) Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'",
+    "title": "Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'",
     "section": "9.3",
     "levels": [
       1
@@ -3209,7 +3209,7 @@
   },
   {
     "id": "9.3.8",
-    "title": "(L1) Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'",
+    "title": "Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'",
     "section": "9.3",
     "levels": [
       1
@@ -3230,7 +3230,7 @@
   },
   {
     "id": "9.3.9",
-    "title": "(L1) Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'",
+    "title": "Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'",
     "section": "9.3",
     "levels": [
       1
@@ -3251,7 +3251,7 @@
   },
   {
     "id": "17.1.1",
-    "title": "(L1) Ensure 'Audit Credential Validation' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit Credential Validation' is set to 'Success and Failure'",
     "section": "17.1",
     "levels": [
       1
@@ -3272,7 +3272,7 @@
   },
   {
     "id": "17.1.2",
-    "title": "(L1) Ensure 'Audit Kerberos Authentication Service' is set to 'Success and Failure' (DC Only)",
+    "title": "Ensure 'Audit Kerberos Authentication Service' is set to 'Success and Failure' (DC Only)",
     "section": "17.1",
     "levels": [
       1
@@ -3293,7 +3293,7 @@
   },
   {
     "id": "17.1.3",
-    "title": "(L1) Ensure 'Audit Kerberos Service Ticket Operations' is set to 'Success and Failure' (DC Only)",
+    "title": "Ensure 'Audit Kerberos Service Ticket Operations' is set to 'Success and Failure' (DC Only)",
     "section": "17.1",
     "levels": [
       1
@@ -3314,7 +3314,7 @@
   },
   {
     "id": "17.2.1",
-    "title": "(L1) Ensure 'Audit Application Group Management' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit Application Group Management' is set to 'Success and Failure'",
     "section": "17.2",
     "levels": [
       1
@@ -3335,7 +3335,7 @@
   },
   {
     "id": "17.2.2",
-    "title": "(L1) Ensure 'Audit Computer Account Management' is set to include 'Success' (DC only)",
+    "title": "Ensure 'Audit Computer Account Management' is set to include 'Success' (DC only)",
     "section": "17.2",
     "levels": [
       1
@@ -3356,7 +3356,7 @@
   },
   {
     "id": "17.2.3",
-    "title": "(L1) Ensure 'Audit Distribution Group Management' is set to include 'Success' (DC only)",
+    "title": "Ensure 'Audit Distribution Group Management' is set to include 'Success' (DC only)",
     "section": "17.2",
     "levels": [
       1
@@ -3377,7 +3377,7 @@
   },
   {
     "id": "17.2.4",
-    "title": "(L1) Ensure 'Audit Other Account Management Events' is set to include 'Success' (DC only)",
+    "title": "Ensure 'Audit Other Account Management Events' is set to include 'Success' (DC only)",
     "section": "17.2",
     "levels": [
       1
@@ -3398,7 +3398,7 @@
   },
   {
     "id": "17.2.5",
-    "title": "(L1) Ensure 'Audit Security Group Management' is set to include 'Success'",
+    "title": "Ensure 'Audit Security Group Management' is set to include 'Success'",
     "section": "17.2",
     "levels": [
       1
@@ -3419,7 +3419,7 @@
   },
   {
     "id": "17.2.6",
-    "title": "(L1) Ensure 'Audit User Account Management' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit User Account Management' is set to 'Success and Failure'",
     "section": "17.2",
     "levels": [
       1
@@ -3440,7 +3440,7 @@
   },
   {
     "id": "17.3.1",
-    "title": "(L1) Ensure 'Audit PNP Activity' is set to include 'Success'",
+    "title": "Ensure 'Audit PNP Activity' is set to include 'Success'",
     "section": "17.3",
     "levels": [
       1
@@ -3461,7 +3461,7 @@
   },
   {
     "id": "17.3.2",
-    "title": "(L1) Ensure 'Audit Process Creation' is set to include 'Success'",
+    "title": "Ensure 'Audit Process Creation' is set to include 'Success'",
     "section": "17.3",
     "levels": [
       1
@@ -3482,7 +3482,7 @@
   },
   {
     "id": "17.4.1",
-    "title": "(L1) Ensure 'Audit Directory Service Access' is set to include 'Failure' (DC only)",
+    "title": "Ensure 'Audit Directory Service Access' is set to include 'Failure' (DC only)",
     "section": "17.4",
     "levels": [
       1
@@ -3503,7 +3503,7 @@
   },
   {
     "id": "17.4.2",
-    "title": "(L1) Ensure 'Audit Directory Service Changes' is set to include 'Success' (DC only)",
+    "title": "Ensure 'Audit Directory Service Changes' is set to include 'Success' (DC only)",
     "section": "17.4",
     "levels": [
       1
@@ -3524,7 +3524,7 @@
   },
   {
     "id": "17.5.1",
-    "title": "(L1) Ensure 'Audit Account Lockout' is set to include 'Failure'",
+    "title": "Ensure 'Audit Account Lockout' is set to include 'Failure'",
     "section": "17.5",
     "levels": [
       1
@@ -3545,7 +3545,7 @@
   },
   {
     "id": "17.5.2",
-    "title": "(L1) Ensure 'Audit Group Membership' is set to include 'Success'",
+    "title": "Ensure 'Audit Group Membership' is set to include 'Success'",
     "section": "17.5",
     "levels": [
       1
@@ -3566,7 +3566,7 @@
   },
   {
     "id": "17.5.3",
-    "title": "(L1) Ensure 'Audit Logoff' is set to include 'Success'",
+    "title": "Ensure 'Audit Logoff' is set to include 'Success'",
     "section": "17.5",
     "levels": [
       1
@@ -3587,7 +3587,7 @@
   },
   {
     "id": "17.5.4",
-    "title": "(L1) Ensure 'Audit Logon' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit Logon' is set to 'Success and Failure'",
     "section": "17.5",
     "levels": [
       1
@@ -3608,7 +3608,7 @@
   },
   {
     "id": "17.5.5",
-    "title": "(L1) Ensure 'Audit Other Logon/Logoff Events' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit Other Logon/Logoff Events' is set to 'Success and Failure'",
     "section": "17.5",
     "levels": [
       1
@@ -3629,7 +3629,7 @@
   },
   {
     "id": "17.5.6",
-    "title": "(L1) Ensure 'Audit Special Logon' is set to include 'Success'",
+    "title": "Ensure 'Audit Special Logon' is set to include 'Success'",
     "section": "17.5",
     "levels": [
       1
@@ -3650,7 +3650,7 @@
   },
   {
     "id": "17.6.1",
-    "title": "(L1) Ensure 'Audit Detailed File Share' is set to include 'Failure'",
+    "title": "Ensure 'Audit Detailed File Share' is set to include 'Failure'",
     "section": "17.6",
     "levels": [
       1
@@ -3671,7 +3671,7 @@
   },
   {
     "id": "17.6.2",
-    "title": "(L1) Ensure 'Audit File Share' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit File Share' is set to 'Success and Failure'",
     "section": "17.6",
     "levels": [
       1
@@ -3692,7 +3692,7 @@
   },
   {
     "id": "17.6.3",
-    "title": "(L1) Ensure 'Audit Other Object Access Events' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit Other Object Access Events' is set to 'Success and Failure'",
     "section": "17.6",
     "levels": [
       1
@@ -3713,7 +3713,7 @@
   },
   {
     "id": "17.6.4",
-    "title": "(L1) Ensure 'Audit Removable Storage' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit Removable Storage' is set to 'Success and Failure'",
     "section": "17.6",
     "levels": [
       1
@@ -3734,7 +3734,7 @@
   },
   {
     "id": "17.7.1",
-    "title": "(L1) Ensure 'Audit Audit Policy Change' is set to include 'Success'",
+    "title": "Ensure 'Audit Audit Policy Change' is set to include 'Success'",
     "section": "17.7",
     "levels": [
       1
@@ -3755,7 +3755,7 @@
   },
   {
     "id": "17.7.2",
-    "title": "(L1) Ensure 'Audit Authentication Policy Change' is set to include 'Success'",
+    "title": "Ensure 'Audit Authentication Policy Change' is set to include 'Success'",
     "section": "17.7",
     "levels": [
       1
@@ -3776,7 +3776,7 @@
   },
   {
     "id": "17.7.3",
-    "title": "(L1) Ensure 'Audit Authorization Policy Change' is set to include 'Success'",
+    "title": "Ensure 'Audit Authorization Policy Change' is set to include 'Success'",
     "section": "17.7",
     "levels": [
       1
@@ -3797,7 +3797,7 @@
   },
   {
     "id": "17.7.4",
-    "title": "(L1) Ensure 'Audit MPSSVC Rule-Level Policy Change' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit MPSSVC Rule-Level Policy Change' is set to 'Success and Failure'",
     "section": "17.7",
     "levels": [
       1
@@ -3818,7 +3818,7 @@
   },
   {
     "id": "17.7.5",
-    "title": "(L1) Ensure 'Audit Other Policy Change Events' is set to include 'Failure'",
+    "title": "Ensure 'Audit Other Policy Change Events' is set to include 'Failure'",
     "section": "17.7",
     "levels": [
       1
@@ -3839,7 +3839,7 @@
   },
   {
     "id": "17.8.1",
-    "title": "(L1) Ensure 'Audit Sensitive Privilege Use' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit Sensitive Privilege Use' is set to 'Success and Failure'",
     "section": "17.8",
     "levels": [
       1
@@ -3860,7 +3860,7 @@
   },
   {
     "id": "17.9.1",
-    "title": "(L1) Ensure 'Audit IPsec Driver' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit IPsec Driver' is set to 'Success and Failure'",
     "section": "17.9",
     "levels": [
       1
@@ -3881,7 +3881,7 @@
   },
   {
     "id": "17.9.2",
-    "title": "(L1) Ensure 'Audit Other System Events' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit Other System Events' is set to 'Success and Failure'",
     "section": "17.9",
     "levels": [
       1
@@ -3902,7 +3902,7 @@
   },
   {
     "id": "17.9.3",
-    "title": "(L1) Ensure 'Audit Security State Change' is set to include 'Success'",
+    "title": "Ensure 'Audit Security State Change' is set to include 'Success'",
     "section": "17.9",
     "levels": [
       1
@@ -3923,7 +3923,7 @@
   },
   {
     "id": "17.9.4",
-    "title": "(L1) Ensure 'Audit Security System Extension' is set to include 'Success'",
+    "title": "Ensure 'Audit Security System Extension' is set to include 'Success'",
     "section": "17.9",
     "levels": [
       1
@@ -3944,7 +3944,7 @@
   },
   {
     "id": "17.9.5",
-    "title": "(L1) Ensure 'Audit System Integrity' is set to 'Success and Failure'",
+    "title": "Ensure 'Audit System Integrity' is set to 'Success and Failure'",
     "section": "17.9",
     "levels": [
       1
@@ -3965,7 +3965,7 @@
   },
   {
     "id": "18.1.1.1",
-    "title": "(L1) Ensure 'Prevent enabling lock screen camera' is set to 'Enabled'",
+    "title": "Ensure 'Prevent enabling lock screen camera' is set to 'Enabled'",
     "section": "18.1.1",
     "levels": [
       1
@@ -3986,7 +3986,7 @@
   },
   {
     "id": "18.1.1.2",
-    "title": "(L1) Ensure 'Prevent enabling lock screen slide show' is set to 'Enabled'",
+    "title": "Ensure 'Prevent enabling lock screen slide show' is set to 'Enabled'",
     "section": "18.1.1",
     "levels": [
       1
@@ -4007,7 +4007,7 @@
   },
   {
     "id": "18.1.2.2",
-    "title": "(L1) Ensure 'Allow users to enable online speech recognition services' is set to 'Disabled'",
+    "title": "Ensure 'Allow users to enable online speech recognition services' is set to 'Disabled'",
     "section": "18.1.2",
     "levels": [
       1
@@ -4028,7 +4028,7 @@
   },
   {
     "id": "18.1.3",
-    "title": "(L2) Ensure 'Allow Online Tips' is set to 'Disabled'",
+    "title": "Ensure 'Allow Online Tips' is set to 'Disabled'",
     "section": "18.1",
     "levels": [
       2
@@ -4049,7 +4049,7 @@
   },
   {
     "id": "18.3.1",
-    "title": "(L1) Ensure LAPS AdmPwd GPO Extension / CSE is installed (MS only)",
+    "title": "Ensure LAPS AdmPwd GPO Extension / CSE is installed (MS only)",
     "section": "18.3",
     "levels": [
       1
@@ -4070,7 +4070,7 @@
   },
   {
     "id": "18.3.2",
-    "title": "(L1) Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled' (MS only)",
+    "title": "Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled' (MS only)",
     "section": "18.3",
     "levels": [
       1
@@ -4091,7 +4091,7 @@
   },
   {
     "id": "18.3.3",
-    "title": "(L1) Ensure 'Enable Local Admin Password Management' is set to 'Enabled' (MS only)",
+    "title": "Ensure 'Enable Local Admin Password Management' is set to 'Enabled' (MS only)",
     "section": "18.3",
     "levels": [
       1
@@ -4112,7 +4112,7 @@
   },
   {
     "id": "18.3.4",
-    "title": "(L1) Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters' (MS only)",
+    "title": "Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters' (MS only)",
     "section": "18.3",
     "levels": [
       1
@@ -4133,7 +4133,7 @@
   },
   {
     "id": "18.3.5",
-    "title": "(L1) Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more' (MS only)",
+    "title": "Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more' (MS only)",
     "section": "18.3",
     "levels": [
       1
@@ -4155,7 +4155,7 @@
   },
   {
     "id": "18.3.6",
-    "title": "(L1) Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer' (MS only)",
+    "title": "Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer' (MS only)",
     "section": "18.3",
     "levels": [
       1
@@ -4177,7 +4177,7 @@
   },
   {
     "id": "18.4.1",
-    "title": "(L1) Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled' (MS only)",
+    "title": "Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled' (MS only)",
     "section": "18.4",
     "levels": [
       1
@@ -4198,7 +4198,7 @@
   },
   {
     "id": "18.4.2",
-    "title": "(L1) Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended)'",
+    "title": "Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended)'",
     "section": "18.4",
     "levels": [
       1
@@ -4219,7 +4219,7 @@
   },
   {
     "id": "18.4.3",
-    "title": "(L1) Ensure 'Configure SMB v1 server' is set to 'Disabled'",
+    "title": "Ensure 'Configure SMB v1 server' is set to 'Disabled'",
     "section": "18.4",
     "levels": [
       1
@@ -4240,7 +4240,7 @@
   },
   {
     "id": "18.4.4",
-    "title": "(L1) Ensure 'Enable Certificate Padding' is set to 'Enabled'",
+    "title": "Ensure 'Enable Certificate Padding' is set to 'Enabled'",
     "section": "18.4",
     "levels": [
       1
@@ -4261,7 +4261,7 @@
   },
   {
     "id": "18.4.5",
-    "title": "(L1) Ensure 'Enable Structured Exception Handling Overwrite Protection (SEHOP)' is set to 'Enabled'",
+    "title": "Ensure 'Enable Structured Exception Handling Overwrite Protection (SEHOP)' is set to 'Enabled'",
     "section": "18.4",
     "levels": [
       1
@@ -4282,7 +4282,7 @@
   },
   {
     "id": "18.4.6",
-    "title": "(L1) Ensure 'LSA Protection' is set to 'Enabled'",
+    "title": "Ensure 'LSA Protection' is set to 'Enabled'",
     "section": "18.4",
     "levels": [
       1
@@ -4303,7 +4303,7 @@
   },
   {
     "id": "18.4.7",
-    "title": "(L1) Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'",
+    "title": "Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'",
     "section": "18.4",
     "levels": [
       1
@@ -4324,7 +4324,7 @@
   },
   {
     "id": "18.4.8",
-    "title": "(L1) Ensure 'WDigest Authentication' is set to 'Disabled'",
+    "title": "Ensure 'WDigest Authentication' is set to 'Disabled'",
     "section": "18.4",
     "levels": [
       1
@@ -4345,7 +4345,7 @@
   },
   {
     "id": "18.5.1",
-    "title": "(L1) Ensure 'MSS: (AutoAdminLogon) Enable Automatic Logon' is set to 'Disabled'",
+    "title": "Ensure 'MSS: (AutoAdminLogon) Enable Automatic Logon' is set to 'Disabled'",
     "section": "18.5",
     "levels": [
       1
@@ -4366,7 +4366,7 @@
   },
   {
     "id": "18.5.2",
-    "title": "(L1) Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level' is set to 'Enabled: Highest protection, source routing is completely disabled'",
+    "title": "Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level' is set to 'Enabled: Highest protection, source routing is completely disabled'",
     "section": "18.5",
     "levels": [
       1
@@ -4387,7 +4387,7 @@
   },
   {
     "id": "18.5.3",
-    "title": "(L1) Ensure 'MSS: (DisableIPSourceRouting) IP source routing protection level' is set to 'Enabled: Highest protection, source routing is completely disabled'",
+    "title": "Ensure 'MSS: (DisableIPSourceRouting) IP source routing protection level' is set to 'Enabled: Highest protection, source routing is completely disabled'",
     "section": "18.5",
     "levels": [
       1
@@ -4408,7 +4408,7 @@
   },
   {
     "id": "18.5.4",
-    "title": "(L1) Ensure 'MSS: (EnableICMPRedirect) Allow ICMP redirects to override OSPF generated routes' is set to 'Disabled'",
+    "title": "Ensure 'MSS: (EnableICMPRedirect) Allow ICMP redirects to override OSPF generated routes' is set to 'Disabled'",
     "section": "18.5",
     "levels": [
       1
@@ -4429,7 +4429,7 @@
   },
   {
     "id": "18.5.5",
-    "title": "(L2) Ensure 'MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes'",
+    "title": "Ensure 'MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes'",
     "section": "18.5",
     "levels": [
       2
@@ -4450,7 +4450,7 @@
   },
   {
     "id": "18.5.6",
-    "title": "(L1) Ensure 'MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers' is set to 'Enabled'",
+    "title": "Ensure 'MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers' is set to 'Enabled'",
     "section": "18.5",
     "levels": [
       1
@@ -4471,7 +4471,7 @@
   },
   {
     "id": "18.5.7",
-    "title": "(L2) Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses' is set to 'Disabled'",
+    "title": "Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses' is set to 'Disabled'",
     "section": "18.5",
     "levels": [
       2
@@ -4492,7 +4492,7 @@
   },
   {
     "id": "18.5.8",
-    "title": "(L1) Ensure 'MSS: (SafeDllSearchMode) Enable Safe DLL search mode' is set to 'Enabled'",
+    "title": "Ensure 'MSS: (SafeDllSearchMode) Enable Safe DLL search mode' is set to 'Enabled'",
     "section": "18.5",
     "levels": [
       1
@@ -4513,7 +4513,7 @@
   },
   {
     "id": "18.5.9",
-    "title": "(L1) Ensure 'MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires' is set to 'Enabled: 5 or fewer seconds'",
+    "title": "Ensure 'MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires' is set to 'Enabled: 5 or fewer seconds'",
     "section": "18.5",
     "levels": [
       1
@@ -4534,7 +4534,7 @@
   },
   {
     "id": "18.5.10",
-    "title": "(L2) Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'",
+    "title": "Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'",
     "section": "18.5",
     "levels": [
       2
@@ -4555,7 +4555,7 @@
   },
   {
     "id": "18.5.11",
-    "title": "(L2) Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'",
+    "title": "Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'",
     "section": "18.5",
     "levels": [
       2
@@ -4576,7 +4576,7 @@
   },
   {
     "id": "18.5.12",
-    "title": "(L1) Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'",
+    "title": "Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'",
     "section": "18.5",
     "levels": [
       1
@@ -4597,7 +4597,7 @@
   },
   {
     "id": "18.6.4.1",
-    "title": "(L1) Ensure 'Configure multicast DNS (mDNS) protocol' is set to 'Disabled'",
+    "title": "Ensure 'Configure multicast DNS (mDNS) protocol' is set to 'Disabled'",
     "section": "18.6.4",
     "levels": [
       1
@@ -4618,7 +4618,7 @@
   },
   {
     "id": "18.6.4.2",
-    "title": "(L1) Ensure 'Configure NetBIOS settings' is set to 'Enabled: Disable NetBIOS name resolution on public networks'",
+    "title": "Ensure 'Configure NetBIOS settings' is set to 'Enabled: Disable NetBIOS name resolution on public networks'",
     "section": "18.6.4",
     "levels": [
       1
@@ -4643,7 +4643,7 @@
   },
   {
     "id": "18.6.4.3",
-    "title": "(L2) Ensure 'Turn off default IPv6 DNS Servers' is set to 'Enabled'",
+    "title": "Ensure 'Turn off default IPv6 DNS Servers' is set to 'Enabled'",
     "section": "18.6.4",
     "levels": [
       2
@@ -4664,7 +4664,7 @@
   },
   {
     "id": "18.6.4.4",
-    "title": "(L1) Ensure 'Turn off multicast name resolution' is set to 'Enabled'",
+    "title": "Ensure 'Turn off multicast name resolution' is set to 'Enabled'",
     "section": "18.6.4",
     "levels": [
       1
@@ -4685,7 +4685,7 @@
   },
   {
     "id": "18.6.5.1",
-    "title": "(L2) Ensure 'Enable Font Providers' is set to 'Disabled'",
+    "title": "Ensure 'Enable Font Providers' is set to 'Disabled'",
     "section": "18.6.5",
     "levels": [
       2
@@ -4706,7 +4706,7 @@
   },
   {
     "id": "18.6.8.1",
-    "title": "(L1) Ensure 'Enable insecure guest logons' is set to 'Disabled'",
+    "title": "Ensure 'Enable insecure guest logons' is set to 'Disabled'",
     "section": "18.6.8",
     "levels": [
       1
@@ -4727,7 +4727,7 @@
   },
   {
     "id": "18.6.9.1",
-    "title": "(L2) Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'",
+    "title": "Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'",
     "section": "18.6.9",
     "levels": [
       2
@@ -4748,7 +4748,7 @@
   },
   {
     "id": "18.6.9.2",
-    "title": "(L2) Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'",
+    "title": "Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'",
     "section": "18.6.9",
     "levels": [
       2
@@ -4769,7 +4769,7 @@
   },
   {
     "id": "18.6.10.2",
-    "title": "(L2) Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'",
     "section": "18.6.10",
     "levels": [
       2
@@ -4790,7 +4790,7 @@
   },
   {
     "id": "18.6.11.2",
-    "title": "(L1) Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'",
+    "title": "Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'",
     "section": "18.6.11",
     "levels": [
       1
@@ -4811,7 +4811,7 @@
   },
   {
     "id": "18.6.11.3",
-    "title": "(L1) Ensure 'Prohibit use of Internet Connection Sharing on your DNS domain network' is set to 'Enabled'",
+    "title": "Ensure 'Prohibit use of Internet Connection Sharing on your DNS domain network' is set to 'Enabled'",
     "section": "18.6.11",
     "levels": [
       1
@@ -4832,7 +4832,7 @@
   },
   {
     "id": "18.6.11.4",
-    "title": "(L1) Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled'",
+    "title": "Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled'",
     "section": "18.6.11",
     "levels": [
       1
@@ -4853,7 +4853,7 @@
   },
   {
     "id": "18.6.14.1",
-    "title": "(L1) Ensure 'Hardened UNC Paths' is set to 'Enabled, with \"Require Mutual Authentication\", \"Require Integrity\", and “Require Privacy” set for all NETLOGON and SYSVOL shares'",
+    "title": "Ensure 'Hardened UNC Paths' is set to 'Enabled, with \"Require Mutual Authentication\", \"Require Integrity\", and “Require Privacy” set for all NETLOGON and SYSVOL shares'",
     "section": "18.6.14",
     "levels": [
       1
@@ -4874,7 +4874,7 @@
   },
   {
     "id": "18.6.19.2.1",
-    "title": "(L2) Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')",
+    "title": "Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')",
     "section": "18.6.19.2",
     "levels": [
       2
@@ -4895,7 +4895,7 @@
   },
   {
     "id": "18.6.20.1",
-    "title": "(L2) Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'",
+    "title": "Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'",
     "section": "18.6.20",
     "levels": [
       2
@@ -4916,7 +4916,7 @@
   },
   {
     "id": "18.6.20.2",
-    "title": "(L2) Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'",
+    "title": "Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'",
     "section": "18.6.20",
     "levels": [
       2
@@ -4937,7 +4937,7 @@
   },
   {
     "id": "18.6.21.1",
-    "title": "(L1) Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled: 1 = Minimize simultaneous connections'",
+    "title": "Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled: 1 = Minimize simultaneous connections'",
     "section": "18.6.21",
     "levels": [
       1
@@ -4958,7 +4958,7 @@
   },
   {
     "id": "18.6.21.2",
-    "title": "(L2) Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled' (MS only)",
+    "title": "Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled' (MS only)",
     "section": "18.6.21",
     "levels": [
       2
@@ -4979,7 +4979,7 @@
   },
   {
     "id": "18.7.1",
-    "title": "(L1) Ensure 'Allow Print Spooler to accept client connections' is set to 'Disabled'",
+    "title": "Ensure 'Allow Print Spooler to accept client connections' is set to 'Disabled'",
     "section": "18.7",
     "levels": [
       1
@@ -5000,7 +5000,7 @@
   },
   {
     "id": "18.7.2",
-    "title": "(L1) Ensure 'Configure Redirection Guard' is set to 'Enabled: Redirection Guard Enabled'",
+    "title": "Ensure 'Configure Redirection Guard' is set to 'Enabled: Redirection Guard Enabled'",
     "section": "18.7",
     "levels": [
       1
@@ -5021,7 +5021,7 @@
   },
   {
     "id": "18.7.3",
-    "title": "(L1) Ensure 'Configure RPC connection settings: Protocol to use for outgoing RPC connections' is set to 'Enabled: RPC over TCP'",
+    "title": "Ensure 'Configure RPC connection settings: Protocol to use for outgoing RPC connections' is set to 'Enabled: RPC over TCP'",
     "section": "18.7",
     "levels": [
       1
@@ -5042,7 +5042,7 @@
   },
   {
     "id": "18.7.4",
-    "title": "(L1) Ensure 'Configure RPC connection settings: Use authentication for outgoing RPC connections' is set to 'Enabled: Default'",
+    "title": "Ensure 'Configure RPC connection settings: Use authentication for outgoing RPC connections' is set to 'Enabled: Default'",
     "section": "18.7",
     "levels": [
       1
@@ -5063,7 +5063,7 @@
   },
   {
     "id": "18.7.5",
-    "title": "(L1) Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'",
+    "title": "Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'",
     "section": "18.7",
     "levels": [
       1
@@ -5084,7 +5084,7 @@
   },
   {
     "id": "18.7.6",
-    "title": "(L1) Ensure 'Configure RPC listener settings: Authentication protocol to use for incoming RPC connections:' is set to 'Enabled: Negotiate' or higher",
+    "title": "Ensure 'Configure RPC listener settings: Authentication protocol to use for incoming RPC connections:' is set to 'Enabled: Negotiate' or higher",
     "section": "18.7",
     "levels": [
       1
@@ -5109,7 +5109,7 @@
   },
   {
     "id": "18.7.7",
-    "title": "(L1) Ensure 'Configure RPC over TCP port' is set to 'Enabled: 0'",
+    "title": "Ensure 'Configure RPC over TCP port' is set to 'Enabled: 0'",
     "section": "18.7",
     "levels": [
       1
@@ -5130,7 +5130,7 @@
   },
   {
     "id": "18.7.8",
-    "title": "(L1) Ensure 'Configure RPC packet level privacy setting for incoming connections' is set to 'Enabled'",
+    "title": "Ensure 'Configure RPC packet level privacy setting for incoming connections' is set to 'Enabled'",
     "section": "18.7",
     "levels": [
       1
@@ -5151,7 +5151,7 @@
   },
   {
     "id": "18.7.9",
-    "title": "(L1) Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'",
+    "title": "Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'",
     "section": "18.7",
     "levels": [
       1
@@ -5172,7 +5172,7 @@
   },
   {
     "id": "18.7.10",
-    "title": "(L1) Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'",
+    "title": "Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'",
     "section": "18.7",
     "levels": [
       1
@@ -5193,7 +5193,7 @@
   },
   {
     "id": "18.7.11",
-    "title": "(L1) Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'",
+    "title": "Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'",
     "section": "18.7",
     "levels": [
       1
@@ -5214,7 +5214,7 @@
   },
   {
     "id": "18.7.12",
-    "title": "(L1) Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'",
+    "title": "Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'",
     "section": "18.7",
     "levels": [
       1
@@ -5235,7 +5235,7 @@
   },
   {
     "id": "18.8.1.1",
-    "title": "(L2) Ensure 'Turn off notifications network usage' is set to 'Enabled'",
+    "title": "Ensure 'Turn off notifications network usage' is set to 'Enabled'",
     "section": "18.8.1",
     "levels": [
       2
@@ -5256,7 +5256,7 @@
   },
   {
     "id": "18.9.3.1",
-    "title": "(L1) Ensure 'Include command line in process creation events' is set to 'Enabled'",
+    "title": "Ensure 'Include command line in process creation events' is set to 'Enabled'",
     "section": "18.9.3",
     "levels": [
       1
@@ -5277,7 +5277,7 @@
   },
   {
     "id": "18.9.4.1",
-    "title": "(L1) Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'",
+    "title": "Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'",
     "section": "18.9.4",
     "levels": [
       1
@@ -5298,7 +5298,7 @@
   },
   {
     "id": "18.9.4.2",
-    "title": "(L1) Ensure 'Remote host allows delegation of non- exportable credentials' is set to 'Enabled'",
+    "title": "Ensure 'Remote host allows delegation of non- exportable credentials' is set to 'Enabled'",
     "section": "18.9.4",
     "levels": [
       1
@@ -5470,7 +5470,7 @@
   },
   {
     "id": "18.9.7.2",
-    "title": "(L1) Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'",
+    "title": "Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'",
     "section": "18.9.7",
     "levels": [
       1
@@ -5491,7 +5491,7 @@
   },
   {
     "id": "18.9.13.1",
-    "title": "(L1) Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'",
+    "title": "Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'",
     "section": "18.9.13",
     "levels": [
       1
@@ -5512,7 +5512,7 @@
   },
   {
     "id": "18.9.19.2",
-    "title": "(L1) Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'",
+    "title": "Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'",
     "section": "18.9.19",
     "levels": [
       1
@@ -5533,7 +5533,7 @@
   },
   {
     "id": "18.9.19.3",
-    "title": "(L1) Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'",
+    "title": "Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'",
     "section": "18.9.19",
     "levels": [
       1
@@ -5554,7 +5554,7 @@
   },
   {
     "id": "18.9.19.4",
-    "title": "(L1) Ensure 'Configure security policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'",
+    "title": "Ensure 'Configure security policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'",
     "section": "18.9.19",
     "levels": [
       1
@@ -5575,7 +5575,7 @@
   },
   {
     "id": "18.9.19.5",
-    "title": "(L1) Ensure 'Configure security policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'",
+    "title": "Ensure 'Configure security policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'",
     "section": "18.9.19",
     "levels": [
       1
@@ -5596,7 +5596,7 @@
   },
   {
     "id": "18.9.19.6",
-    "title": "(L1) Ensure 'Continue experiences on this device' is set to 'Disabled'",
+    "title": "Ensure 'Continue experiences on this device' is set to 'Disabled'",
     "section": "18.9.19",
     "levels": [
       1
@@ -5617,7 +5617,7 @@
   },
   {
     "id": "18.9.19.7",
-    "title": "(L1) Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'",
+    "title": "Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'",
     "section": "18.9.19",
     "levels": [
       1
@@ -5638,7 +5638,7 @@
   },
   {
     "id": "18.9.20.1.1",
-    "title": "(L1) Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'",
+    "title": "Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       1
@@ -5655,7 +5655,7 @@
   },
   {
     "id": "18.9.20.1.2",
-    "title": "(L2) Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'",
+    "title": "Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5672,7 +5672,7 @@
   },
   {
     "id": "18.9.20.1.3",
-    "title": "(L2) Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'",
+    "title": "Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5689,7 +5689,7 @@
   },
   {
     "id": "18.9.20.1.4",
-    "title": "(L2) Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5706,7 +5706,7 @@
   },
   {
     "id": "18.9.20.1.5",
-    "title": "(L1) Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       1
@@ -5723,7 +5723,7 @@
   },
   {
     "id": "18.9.20.1.6",
-    "title": "(L2) Ensure 'Turn off printing over HTTP' is set to 'Enabled'",
+    "title": "Ensure 'Turn off printing over HTTP' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5740,7 +5740,7 @@
   },
   {
     "id": "18.9.20.1.7",
-    "title": "(L2) Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5757,7 +5757,7 @@
   },
   {
     "id": "18.9.20.1.8",
-    "title": "(L2) Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5774,7 +5774,7 @@
   },
   {
     "id": "18.9.20.1.9",
-    "title": "(L2) Ensure 'Turn off the \"Order Prints\" picture task' is set to 'Enabled'",
+    "title": "Ensure 'Turn off the \"Order Prints\" picture task' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5791,7 +5791,7 @@
   },
   {
     "id": "18.9.20.1.10",
-    "title": "(L2) Ensure 'Turn off the \"Publish to Web\" task for files and folders' is set to 'Enabled'",
+    "title": "Ensure 'Turn off the \"Publish to Web\" task for files and folders' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5808,7 +5808,7 @@
   },
   {
     "id": "18.9.20.1.11",
-    "title": "(L2) Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'",
+    "title": "Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5829,7 +5829,7 @@
   },
   {
     "id": "18.9.20.1.12",
-    "title": "(L2) Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5850,7 +5850,7 @@
   },
   {
     "id": "18.9.20.1.13",
-    "title": "(L2) Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'",
     "section": "18.9.20.1",
     "levels": [
       2
@@ -5871,7 +5871,7 @@
   },
   {
     "id": "18.9.23.1",
-    "title": "(L2) Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'",
+    "title": "Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'",
     "section": "18.9.23",
     "levels": [
       2
@@ -5892,7 +5892,7 @@
   },
   {
     "id": "18.9.27.1",
-    "title": "(L2) Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'",
+    "title": "Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'",
     "section": "18.9.27",
     "levels": [
       2
@@ -5913,7 +5913,7 @@
   },
   {
     "id": "18.9.28.1",
-    "title": "(L1) Ensure 'Block user from showing account details on sign-in' is set to 'Enabled'",
+    "title": "Ensure 'Block user from showing account details on sign-in' is set to 'Enabled'",
     "section": "18.9.28",
     "levels": [
       1
@@ -5934,7 +5934,7 @@
   },
   {
     "id": "18.9.28.2",
-    "title": "(L1) Ensure 'Do not display network selection UI' is set to 'Enabled'",
+    "title": "Ensure 'Do not display network selection UI' is set to 'Enabled'",
     "section": "18.9.28",
     "levels": [
       1
@@ -5955,7 +5955,7 @@
   },
   {
     "id": "18.9.28.3",
-    "title": "(L1) Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'",
+    "title": "Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'",
     "section": "18.9.28",
     "levels": [
       1
@@ -5976,7 +5976,7 @@
   },
   {
     "id": "18.9.28.4",
-    "title": "(L1) Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (MS only)",
+    "title": "Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (MS only)",
     "section": "18.9.28",
     "levels": [
       1
@@ -5997,7 +5997,7 @@
   },
   {
     "id": "18.9.28.5",
-    "title": "(L1) Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'",
+    "title": "Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'",
     "section": "18.9.28",
     "levels": [
       1
@@ -6018,7 +6018,7 @@
   },
   {
     "id": "18.9.28.6",
-    "title": "(L1) Ensure 'Turn off picture password sign-in' is set to 'Enabled'",
+    "title": "Ensure 'Turn off picture password sign-in' is set to 'Enabled'",
     "section": "18.9.28",
     "levels": [
       1
@@ -6039,7 +6039,7 @@
   },
   {
     "id": "18.9.28.7",
-    "title": "(L1) Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'",
+    "title": "Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'",
     "section": "18.9.28",
     "levels": [
       1
@@ -6060,7 +6060,7 @@
   },
   {
     "id": "18.9.33.6.1",
-    "title": "(L2) Ensure 'Allow network connectivity during connected-standby (on battery)' is set to 'Disabled'",
+    "title": "Ensure 'Allow network connectivity during connected-standby (on battery)' is set to 'Disabled'",
     "section": "18.9.33.6",
     "levels": [
       2
@@ -6077,7 +6077,7 @@
   },
   {
     "id": "18.9.33.6.2",
-    "title": "(L2) Ensure 'Allow network connectivity during connected-standby (plugged in)' is set to 'Disabled'",
+    "title": "Ensure 'Allow network connectivity during connected-standby (plugged in)' is set to 'Disabled'",
     "section": "18.9.33.6",
     "levels": [
       2
@@ -6094,7 +6094,7 @@
   },
   {
     "id": "18.9.33.6.3",
-    "title": "(L1) Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'",
+    "title": "Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'",
     "section": "18.9.33.6",
     "levels": [
       1
@@ -6115,7 +6115,7 @@
   },
   {
     "id": "18.9.33.6.4",
-    "title": "(L1) Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'",
+    "title": "Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'",
     "section": "18.9.33.6",
     "levels": [
       1
@@ -6136,7 +6136,7 @@
   },
   {
     "id": "18.9.35.1",
-    "title": "(L1) Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'",
+    "title": "Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'",
     "section": "18.9.35",
     "levels": [
       1
@@ -6157,7 +6157,7 @@
   },
   {
     "id": "18.9.35.2",
-    "title": "(L1) Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'",
+    "title": "Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'",
     "section": "18.9.35",
     "levels": [
       1
@@ -6178,7 +6178,7 @@
   },
   {
     "id": "18.9.36.1",
-    "title": "(L1) Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled' (MS only)",
+    "title": "Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled' (MS only)",
     "section": "18.9.36",
     "levels": [
       1
@@ -6199,7 +6199,7 @@
   },
   {
     "id": "18.9.36.2",
-    "title": "(L2) Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (MS only)",
+    "title": "Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (MS only)",
     "section": "18.9.36",
     "levels": [
       2
@@ -6220,7 +6220,7 @@
   },
   {
     "id": "18.9.47.5.1",
-    "title": "(L2) Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'",
+    "title": "Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'",
     "section": "18.9.47.5",
     "levels": [
       2
@@ -6237,7 +6237,7 @@
   },
   {
     "id": "18.9.47.11.1",
-    "title": "(L2) Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'",
+    "title": "Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'",
     "section": "18.9.47.11",
     "levels": [
       2
@@ -6254,7 +6254,7 @@
   },
   {
     "id": "18.9.49.1",
-    "title": "(L2) Ensure 'Turn off the advertising ID' is set to 'Enabled'",
+    "title": "Ensure 'Turn off the advertising ID' is set to 'Enabled'",
     "section": "18.9.49",
     "levels": [
       2
@@ -6275,7 +6275,7 @@
   },
   {
     "id": "18.9.51.1.1",
-    "title": "(L1) Ensure 'Enable Windows NTP Client' is set to 'Enabled'",
+    "title": "Ensure 'Enable Windows NTP Client' is set to 'Enabled'",
     "section": "18.9.51.1",
     "levels": [
       1
@@ -6296,7 +6296,7 @@
   },
   {
     "id": "18.9.51.1.2",
-    "title": "(L1) Ensure 'Enable Windows NTP Server' is set to 'Disabled' (MS only)",
+    "title": "Ensure 'Enable Windows NTP Server' is set to 'Disabled' (MS only)",
     "section": "18.9.51.1",
     "levels": [
       1
@@ -6317,7 +6317,7 @@
   },
   {
     "id": "18.10.4.1",
-    "title": "(L2) Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'",
+    "title": "Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'",
     "section": "18.10.4",
     "levels": [
       2
@@ -6338,7 +6338,7 @@
   },
   {
     "id": "18.10.6.1",
-    "title": "(L1) Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'",
+    "title": "Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'",
     "section": "18.10.6",
     "levels": [
       1
@@ -6359,7 +6359,7 @@
   },
   {
     "id": "18.10.8.1",
-    "title": "(L1) Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'",
+    "title": "Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'",
     "section": "18.10.8",
     "levels": [
       1
@@ -6380,7 +6380,7 @@
   },
   {
     "id": "18.10.8.2",
-    "title": "(L1) Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'",
+    "title": "Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'",
     "section": "18.10.8",
     "levels": [
       1
@@ -6401,7 +6401,7 @@
   },
   {
     "id": "18.10.8.3",
-    "title": "(L1) Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'",
+    "title": "Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'",
     "section": "18.10.8",
     "levels": [
       1
@@ -6422,7 +6422,7 @@
   },
   {
     "id": "18.10.9.1.1",
-    "title": "(L1) Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'",
+    "title": "Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'",
     "section": "18.10.9.1",
     "levels": [
       1
@@ -6439,7 +6439,7 @@
   },
   {
     "id": "18.10.11.1",
-    "title": "(L2) Ensure 'Allow Use of Camera' is set to 'Disabled'",
+    "title": "Ensure 'Allow Use of Camera' is set to 'Disabled'",
     "section": "18.10.11",
     "levels": [
       2
@@ -6460,7 +6460,7 @@
   },
   {
     "id": "18.10.13.1",
-    "title": "(L1) Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'",
+    "title": "Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'",
     "section": "18.10.13",
     "levels": [
       1
@@ -6481,7 +6481,7 @@
   },
   {
     "id": "18.10.13.2",
-    "title": "(L1) Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'",
     "section": "18.10.13",
     "levels": [
       1
@@ -6502,7 +6502,7 @@
   },
   {
     "id": "18.10.14.1",
-    "title": "(L1) Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'",
+    "title": "Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'",
     "section": "18.10.14",
     "levels": [
       1
@@ -6527,7 +6527,7 @@
   },
   {
     "id": "18.10.15.1",
-    "title": "(L1) Ensure 'Do not display the password reveal button' is set to 'Enabled'",
+    "title": "Ensure 'Do not display the password reveal button' is set to 'Enabled'",
     "section": "18.10.15",
     "levels": [
       1
@@ -6548,7 +6548,7 @@
   },
   {
     "id": "18.10.15.2",
-    "title": "(L1) Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'",
+    "title": "Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'",
     "section": "18.10.15",
     "levels": [
       1
@@ -6569,7 +6569,7 @@
   },
   {
     "id": "18.10.16.1",
-    "title": "(L1) Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'",
+    "title": "Ensure 'Allow Diagnostic Data' is set to 'Enabled: Diagnostic data off (not recommended)' or 'Enabled: Send required diagnostic data'",
     "section": "18.10.16",
     "levels": [
       1
@@ -6594,7 +6594,7 @@
   },
   {
     "id": "18.10.16.2",
-    "title": "(L2) Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'",
+    "title": "Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'",
     "section": "18.10.16",
     "levels": [
       2
@@ -6615,7 +6615,7 @@
   },
   {
     "id": "18.10.16.3",
-    "title": "(L1) Ensure 'Disable OneSettings Downloads' is set to 'Enabled'",
+    "title": "Ensure 'Disable OneSettings Downloads' is set to 'Enabled'",
     "section": "18.10.16",
     "levels": [
       1
@@ -6636,7 +6636,7 @@
   },
   {
     "id": "18.10.16.4",
-    "title": "(L1) Ensure 'Do not show feedback notifications' is set to 'Enabled'",
+    "title": "Ensure 'Do not show feedback notifications' is set to 'Enabled'",
     "section": "18.10.16",
     "levels": [
       1
@@ -6657,7 +6657,7 @@
   },
   {
     "id": "18.10.16.5",
-    "title": "(L1) Ensure 'Enable OneSettings Auditing' is set to 'Enabled'",
+    "title": "Ensure 'Enable OneSettings Auditing' is set to 'Enabled'",
     "section": "18.10.16",
     "levels": [
       1
@@ -6678,7 +6678,7 @@
   },
   {
     "id": "18.10.16.6",
-    "title": "(L1) Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'",
+    "title": "Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'",
     "section": "18.10.16",
     "levels": [
       1
@@ -6699,7 +6699,7 @@
   },
   {
     "id": "18.10.16.7",
-    "title": "(L1) Ensure 'Limit Dump Collection' is set to 'Enabled'",
+    "title": "Ensure 'Limit Dump Collection' is set to 'Enabled'",
     "section": "18.10.16",
     "levels": [
       1
@@ -6720,7 +6720,7 @@
   },
   {
     "id": "18.10.26.1.1",
-    "title": "(L1) Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
+    "title": "Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
     "section": "18.10.26.1",
     "levels": [
       1
@@ -6741,7 +6741,7 @@
   },
   {
     "id": "18.10.26.1.2",
-    "title": "(L1) Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'",
+    "title": "Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'",
     "section": "18.10.26.1",
     "levels": [
       1
@@ -6761,7 +6761,7 @@
   },
   {
     "id": "18.10.26.2.1",
-    "title": "(L1) Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
+    "title": "Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
     "section": "18.10.26.2",
     "levels": [
       1
@@ -6782,7 +6782,7 @@
   },
   {
     "id": "18.10.26.2.2",
-    "title": "(L1) Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'",
+    "title": "Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'",
     "section": "18.10.26.2",
     "levels": [
       1
@@ -6802,7 +6802,7 @@
   },
   {
     "id": "18.10.26.3.1",
-    "title": "(L1) Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
+    "title": "Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
     "section": "18.10.26.3",
     "levels": [
       1
@@ -6823,7 +6823,7 @@
   },
   {
     "id": "18.10.26.3.2",
-    "title": "(L1) Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'",
+    "title": "Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'",
     "section": "18.10.26.3",
     "levels": [
       1
@@ -6843,7 +6843,7 @@
   },
   {
     "id": "18.10.26.4.1",
-    "title": "(L1) Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
+    "title": "Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
     "section": "18.10.26.4",
     "levels": [
       1
@@ -6864,7 +6864,7 @@
   },
   {
     "id": "18.10.26.4.2",
-    "title": "(L1) Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'",
+    "title": "Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'",
     "section": "18.10.26.4",
     "levels": [
       1
@@ -6884,7 +6884,7 @@
   },
   {
     "id": "18.10.29.2",
-    "title": "(L1) Ensure 'Do not apply the Mark of the Web tag to files copied from insecure sources' is set to 'Disabled'",
+    "title": "Ensure 'Do not apply the Mark of the Web tag to files copied from insecure sources' is set to 'Disabled'",
     "section": "18.10.29",
     "levels": [
       1
@@ -6905,7 +6905,7 @@
   },
   {
     "id": "18.10.29.3",
-    "title": "(L1) Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'",
+    "title": "Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'",
     "section": "18.10.29",
     "levels": [
       1
@@ -6926,7 +6926,7 @@
   },
   {
     "id": "18.10.29.4",
-    "title": "(L1) Ensure 'Turn off heap termination on corruption' is set to 'Disabled'",
+    "title": "Ensure 'Turn off heap termination on corruption' is set to 'Disabled'",
     "section": "18.10.29",
     "levels": [
       1
@@ -6947,7 +6947,7 @@
   },
   {
     "id": "18.10.29.5",
-    "title": "(L1) Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'",
+    "title": "Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'",
     "section": "18.10.29",
     "levels": [
       1
@@ -6968,7 +6968,7 @@
   },
   {
     "id": "18.10.37.1",
-    "title": "(L2) Ensure 'Turn off location' is set to 'Enabled'",
+    "title": "Ensure 'Turn off location' is set to 'Enabled'",
     "section": "18.10.37",
     "levels": [
       2
@@ -6989,7 +6989,7 @@
   },
   {
     "id": "18.10.41.1",
-    "title": "(L2) Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'",
+    "title": "Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'",
     "section": "18.10.41",
     "levels": [
       2
@@ -7010,7 +7010,7 @@
   },
   {
     "id": "18.10.42.1",
-    "title": "(L1) Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'",
+    "title": "Ensure 'Block all consumer Microsoft account user authentication' is set to 'Enabled'",
     "section": "18.10.42",
     "levels": [
       1
@@ -7031,7 +7031,7 @@
   },
   {
     "id": "18.10.43.4.1",
-    "title": "(L1) Ensure 'Enable EDR in block mode' is set to 'Enabled'",
+    "title": "Ensure 'Enable EDR in block mode' is set to 'Enabled'",
     "section": "18.10.43.4",
     "levels": [
       1
@@ -7048,7 +7048,7 @@
   },
   {
     "id": "18.10.43.5.1",
-    "title": "(L1) Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'",
+    "title": "Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'",
     "section": "18.10.43.5",
     "levels": [
       1
@@ -7065,7 +7065,7 @@
   },
   {
     "id": "18.10.43.5.2",
-    "title": "(L2) Ensure 'Join Microsoft MAPS' is set to 'Disabled'",
+    "title": "Ensure 'Join Microsoft MAPS' is set to 'Disabled'",
     "section": "18.10.43.5",
     "levels": [
       2
@@ -7082,7 +7082,7 @@
   },
   {
     "id": "18.10.43.6.1.1",
-    "title": "(L1) Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'",
+    "title": "Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'",
     "section": "18.10.43.6.1",
     "levels": [
       1
@@ -7099,7 +7099,7 @@
   },
   {
     "id": "18.10.43.6.1.2",
-    "title": "(L1) Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured",
+    "title": "Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured",
     "section": "18.10.43.6.1",
     "levels": [
       1
@@ -7116,7 +7116,7 @@
   },
   {
     "id": "18.10.43.6.3.1",
-    "title": "(L1) Ensure 'Prevent users and apps from accessing dangerous websites' is set to 'Enabled: Block'",
+    "title": "Ensure 'Prevent users and apps from accessing dangerous websites' is set to 'Enabled: Block'",
     "section": "18.10.43.6.3",
     "levels": [
       1
@@ -7137,7 +7137,7 @@
   },
   {
     "id": "18.10.43.7.1",
-    "title": "(L1) Ensure 'Enable file hash computation feature' is set to 'Enabled'",
+    "title": "Ensure 'Enable file hash computation feature' is set to 'Enabled'",
     "section": "18.10.43.7",
     "levels": [
       1
@@ -7154,7 +7154,7 @@
   },
   {
     "id": "18.10.43.8.1",
-    "title": "(L2) Ensure 'Convert warn verdict to block' is set to 'Enabled'",
+    "title": "Ensure 'Convert warn verdict to block' is set to 'Enabled'",
     "section": "18.10.43.8",
     "levels": [
       2
@@ -7171,7 +7171,7 @@
   },
   {
     "id": "18.10.43.10.1",
-    "title": "(L1) Ensure 'Configure real-time protection and Security Intelligence Updates during OOBE' is set to 'Enabled'",
+    "title": "Ensure 'Configure real-time protection and Security Intelligence Updates during OOBE' is set to 'Enabled'",
     "section": "18.10.43.10",
     "levels": [
       1
@@ -7188,7 +7188,7 @@
   },
   {
     "id": "18.10.43.10.2",
-    "title": "(L1) Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'",
+    "title": "Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'",
     "section": "18.10.43.10",
     "levels": [
       1
@@ -7205,7 +7205,7 @@
   },
   {
     "id": "18.10.43.10.3",
-    "title": "(L1) Ensure 'Turn off real-time protection' is set to 'Disabled'",
+    "title": "Ensure 'Turn off real-time protection' is set to 'Disabled'",
     "section": "18.10.43.10",
     "levels": [
       1
@@ -7222,7 +7222,7 @@
   },
   {
     "id": "18.10.43.10.4",
-    "title": "(L1) Ensure 'Turn on behavior monitoring' is set to 'Enabled'",
+    "title": "Ensure 'Turn on behavior monitoring' is set to 'Enabled'",
     "section": "18.10.43.10",
     "levels": [
       1
@@ -7239,7 +7239,7 @@
   },
   {
     "id": "18.10.43.10.5",
-    "title": "(L1) Ensure 'Turn on script scanning' is set to 'Enabled'",
+    "title": "Ensure 'Turn on script scanning' is set to 'Enabled'",
     "section": "18.10.43.10",
     "levels": [
       1
@@ -7256,7 +7256,7 @@
   },
   {
     "id": "18.10.43.11.1.1.1",
-    "title": "(L2) Ensure 'Configure Brute-Force Protection aggressiveness' is set to 'Enabled: Medium' or higher",
+    "title": "Ensure 'Configure Brute-Force Protection aggressiveness' is set to 'Enabled: Medium' or higher",
     "section": "18.10.43.11.1.1",
     "levels": [
       2
@@ -7273,7 +7273,7 @@
   },
   {
     "id": "18.10.43.11.1.1.2",
-    "title": "(L1) Ensure 'Configure Remote Encryption Protection Mode' is set to 'Enabled: Audit' or higher",
+    "title": "Ensure 'Configure Remote Encryption Protection Mode' is set to 'Enabled: Audit' or higher",
     "section": "18.10.43.11.1.1",
     "levels": [
       1
@@ -7298,7 +7298,7 @@
   },
   {
     "id": "18.10.43.11.1.2.1",
-    "title": "(L2) Ensure 'Configure how aggressively Remote Encryption Protection blocks threats' is set to 'Enabled: Medium' or higher",
+    "title": "Ensure 'Configure how aggressively Remote Encryption Protection blocks threats' is set to 'Enabled: Medium' or higher",
     "section": "18.10.43.11.1.2",
     "levels": [
       2
@@ -7315,7 +7315,7 @@
   },
   {
     "id": "18.10.43.12.1",
-    "title": "(L2) Ensure 'Configure Watson events' is set to 'Disabled'",
+    "title": "Ensure 'Configure Watson events' is set to 'Disabled'",
     "section": "18.10.43.12",
     "levels": [
       2
@@ -7332,7 +7332,7 @@
   },
   {
     "id": "18.10.43.13.1",
-    "title": "(L1) Ensure 'Scan excluded files and directories during quick scans' is set to 'Enabled: 1'",
+    "title": "Ensure 'Scan excluded files and directories during quick scans' is set to 'Enabled: 1'",
     "section": "18.10.43.13",
     "levels": [
       1
@@ -7349,7 +7349,7 @@
   },
   {
     "id": "18.10.43.13.2",
-    "title": "(L1) Ensure 'Scan packed executables' is set to 'Enabled'",
+    "title": "Ensure 'Scan packed executables' is set to 'Enabled'",
     "section": "18.10.43.13",
     "levels": [
       1
@@ -7366,7 +7366,7 @@
   },
   {
     "id": "18.10.43.13.3",
-    "title": "(L1) Ensure 'Scan removable drives' is set to 'Enabled'",
+    "title": "Ensure 'Scan removable drives' is set to 'Enabled'",
     "section": "18.10.43.13",
     "levels": [
       1
@@ -7383,7 +7383,7 @@
   },
   {
     "id": "18.10.43.13.4",
-    "title": "(L1) Ensure 'Trigger a quick scan after X days without any scans' is set to 'Enabled: 7'",
+    "title": "Ensure 'Trigger a quick scan after X days without any scans' is set to 'Enabled: 7'",
     "section": "18.10.43.13",
     "levels": [
       1
@@ -7400,7 +7400,7 @@
   },
   {
     "id": "18.10.43.13.5",
-    "title": "(L1) Ensure 'Turn on e-mail scanning' is set to 'Enabled'",
+    "title": "Ensure 'Turn on e-mail scanning' is set to 'Enabled'",
     "section": "18.10.43.13",
     "levels": [
       1
@@ -7417,7 +7417,7 @@
   },
   {
     "id": "18.10.43.16",
-    "title": "(L1) Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block'",
+    "title": "Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block'",
     "section": "18.10.43",
     "levels": [
       1
@@ -7438,7 +7438,7 @@
   },
   {
     "id": "18.10.43.17",
-    "title": "(L1) Ensure 'Control whether exclusions are visible to local users' is set to 'Enabled'",
+    "title": "Ensure 'Control whether exclusions are visible to local users' is set to 'Enabled'",
     "section": "18.10.43",
     "levels": [
       1
@@ -7459,7 +7459,7 @@
   },
   {
     "id": "18.10.51.1",
-    "title": "(L1) Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'",
+    "title": "Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'",
     "section": "18.10.51",
     "levels": [
       1
@@ -7480,7 +7480,7 @@
   },
   {
     "id": "18.10.56.1",
-    "title": "(L2) Ensure 'Turn off Push To Install service' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Push To Install service' is set to 'Enabled'",
     "section": "18.10.56",
     "levels": [
       2
@@ -7501,7 +7501,7 @@
   },
   {
     "id": "18.10.57.2.2",
-    "title": "(L1) Ensure 'Do not allow passwords to be saved' is set to 'Enabled'",
+    "title": "Ensure 'Do not allow passwords to be saved' is set to 'Enabled'",
     "section": "18.10.57.2",
     "levels": [
       1
@@ -7522,7 +7522,7 @@
   },
   {
     "id": "18.10.57.3.2.1",
-    "title": "(L2) Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled'",
+    "title": "Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled'",
     "section": "18.10.57.3.2",
     "levels": [
       2
@@ -7543,7 +7543,7 @@
   },
   {
     "id": "18.10.57.3.3.1",
-    "title": "(L2) Ensure 'Do not allow COM port redirection' is set to 'Enabled'",
+    "title": "Ensure 'Do not allow COM port redirection' is set to 'Enabled'",
     "section": "18.10.57.3.3",
     "levels": [
       2
@@ -7564,7 +7564,7 @@
   },
   {
     "id": "18.10.57.3.3.2",
-    "title": "(L1) Ensure 'Do not allow drive redirection' is set to 'Enabled'",
+    "title": "Ensure 'Do not allow drive redirection' is set to 'Enabled'",
     "section": "18.10.57.3.3",
     "levels": [
       1
@@ -7585,7 +7585,7 @@
   },
   {
     "id": "18.10.57.3.3.3",
-    "title": "(L2) Ensure 'Do not allow LPT port redirection' is set to 'Enabled'",
+    "title": "Ensure 'Do not allow LPT port redirection' is set to 'Enabled'",
     "section": "18.10.57.3.3",
     "levels": [
       2
@@ -7606,7 +7606,7 @@
   },
   {
     "id": "18.10.57.3.3.4",
-    "title": "(L2) Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'",
+    "title": "Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'",
     "section": "18.10.57.3.3",
     "levels": [
       2
@@ -7627,7 +7627,7 @@
   },
   {
     "id": "18.10.57.3.9.1",
-    "title": "(L1) Ensure 'Always prompt for password upon connection' is set to 'Enabled'",
+    "title": "Ensure 'Always prompt for password upon connection' is set to 'Enabled'",
     "section": "18.10.57.3.9",
     "levels": [
       1
@@ -7648,7 +7648,7 @@
   },
   {
     "id": "18.10.57.3.9.2",
-    "title": "(L1) Ensure 'Require secure RPC communication' is set to 'Enabled'",
+    "title": "Ensure 'Require secure RPC communication' is set to 'Enabled'",
     "section": "18.10.57.3.9",
     "levels": [
       1
@@ -7669,7 +7669,7 @@
   },
   {
     "id": "18.10.57.3.9.3",
-    "title": "(L1) Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'",
+    "title": "Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'",
     "section": "18.10.57.3.9",
     "levels": [
       1
@@ -7690,7 +7690,7 @@
   },
   {
     "id": "18.10.57.3.9.4",
-    "title": "(L1) Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'",
+    "title": "Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'",
     "section": "18.10.57.3.9",
     "levels": [
       1
@@ -7711,7 +7711,7 @@
   },
   {
     "id": "18.10.57.3.9.5",
-    "title": "(L1) Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'",
+    "title": "Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'",
     "section": "18.10.57.3.9",
     "levels": [
       1
@@ -7732,7 +7732,7 @@
   },
   {
     "id": "18.10.57.3.10.1",
-    "title": "(L2) Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'",
+    "title": "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'",
     "section": "18.10.57.3.10",
     "levels": [
       2
@@ -7754,7 +7754,7 @@
   },
   {
     "id": "18.10.57.3.10.2",
-    "title": "(L2) Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'",
+    "title": "Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'",
     "section": "18.10.57.3.10",
     "levels": [
       2
@@ -7775,7 +7775,7 @@
   },
   {
     "id": "18.10.57.3.11.1",
-    "title": "(L1) Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'",
+    "title": "Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'",
     "section": "18.10.57.3.11",
     "levels": [
       1
@@ -7792,7 +7792,7 @@
   },
   {
     "id": "18.10.57.3.11.2",
-    "title": "(L1) Ensure 'Do not use temporary folders per session' is set to 'Disabled'",
+    "title": "Ensure 'Do not use temporary folders per session' is set to 'Disabled'",
     "section": "18.10.57.3.11",
     "levels": [
       1
@@ -7809,7 +7809,7 @@
   },
   {
     "id": "18.10.58.1",
-    "title": "(L1) Ensure 'Prevent downloading of enclosures' is set to 'Enabled'",
+    "title": "Ensure 'Prevent downloading of enclosures' is set to 'Enabled'",
     "section": "18.10.58",
     "levels": [
       1
@@ -7830,7 +7830,7 @@
   },
   {
     "id": "18.10.58.2",
-    "title": "(L1) Ensure 'Turn on Basic feed authentication over HTTP' is set to 'Disabled'",
+    "title": "Ensure 'Turn on Basic feed authentication over HTTP' is set to 'Disabled'",
     "section": "18.10.58",
     "levels": [
       1
@@ -7847,7 +7847,7 @@
   },
   {
     "id": "18.10.59.2",
-    "title": "(L2) Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'",
+    "title": "Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'",
     "section": "18.10.59",
     "levels": [
       2
@@ -7868,7 +7868,7 @@
   },
   {
     "id": "18.10.59.3",
-    "title": "(L1) Ensure 'Allow indexing of encrypted files' is set to 'Disabled'",
+    "title": "Ensure 'Allow indexing of encrypted files' is set to 'Disabled'",
     "section": "18.10.59",
     "levels": [
       1
@@ -7889,7 +7889,7 @@
   },
   {
     "id": "18.10.59.4",
-    "title": "(L2) Ensure 'Allow search highlights' is set to 'Disabled'",
+    "title": "Ensure 'Allow search highlights' is set to 'Disabled'",
     "section": "18.10.59",
     "levels": [
       2
@@ -7910,7 +7910,7 @@
   },
   {
     "id": "18.10.63.1",
-    "title": "(L2) Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'",
+    "title": "Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'",
     "section": "18.10.63",
     "levels": [
       2
@@ -7931,7 +7931,7 @@
   },
   {
     "id": "18.10.76.2.1",
-    "title": "(L1) Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'",
+    "title": "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'",
     "section": "18.10.76.2",
     "levels": [
       1
@@ -7948,7 +7948,7 @@
   },
   {
     "id": "18.10.80.1",
-    "title": "(L2) Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'",
+    "title": "Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'",
     "section": "18.10.80",
     "levels": [
       2
@@ -7969,7 +7969,7 @@
   },
   {
     "id": "18.10.80.2",
-    "title": "(L1) Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Enabled: Disabled'",
+    "title": "Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Enabled: Disabled'",
     "section": "18.10.80",
     "levels": [
       1
@@ -7994,7 +7994,7 @@
   },
   {
     "id": "18.10.81.1",
-    "title": "(L1) Ensure 'Allow user control over installs' is set to 'Disabled'",
+    "title": "Ensure 'Allow user control over installs' is set to 'Disabled'",
     "section": "18.10.81",
     "levels": [
       1
@@ -8015,7 +8015,7 @@
   },
   {
     "id": "18.10.81.2",
-    "title": "(L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'",
+    "title": "Ensure 'Always install with elevated privileges' is set to 'Disabled'",
     "section": "18.10.81",
     "levels": [
       1
@@ -8036,7 +8036,7 @@
   },
   {
     "id": "18.10.81.3",
-    "title": "(L2) Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'",
+    "title": "Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'",
     "section": "18.10.81",
     "levels": [
       2
@@ -8057,7 +8057,7 @@
   },
   {
     "id": "18.10.82.1",
-    "title": "(L1) Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'",
+    "title": "Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'",
     "section": "18.10.82",
     "levels": [
       1
@@ -8078,7 +8078,7 @@
   },
   {
     "id": "18.10.87.1",
-    "title": "(L2) Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'",
+    "title": "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'",
     "section": "18.10.87",
     "levels": [
       2
@@ -8099,7 +8099,7 @@
   },
   {
     "id": "18.10.87.2",
-    "title": "(L2) Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'",
+    "title": "Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'",
     "section": "18.10.87",
     "levels": [
       2
@@ -8120,7 +8120,7 @@
   },
   {
     "id": "18.10.89.1.1",
-    "title": "(L1) Ensure 'Allow Basic authentication' is set to 'Disabled'",
+    "title": "Ensure 'Allow Basic authentication' is set to 'Disabled'",
     "section": "18.10.89.1",
     "levels": [
       1
@@ -8137,7 +8137,7 @@
   },
   {
     "id": "18.10.89.1.2",
-    "title": "(L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled'",
+    "title": "Ensure 'Allow unencrypted traffic' is set to 'Disabled'",
     "section": "18.10.89.1",
     "levels": [
       1
@@ -8154,7 +8154,7 @@
   },
   {
     "id": "18.10.89.1.3",
-    "title": "(L1) Ensure 'Disallow Digest authentication' is set to 'Enabled'",
+    "title": "Ensure 'Disallow Digest authentication' is set to 'Enabled'",
     "section": "18.10.89.1",
     "levels": [
       1
@@ -8171,7 +8171,7 @@
   },
   {
     "id": "18.10.89.2.1",
-    "title": "(L1) Ensure 'Allow Basic authentication' is set to 'Disabled'",
+    "title": "Ensure 'Allow Basic authentication' is set to 'Disabled'",
     "section": "18.10.89.2",
     "levels": [
       1
@@ -8188,7 +8188,7 @@
   },
   {
     "id": "18.10.89.2.2",
-    "title": "(L2) Ensure 'Allow remote server management through WinRM' is set to 'Disabled'",
+    "title": "Ensure 'Allow remote server management through WinRM' is set to 'Disabled'",
     "section": "18.10.89.2",
     "levels": [
       2
@@ -8205,7 +8205,7 @@
   },
   {
     "id": "18.10.89.2.3",
-    "title": "(L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled'",
+    "title": "Ensure 'Allow unencrypted traffic' is set to 'Disabled'",
     "section": "18.10.89.2",
     "levels": [
       1
@@ -8222,7 +8222,7 @@
   },
   {
     "id": "18.10.89.2.4",
-    "title": "(L1) Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'",
+    "title": "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'",
     "section": "18.10.89.2",
     "levels": [
       1
@@ -8239,7 +8239,7 @@
   },
   {
     "id": "18.10.90.1",
-    "title": "(L2) Ensure 'Allow Remote Shell Access' is set to 'Disabled'",
+    "title": "Ensure 'Allow Remote Shell Access' is set to 'Disabled'",
     "section": "18.10.90",
     "levels": [
       2
@@ -8260,7 +8260,7 @@
   },
   {
     "id": "18.10.92.2.1",
-    "title": "(L1) Ensure 'Prevent users from modifying settings' is set to 'Enabled'",
+    "title": "Ensure 'Prevent users from modifying settings' is set to 'Enabled'",
     "section": "18.10.92.2",
     "levels": [
       1
@@ -8281,7 +8281,7 @@
   },
   {
     "id": "18.10.93.1.1",
-    "title": "(L1) Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'",
+    "title": "Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'",
     "section": "18.10.93.1",
     "levels": [
       1
@@ -8302,7 +8302,7 @@
   },
   {
     "id": "18.10.93.2.1",
-    "title": "(L1) Ensure 'Configure Automatic Updates' is set to 'Enabled'",
+    "title": "Ensure 'Configure Automatic Updates' is set to 'Enabled'",
     "section": "18.10.93.2",
     "levels": [
       1
@@ -8323,7 +8323,7 @@
   },
   {
     "id": "18.10.93.2.2",
-    "title": "(L1) Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'",
+    "title": "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'",
     "section": "18.10.93.2",
     "levels": [
       1
@@ -8344,7 +8344,7 @@
   },
   {
     "id": "18.10.93.4.1",
-    "title": "(L1) Ensure 'Manage preview builds' is set to 'Disabled'",
+    "title": "Ensure 'Manage preview builds' is set to 'Disabled'",
     "section": "18.10.93.4",
     "levels": [
       1
@@ -8361,7 +8361,7 @@
   },
   {
     "id": "18.10.93.4.2",
-    "title": "(L1) Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'",
+    "title": "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'",
     "section": "18.10.93.4",
     "levels": [
       1
@@ -8378,7 +8378,7 @@
   },
   {
     "id": "18.10.93.4.3",
-    "title": "(L1) Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'",
+    "title": "Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'",
     "section": "18.10.93.4",
     "levels": [
       1
@@ -8395,7 +8395,7 @@
   },
   {
     "id": "19.5.1.1",
-    "title": "(L1) Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'",
+    "title": "Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'",
     "section": "19.5.1",
     "levels": [
       1
@@ -8412,7 +8412,7 @@
   },
   {
     "id": "19.6.6.1.1",
-    "title": "(L2) Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'",
     "section": "19.6.6.1",
     "levels": [
       2
@@ -8429,7 +8429,7 @@
   },
   {
     "id": "19.7.5.1",
-    "title": "(L1) Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'",
+    "title": "Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'",
     "section": "19.7.5",
     "levels": [
       1
@@ -8446,7 +8446,7 @@
   },
   {
     "id": "19.7.5.2",
-    "title": "(L1) Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'",
+    "title": "Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'",
     "section": "19.7.5",
     "levels": [
       1
@@ -8463,7 +8463,7 @@
   },
   {
     "id": "19.7.8.1",
-    "title": "(L1) Ensure 'Configure Windows spotlight on lock screen' is set to 'Disabled'",
+    "title": "Ensure 'Configure Windows spotlight on lock screen' is set to 'Disabled'",
     "section": "19.7.8",
     "levels": [
       1
@@ -8480,7 +8480,7 @@
   },
   {
     "id": "19.7.8.2",
-    "title": "(L1) Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'",
+    "title": "Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'",
     "section": "19.7.8",
     "levels": [
       1
@@ -8497,7 +8497,7 @@
   },
   {
     "id": "19.7.8.3",
-    "title": "(L2) Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'",
+    "title": "Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'",
     "section": "19.7.8",
     "levels": [
       2
@@ -8514,7 +8514,7 @@
   },
   {
     "id": "19.7.8.4",
-    "title": "(L2) Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'",
+    "title": "Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'",
     "section": "19.7.8",
     "levels": [
       2
@@ -8531,7 +8531,7 @@
   },
   {
     "id": "19.7.8.5",
-    "title": "(L1) Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'",
+    "title": "Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'",
     "section": "19.7.8",
     "levels": [
       1
@@ -8548,7 +8548,7 @@
   },
   {
     "id": "19.7.26.1",
-    "title": "(L1) Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'",
+    "title": "Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'",
     "section": "19.7.26",
     "levels": [
       1
@@ -8565,7 +8565,7 @@
   },
   {
     "id": "19.7.44.1",
-    "title": "(L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'",
+    "title": "Ensure 'Always install with elevated privileges' is set to 'Disabled'",
     "section": "19.7.44",
     "levels": [
       1
@@ -8582,7 +8582,7 @@
   },
   {
     "id": "19.7.46.2.1",
-    "title": "(L2) Ensure 'Prevent Codec Download' is set to 'Enabled'",
+    "title": "Ensure 'Prevent Codec Download' is set to 'Enabled'",
     "section": "19.7.46.2",
     "levels": [
       2

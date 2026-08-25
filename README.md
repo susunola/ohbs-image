@@ -1021,7 +1021,15 @@ accepted the associated cloud cost and change-control policy.
 - [x] Sharing guard (`[image].share_org_units` is rejected with a warning — the API accepts account IDs only; use `share_accounts`)
 - [x] Rule-set versioning (`ohbs-image list --versions`)
 - [x] Vendor image refresh detection (`ohbs-image check-source`)
-- [ ] SLSA L2: fully reproducible builds (pinned build environment)
+- [x] Config tooling (`config validate` / `diff` / `get` / `explain` / `migrate` / `schema`)
+- [x] Layered configuration (`config merge` + repeatable `--overlay` deep-merge; tables recurse, lists/scalars replace)
+- [x] Report evidence index (`report list` / `report show` / `report diff` lineage trail)
+- [x] State management (`state path` / `status` / `init` / `prune`, `sync --check`)
+- [x] Engine tooling (`engine list` / `engine verify` — syntax + SHA-256 drift gate)
+- [x] Catalog tooling (`catalog list` / `catalog verify` — supply-chain integrity gate)
+- [x] CLI supply-chain gates in CI (`engine verify` + `catalog verify` on real bundled data)
+- [x] Pre-PR gate checklist synced with CI (CONTRIBUTING runs the full nine-gate sequence)
+- [x] SLSA L2: reproducible release builds (pinned build environment — fixed runner image, exact Python patch, pinned build backend, `--no-isolation`)
 - [ ] STIG benchmark profiles (same engine, DISA content — roadmap)
 
 ## Contributing

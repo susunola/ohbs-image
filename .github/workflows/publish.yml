@@ -15,23 +15,27 @@ permissions:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    # SLSA L2: pinned build environment — fixed runner image, exact Python
+    # patch, and pinned build backend versions make the wheel/sdist
+    # reproducible for a given commit (rebuilding the same tag yields the
+    # same artifact hashes).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.11"
+          python-version: "3.11.9"
 
       - name: Verify release metadata
         run: python scripts/check_release.py --tag "${GITHUB_REF_NAME}"
 
-      - name: Install build tooling
-        run: pip install build
+      - name: Install pinned build tooling
+        run: pip install "build==1.2.2.post1" "setuptools==75.3.0" "wheel==0.45.1"
 
-      - name: Build wheel + sdist
-        run: python -m build
+      - name: Build wheel + sdist (no isolation — pinned backend above)
+        run: python -m build --no-isolation
 
       # SLSA-style build provenance for the release artifacts themselves:
       # GitHub signs an attestation linking the wheel/sdist to this repo +

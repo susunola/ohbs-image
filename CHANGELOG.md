@@ -7,6 +7,28 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Fixed (Windows guidance & catalog hygiene)
+- **Windows rule catalogs now ship complete guidance** — the four Windows
+  roles' `guidance.json` were stale exports (missing 64–87 rules per role,
+  PDF-formatting junk in titles, levels/families drifted from the
+  authoritative `rules.json`, and win2016/2019 carried two orphaned
+  changelog entries). They are rebuilt from `rules.json` with the same
+  `Configure via GPO: <title>` template the existing entries used:
+  `catalog verify` no longer reports rules lacking guidance, and the
+  stale-guidance warnings from `check_catalog_guidance.py` are gone.
+  cis-win2016 rule titles also lost their legacy `(L1)/(L2)` prefixes.
+- **PEP 621 license form** — `license = {text = "MIT"}` replaces the bare
+  `"MIT"` string (which requires setuptools >= 77) so pinned, reproducible
+  builds work with any supported setuptools.
+
+### Added (reproducible release builds — roadmap SLSA L2)
+- **Pinned build environment for the PyPI publish workflow** —
+  `publish.yml` now builds on `ubuntu-24.04` with an exact Python patch
+  (`3.11.9`) and pinned build backend (`build==1.2.2.post1`,
+  `setuptools==75.3.0`, `wheel==0.45.1`) under `python -m build
+  --no-isolation`: rebuilding the same tag yields the same artifact
+  hashes, so release provenance is verifiable.
+
 ### Added (profiles)
 - **Rocky Linux 9 profile (`rocky9`, L1/L2)** — new `cis-rocky9` role with
   the CIS Rocky Linux 9 Benchmark v2.0.0 identity. The v2.0.0 rule catalogs

@@ -17,11 +17,11 @@
   },
   {
     "id": "1.1.3",
-    "title": "Ensure 'Minimum password age' is set to '1 or more day(s)' ...................... 40 Page 2 === PAGE 4 ===",
+    "title": "Ensure 'Minimum password age' is set to '1 or more day(s)'",
     "level": "L1",
     "automated": true,
     "family": "password-policy",
-    "remediation_hint": "Configure via GPO: Ensure 'Minimum password age' is set to '1 or more day(s)' ...................... 40 Page 2 === PAGE 4 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Minimum password age' is set to '1 or more day(s)'"
   },
   {
     "id": "1.1.4",
@@ -33,27 +33,27 @@
   },
   {
     "id": "1.1.5",
-    "title": "Ensure 'Password must meet complexity requirements' is set to 'Enabled'46",
+    "title": "Ensure 'Password must meet complexity requirements' is set to 'Enabled'",
     "level": "L1",
     "automated": true,
-    "family": "password-policy",
-    "remediation_hint": "Configure via GPO: Ensure 'Password must meet complexity requirements' is set to 'Enabled'46"
+    "family": "password-complexity",
+    "remediation_hint": "Configure via GPO: Ensure 'Password must meet complexity requirements' is set to 'Enabled'"
   },
   {
     "id": "1.1.6",
     "title": "Ensure 'Relax minimum password length limits' is set to 'Enabled'",
     "level": "L1",
     "automated": true,
-    "family": "password-policy",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Relax minimum password length limits' is set to 'Enabled'"
   },
   {
     "id": "1.1.7",
-    "title": "Ensure 'Store passwords using reversible encryption' is set to 'Disabled' . 51 1.2 Account Lockout Policy",
+    "title": "Ensure 'Store passwords using reversible encryption' is set to 'Disabled'",
     "level": "L1",
     "automated": true,
-    "family": "password-policy",
-    "remediation_hint": "Configure via GPO: Ensure 'Store passwords using reversible encryption' is set to 'Disabled' . 51 1.2 Account Lockout Policy"
+    "family": "password-reversible",
+    "remediation_hint": "Configure via GPO: Ensure 'Store passwords using reversible encryption' is set to 'Disabled'"
   },
   {
     "id": "1.2.1",
@@ -81,19 +81,19 @@
   },
   {
     "id": "1.2.4",
-    "title": "Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)' .................................................................................................................................................. 60 2 Local Policies .....................................................................................................................62 2.1 Audit Policy .................................................................................................................................... 62 2.2 User Rights Assignment",
+    "title": "Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'",
     "level": "L1",
     "automated": true,
     "family": "lockout-policy",
-    "remediation_hint": "Configure via GPO: Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)' .................................................................................................................................................. 60 2 Local Policies .....................................................................................................................62 2.1 Audit Policy .................................................................................................................................... 62 2.2 User Rights Assignment"
+    "remediation_hint": "Configure via GPO: Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'"
   },
   {
     "id": "2.2.1",
-    "title": "Ensure 'Access Credential Manager as a trusted caller' is set to 'No One' 63",
+    "title": "Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'",
     "level": "L1",
     "automated": true,
     "family": "user-right",
-    "remediation_hint": "Configure via GPO: Ensure 'Access Credential Manager as a trusted caller' is set to 'No One' 63"
+    "remediation_hint": "Configure via GPO: Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'"
   },
   {
     "id": "2.2.2",
@@ -297,11 +297,11 @@
   },
   {
     "id": "2.2.27",
-    "title": "Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'Administrators' (DC only) .................................................................................. 117 Page 3 === PAGE 5 ===",
+    "title": "Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'Administrators' (DC only)",
     "level": "L1",
     "automated": true,
     "family": "user-right",
-    "remediation_hint": "Configure via GPO: Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'Administrators' (DC only) .................................................................................. 117 Page 3 === PAGE 5 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'Administrators' (DC only)"
   },
   {
     "id": "2.2.28",
@@ -370,7 +370,7 @@
   {
     "id": "2.2.36",
     "title": "Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only)",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "user-right",
     "remediation_hint": "Configure via GPO: Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only)"
@@ -465,19 +465,19 @@
   },
   {
     "id": "2.2.48",
-    "title": "Ensure 'Take ownership of files or other objects' is set to 'Administrators' ................................................................................................................................................ 159 2.3 Security Options",
+    "title": "Ensure 'Take ownership of files or other objects' is set to 'Administrators'",
     "level": "L1",
     "automated": true,
     "family": "user-right",
-    "remediation_hint": "Configure via GPO: Ensure 'Take ownership of files or other objects' is set to 'Administrators' ................................................................................................................................................ 159 2.3 Security Options"
+    "remediation_hint": "Configure via GPO: Ensure 'Take ownership of files or other objects' is set to 'Administrators'"
   },
   {
     "id": "2.3.1.1",
-    "title": "Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only) 162",
+    "title": "Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only)",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only) 162"
+    "remediation_hint": "Configure via GPO: Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only)"
   },
   {
     "id": "2.3.1.2",
@@ -491,16 +491,16 @@
     "id": "2.3.1.3",
     "title": "Configure 'Accounts: Rename administrator account'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Configure 'Accounts: Rename administrator account'"
   },
   {
     "id": "2.3.1.4",
     "title": "Configure 'Accounts: Rename guest account'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Configure 'Accounts: Rename guest account'"
   },
   {
@@ -539,17 +539,17 @@
     "id": "2.3.5.2",
     "title": "Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured' (DC Only)",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured' (DC Only)"
   },
   {
     "id": "2.3.5.3",
-    "title": "Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only) ............................................................................................. 183 Page 4 === PAGE 6 ===",
+    "title": "Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only)",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only) ............................................................................................. 183 Page 4 === PAGE 6 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only)"
   },
   {
     "id": "2.3.5.4",
@@ -618,7 +618,7 @@
   {
     "id": "2.3.7.1",
     "title": "Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'"
@@ -643,22 +643,22 @@
     "id": "2.3.7.4",
     "title": "Configure 'Interactive logon: Message text for users attempting to log on'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Configure 'Interactive logon: Message text for users attempting to log on'"
   },
   {
     "id": "2.3.7.5",
     "title": "Configure 'Interactive logon: Message title for users attempting to log on'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Configure 'Interactive logon: Message title for users attempting to log on'"
   },
   {
     "id": "2.3.7.6",
     "title": "Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)' (MS only)",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)' (MS only)"
@@ -745,11 +745,11 @@
   },
   {
     "id": "2.3.10.2",
-    "title": "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only) .................................................................................. 240 Page 5 === PAGE 7 ===",
+    "title": "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only)",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only) .................................................................................. 240 Page 5 === PAGE 7 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only)"
   },
   {
     "id": "2.3.10.3",
@@ -762,7 +762,7 @@
   {
     "id": "2.3.10.4",
     "title": "Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'"
@@ -780,7 +780,7 @@
     "title": "Ensure 'Network access: Named Pipes that can be accessed anonymously' is configured (DC only)",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "reg-multisz",
     "remediation_hint": "Configure via GPO: Ensure 'Network access: Named Pipes that can be accessed anonymously' is configured (DC only)"
   },
   {
@@ -788,7 +788,7 @@
     "title": "Ensure 'Network access: Named Pipes that can be accessed anonymously' is configured (MS only)",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "reg-multisz",
     "remediation_hint": "Configure via GPO: Ensure 'Network access: Named Pipes that can be accessed anonymously' is configured (MS only)"
   },
   {
@@ -796,7 +796,7 @@
     "title": "Ensure 'Network access: Remotely accessible registry paths' is configured",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "reg-multisz",
     "remediation_hint": "Configure via GPO: Ensure 'Network access: Remotely accessible registry paths' is configured"
   },
   {
@@ -804,7 +804,7 @@
     "title": "Ensure 'Network access: Remotely accessible registry paths and sub-paths' is configured",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "reg-multisz",
     "remediation_hint": "Configure via GPO: Ensure 'Network access: Remotely accessible registry paths and sub-paths' is configured"
   },
   {
@@ -820,7 +820,7 @@
     "title": "Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow' (MS only)",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "reg-string",
     "remediation_hint": "Configure via GPO: Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow' (MS only)"
   },
   {
@@ -828,7 +828,7 @@
     "title": "Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "reg-multisz",
     "remediation_hint": "Configure via GPO: Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'"
   },
   {
@@ -980,7 +980,7 @@
     "title": "Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop' or higher",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "uac",
     "remediation_hint": "Configure via GPO: Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop' or higher"
   },
   {
@@ -988,7 +988,7 @@
     "title": "Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "uac",
     "remediation_hint": "Configure via GPO: Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'"
   },
   {
@@ -1025,11 +1025,27 @@
   },
   {
     "id": "2.3.17.8",
-    "title": "Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled' ............................................................................... 316 3 Event Log ......................................................................................................................... 318 4 Restricted Groups ........................................................................................................... 318 5 System Services .............................................................................................................. 318 5.1 Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (DC only) .................... 319 5.2 Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only) .................... 321 6 Registry ............................................................................................................................ 323 7 File System ....................................................................................................................... 323 8 Wired Network (IEEE 802.3) Policies .............................................................................. 323 9 Windows Defender Firewall with Advanced Security (formerly Windows Firewall with Advanced Security) ............................................................................................................ 323 9.1 Domain Profile",
+    "title": "Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled' ............................................................................... 316 3 Event Log ......................................................................................................................... 318 4 Restricted Groups ........................................................................................................... 318 5 System Services .............................................................................................................. 318 5.1 Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (DC only) .................... 319 5.2 Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only) .................... 321 6 Registry ............................................................................................................................ 323 7 File System ....................................................................................................................... 323 8 Wired Network (IEEE 802.3) Policies .............................................................................. 323 9 Windows Defender Firewall with Advanced Security (formerly Windows Firewall with Advanced Security) ............................................................................................................ 323 9.1 Domain Profile"
+    "remediation_hint": "Configure via GPO: Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'"
+  },
+  {
+    "id": "5.1",
+    "title": "Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (DC only)",
+    "level": "L1",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (DC only)"
+  },
+  {
+    "id": "5.2",
+    "title": "Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only)",
+    "level": "L2",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only)"
   },
   {
     "id": "9.1.1",
@@ -1052,15 +1068,15 @@
     "title": "Ensure 'Windows Firewall: Domain: Settings: Display a notification' is set to 'No'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Domain: Settings: Display a notification' is set to 'No'"
   },
   {
     "id": "9.1.4",
     "title": "Ensure 'Windows Firewall: Domain: Logging: Name' is configured",
     "level": "L1",
-    "automated": true,
-    "family": "firewall",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Domain: Logging: Name' is configured"
   },
   {
@@ -1068,7 +1084,7 @@
     "title": "Ensure 'Windows Firewall: Domain: Logging: Size limit (KB)' is set to '16,384 KB or greater'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Domain: Logging: Size limit (KB)' is set to '16,384 KB or greater'"
   },
   {
@@ -1076,24 +1092,24 @@
     "title": "Ensure 'Windows Firewall: Domain: Logging: Log dropped packets' is set to 'Yes'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Domain: Logging: Log dropped packets' is set to 'Yes'"
   },
   {
     "id": "9.1.7",
-    "title": "Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes' ............................................................................................................................ 336 9.2 Private Profile",
+    "title": "Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
-    "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes' ............................................................................................................................ 336 9.2 Private Profile"
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'"
   },
   {
     "id": "9.2.1",
-    "title": "Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)' ............................................................................................................................ 339 Page 7 === PAGE 9 ===",
+    "title": "Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)'",
     "level": "L1",
     "automated": true,
     "family": "firewall",
-    "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)' ............................................................................................................................ 339 Page 7 === PAGE 9 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)'"
   },
   {
     "id": "9.2.2",
@@ -1108,15 +1124,15 @@
     "title": "Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'"
   },
   {
     "id": "9.2.4",
     "title": "Ensure 'Windows Firewall: Private: Logging: Name' is configured",
     "level": "L1",
-    "automated": true,
-    "family": "firewall",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Private: Logging: Name' is configured"
   },
   {
@@ -1124,7 +1140,7 @@
     "title": "Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16,384 KB or greater'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16,384 KB or greater'"
   },
   {
@@ -1132,16 +1148,16 @@
     "title": "Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'"
   },
   {
     "id": "9.2.7",
-    "title": "Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes' ............................................................................................................................ 351 9.3 Public Profile",
+    "title": "Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
-    "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes' ............................................................................................................................ 351 9.3 Public Profile"
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes'"
   },
   {
     "id": "9.3.1",
@@ -1164,7 +1180,7 @@
     "title": "Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'No'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'No'"
   },
   {
@@ -1172,7 +1188,7 @@
     "title": "Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'"
   },
   {
@@ -1180,15 +1196,15 @@
     "title": "Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'"
   },
   {
     "id": "9.3.6",
     "title": "Ensure 'Windows Firewall: Public: Logging: Name' is configured",
     "level": "L1",
-    "automated": true,
-    "family": "firewall",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Public: Logging: Name' is configured"
   },
   {
@@ -1196,7 +1212,7 @@
     "title": "Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'"
   },
   {
@@ -1204,23 +1220,23 @@
     "title": "Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
+    "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'"
   },
   {
     "id": "9.3.9",
-    "title": "Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes' ............................................................................................................................ 370 10 Network List Manager Policies ..................................................................................... 372 11 Wireless Network (IEEE 802.11) Policies ..................................................................... 372 12 Public Key Policies ........................................................................................................ 372 13 Software Restriction Policies ........................................................................................ 372 14 Network Access Protection NAP Client Configuration ............................................... 372 15 Application Control Policies ......................................................................................... 372 16 IP Security Policies ........................................................................................................ 372 17 Advanced Audit Policy Configuration .......................................................................... 373 17.1 Account Logon",
+    "title": "Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'",
     "level": "L1",
     "automated": true,
-    "family": "firewall",
-    "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes' ............................................................................................................................ 370 10 Network List Manager Policies ..................................................................................... 372 11 Wireless Network (IEEE 802.11) Policies ..................................................................... 372 12 Public Key Policies ........................................................................................................ 372 13 Software Restriction Policies ........................................................................................ 372 14 Network Access Protection NAP Client Configuration ............................................... 372 15 Application Control Policies ......................................................................................... 372 16 IP Security Policies ........................................................................................................ 372 17 Advanced Audit Policy Configuration .......................................................................... 373 17.1 Account Logon"
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'"
   },
   {
     "id": "17.1.1",
     "title": "Ensure 'Audit Credential Validation' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Credential Validation' is set to 'Success and Failure'"
   },
   {
@@ -1228,23 +1244,23 @@
     "title": "Ensure 'Audit Kerberos Authentication Service' is set to 'Success and Failure' (DC Only)",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Kerberos Authentication Service' is set to 'Success and Failure' (DC Only)"
   },
   {
     "id": "17.1.3",
-    "title": "Ensure 'Audit Kerberos Service Ticket Operations' is set to 'Success and Failure' (DC Only) ................................................................................................................... 378 17.2 Account Management",
+    "title": "Ensure 'Audit Kerberos Service Ticket Operations' is set to 'Success and Failure' (DC Only)",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit Kerberos Service Ticket Operations' is set to 'Success and Failure' (DC Only) ................................................................................................................... 378 17.2 Account Management"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit Kerberos Service Ticket Operations' is set to 'Success and Failure' (DC Only)"
   },
   {
     "id": "17.2.1",
     "title": "Ensure 'Audit Application Group Management' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Application Group Management' is set to 'Success and Failure'"
   },
   {
@@ -1252,23 +1268,23 @@
     "title": "Ensure 'Audit Computer Account Management' is set to include 'Success' (DC only)",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Computer Account Management' is set to include 'Success' (DC only)"
   },
   {
     "id": "17.2.3",
-    "title": "Ensure 'Audit Distribution Group Management' is set to include 'Success' (DC only) ............................................................................................................................ 385 Page 8 === PAGE 10 ===",
+    "title": "Ensure 'Audit Distribution Group Management' is set to include 'Success' (DC only)",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit Distribution Group Management' is set to include 'Success' (DC only) ............................................................................................................................ 385 Page 8 === PAGE 10 ==="
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit Distribution Group Management' is set to include 'Success' (DC only)"
   },
   {
     "id": "17.2.4",
     "title": "Ensure 'Audit Other Account Management Events' is set to include 'Success' (DC only)",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Other Account Management Events' is set to include 'Success' (DC only)"
   },
   {
@@ -1276,55 +1292,55 @@
     "title": "Ensure 'Audit Security Group Management' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Security Group Management' is set to include 'Success'"
   },
   {
     "id": "17.2.6",
-    "title": "Ensure 'Audit User Account Management' is set to 'Success and Failure' ................................................................................................................................................ 392 17.3 Detailed Tracking",
+    "title": "Ensure 'Audit User Account Management' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit User Account Management' is set to 'Success and Failure' ................................................................................................................................................ 392 17.3 Detailed Tracking"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit User Account Management' is set to 'Success and Failure'"
   },
   {
     "id": "17.3.1",
     "title": "Ensure 'Audit PNP Activity' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit PNP Activity' is set to include 'Success'"
   },
   {
     "id": "17.3.2",
-    "title": "Ensure 'Audit Process Creation' is set to include 'Success' ................... 397 17.4 DS Access",
+    "title": "Ensure 'Audit Process Creation' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit Process Creation' is set to include 'Success' ................... 397 17.4 DS Access"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit Process Creation' is set to include 'Success'"
   },
   {
     "id": "17.4.1",
     "title": "Ensure 'Audit Directory Service Access' is set to include 'Failure' (DC only)",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Directory Service Access' is set to include 'Failure' (DC only)"
   },
   {
     "id": "17.4.2",
-    "title": "Ensure 'Audit Directory Service Changes' is set to include 'Success' (DC only) ............................................................................................................................ 402 17.5 Logon/Logoff",
+    "title": "Ensure 'Audit Directory Service Changes' is set to include 'Success' (DC only)",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit Directory Service Changes' is set to include 'Success' (DC only) ............................................................................................................................ 402 17.5 Logon/Logoff"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit Directory Service Changes' is set to include 'Success' (DC only)"
   },
   {
     "id": "17.5.1",
     "title": "Ensure 'Audit Account Lockout' is set to include 'Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Account Lockout' is set to include 'Failure'"
   },
   {
@@ -1332,7 +1348,7 @@
     "title": "Ensure 'Audit Group Membership' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Group Membership' is set to include 'Success'"
   },
   {
@@ -1340,7 +1356,7 @@
     "title": "Ensure 'Audit Logoff' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Logoff' is set to include 'Success'"
   },
   {
@@ -1348,7 +1364,7 @@
     "title": "Ensure 'Audit Logon' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Logon' is set to 'Success and Failure'"
   },
   {
@@ -1356,23 +1372,23 @@
     "title": "Ensure 'Audit Other Logon/Logoff Events' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Other Logon/Logoff Events' is set to 'Success and Failure'"
   },
   {
     "id": "17.5.6",
-    "title": "Ensure 'Audit Special Logon' is set to include 'Success' ........................ 415 17.6 Object Access",
+    "title": "Ensure 'Audit Special Logon' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit Special Logon' is set to include 'Success' ........................ 415 17.6 Object Access"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit Special Logon' is set to include 'Success'"
   },
   {
     "id": "17.6.1",
     "title": "Ensure 'Audit Detailed File Share' is set to include 'Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Detailed File Share' is set to include 'Failure'"
   },
   {
@@ -1380,7 +1396,7 @@
     "title": "Ensure 'Audit File Share' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit File Share' is set to 'Success and Failure'"
   },
   {
@@ -1388,39 +1404,39 @@
     "title": "Ensure 'Audit Other Object Access Events' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Other Object Access Events' is set to 'Success and Failure'"
   },
   {
     "id": "17.6.4",
-    "title": "Ensure 'Audit Removable Storage' is set to 'Success and Failure' ........ 425 17.7 Policy Change",
+    "title": "Ensure 'Audit Removable Storage' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit Removable Storage' is set to 'Success and Failure' ........ 425 17.7 Policy Change"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit Removable Storage' is set to 'Success and Failure'"
   },
   {
     "id": "17.7.1",
     "title": "Ensure 'Audit Audit Policy Change' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Audit Policy Change' is set to include 'Success'"
   },
   {
     "id": "17.7.2",
-    "title": "Ensure 'Audit Authentication Policy Change' is set to include 'Success' 430",
+    "title": "Ensure 'Audit Authentication Policy Change' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit Authentication Policy Change' is set to include 'Success' 430"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit Authentication Policy Change' is set to include 'Success'"
   },
   {
     "id": "17.7.3",
     "title": "Ensure 'Audit Authorization Policy Change' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Authorization Policy Change' is set to include 'Success'"
   },
   {
@@ -1428,31 +1444,31 @@
     "title": "Ensure 'Audit MPSSVC Rule-Level Policy Change' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit MPSSVC Rule-Level Policy Change' is set to 'Success and Failure'"
   },
   {
     "id": "17.7.5",
-    "title": "Ensure 'Audit Other Policy Change Events' is set to include 'Failure' .... 437 17.8 Privilege Use",
+    "title": "Ensure 'Audit Other Policy Change Events' is set to include 'Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit Other Policy Change Events' is set to include 'Failure' .... 437 17.8 Privilege Use"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit Other Policy Change Events' is set to include 'Failure'"
   },
   {
     "id": "17.8.1",
-    "title": "Ensure 'Audit Sensitive Privilege Use' is set to 'Success' ...................... 440 17.9 System",
+    "title": "Ensure 'Audit Sensitive Privilege Use' is set to 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit Sensitive Privilege Use' is set to 'Success' ...................... 440 17.9 System"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit Sensitive Privilege Use' is set to 'Success'"
   },
   {
     "id": "17.9.1",
     "title": "Ensure 'Audit IPsec Driver' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit IPsec Driver' is set to 'Success and Failure'"
   },
   {
@@ -1460,7 +1476,7 @@
     "title": "Ensure 'Audit Other System Events' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Other System Events' is set to 'Success and Failure'"
   },
   {
@@ -1468,7 +1484,7 @@
     "title": "Ensure 'Audit Security State Change' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Security State Change' is set to include 'Success'"
   },
   {
@@ -1476,16 +1492,16 @@
     "title": "Ensure 'Audit Security System Extension' is set to include 'Success'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
+    "family": "audit-policy",
     "remediation_hint": "Configure via GPO: Ensure 'Audit Security System Extension' is set to include 'Success'"
   },
   {
     "id": "17.9.5",
-    "title": "Ensure 'Audit System Integrity' is set to 'Success and Failure' .............. 452 18 Administrative Templates (Computer) ......................................................................... 454 18.1 Control Panel",
+    "title": "Ensure 'Audit System Integrity' is set to 'Success and Failure'",
     "level": "L1",
     "automated": true,
-    "family": "adv-audit",
-    "remediation_hint": "Configure via GPO: Ensure 'Audit System Integrity' is set to 'Success and Failure' .............. 452 18 Administrative Templates (Computer) ......................................................................... 454 18.1 Control Panel"
+    "family": "audit-policy",
+    "remediation_hint": "Configure via GPO: Ensure 'Audit System Integrity' is set to 'Success and Failure'"
   },
   {
     "id": "18.1.1.1",
@@ -1513,11 +1529,11 @@
   },
   {
     "id": "18.1.3",
-    "title": "Ensure 'Allow Online Tips' is set to 'Disabled' ........................................ 463 18.2 Desktop ....................................................................................................................................... 465 18.3 LAPS (legacy) ............................................................................................................................. 465 18.4 MS Security Guide ..................................................................................................................... 465 Page 9 === PAGE 11 ===",
-    "level": "L1",
+    "title": "Ensure 'Allow Online Tips' is set to 'Disabled'",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Allow Online Tips' is set to 'Disabled' ........................................ 463 18.2 Desktop ....................................................................................................................................... 465 18.3 LAPS (legacy) ............................................................................................................................. 465 18.4 MS Security Guide ..................................................................................................................... 465 Page 9 === PAGE 11 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Allow Online Tips' is set to 'Disabled'"
   },
   {
     "id": "18.4.1",
@@ -1548,7 +1564,7 @@
     "title": "Ensure 'Enable Certificate Padding' is set to 'Enabled'",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "reg-string",
     "remediation_hint": "Configure via GPO: Ensure 'Enable Certificate Padding' is set to 'Enabled'"
   },
   {
@@ -1561,18 +1577,18 @@
   },
   {
     "id": "18.4.6",
-    "title": "Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)' ............................................................................................................................ 478 18.5 MSS (Legacy)",
+    "title": "Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)' ............................................................................................................................ 478 18.5 MSS (Legacy)"
+    "remediation_hint": "Configure via GPO: Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'"
   },
   {
     "id": "18.5.1",
     "title": "Ensure 'MSS: (AutoAdminLogon) Enable Automatic Logon' is set to 'Disabled'",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "reg-string",
     "remediation_hint": "Configure via GPO: Ensure 'MSS: (AutoAdminLogon) Enable Automatic Logon' is set to 'Disabled'"
   },
   {
@@ -1602,7 +1618,7 @@
   {
     "id": "18.5.5",
     "title": "Ensure 'MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes'"
@@ -1618,7 +1634,7 @@
   {
     "id": "18.5.7",
     "title": "Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses' is set to 'Disabled'"
@@ -1634,7 +1650,7 @@
   {
     "id": "18.5.9",
     "title": "Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'"
@@ -1642,18 +1658,18 @@
   {
     "id": "18.5.10",
     "title": "Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'"
   },
   {
     "id": "18.5.11",
-    "title": "Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less' ................. 502 18.6 Network",
+    "title": "Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less' ................. 502 18.6 Network"
+    "remediation_hint": "Configure via GPO: Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'"
   },
   {
     "id": "18.6.4.1",
@@ -1674,7 +1690,7 @@
   {
     "id": "18.6.4.3",
     "title": "Ensure 'Turn off default IPv6 DNS Servers' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn off default IPv6 DNS Servers' is set to 'Enabled'"
@@ -1690,7 +1706,7 @@
   {
     "id": "18.6.5.1",
     "title": "Ensure 'Enable Font Providers' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Enable Font Providers' is set to 'Disabled'"
@@ -1722,23 +1738,23 @@
   {
     "id": "18.6.9.1",
     "title": "Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'"
   },
   {
     "id": "18.6.9.2",
-    "title": "Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled' ..... 528 Page 10 === PAGE 12 ===",
-    "level": "L1",
+    "title": "Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled' ..... 528 Page 10 === PAGE 12 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'"
   },
   {
     "id": "18.6.10.2",
     "title": "Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'"
@@ -1772,13 +1788,21 @@
     "title": "Ensure 'Hardened UNC Paths' is set to 'Enabled, with \"Require Mutual Authentication\", \"Require Integrity\", and \"Require Privacy\" set for all NETLOGON and SYSVOL shares'",
     "level": "L1",
     "automated": true,
-    "family": "reg-dword",
+    "family": "reg-string",
     "remediation_hint": "Configure via GPO: Ensure 'Hardened UNC Paths' is set to 'Enabled, with \"Require Mutual Authentication\", \"Require Integrity\", and \"Require Privacy\" set for all NETLOGON and SYSVOL shares'"
+  },
+  {
+    "id": "18.6.19.2.1",
+    "title": "Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')"
   },
   {
     "id": "18.6.20.1",
     "title": "Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'"
@@ -1786,7 +1810,7 @@
   {
     "id": "18.6.20.2",
     "title": "Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'"
@@ -1801,11 +1825,11 @@
   },
   {
     "id": "18.6.21.2",
-    "title": "Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled' (MS only) ......................................... 560 18.7 Printers",
-    "level": "L1",
+    "title": "Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled' (MS only)",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled' (MS only) ......................................... 560 18.7 Printers"
+    "remediation_hint": "Configure via GPO: Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled' (MS only)"
   },
   {
     "id": "18.7.1",
@@ -1873,19 +1897,19 @@
   },
   {
     "id": "18.7.9",
-    "title": "Ensure 'Limits print driver installation to Administrators' is set to 'Enabled' ................................................................................................................................................ 579 Page 11 === PAGE 13 ===",
+    "title": "Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Limits print driver installation to Administrators' is set to 'Enabled' ................................................................................................................................................ 579 Page 11 === PAGE 13 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'"
   },
   {
     "id": "18.7.10",
-    "title": "Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue- specific files to Color profiles'",
+    "title": "Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue- specific files to Color profiles'"
+    "remediation_hint": "Configure via GPO: Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'"
   },
   {
     "id": "18.7.11",
@@ -1897,19 +1921,19 @@
   },
   {
     "id": "18.7.12",
-    "title": "Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt' ................................... 586 18.8 Start Menu and Taskbar",
+    "title": "Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt' ................................... 586 18.8 Start Menu and Taskbar"
+    "remediation_hint": "Configure via GPO: Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'"
   },
   {
     "id": "18.8.1.1",
-    "title": "Ensure 'Turn off notifications network usage' is set to 'Enabled' ......... 590 18.9 System",
-    "level": "L1",
+    "title": "Ensure 'Turn off notifications network usage' is set to 'Enabled'",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Turn off notifications network usage' is set to 'Enabled' ......... 590 18.9 System"
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off notifications network usage' is set to 'Enabled'"
   },
   {
     "id": "18.9.3.1",
@@ -2048,10 +2072,114 @@
     "remediation_hint": "Configure via GPO: Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'"
   },
   {
+    "id": "18.9.20.1.1",
+    "title": "Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.2",
+    "title": "Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.3",
+    "title": "Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.4",
+    "title": "Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.5",
+    "title": "Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.6",
+    "title": "Ensure 'Turn off printing over HTTP' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off printing over HTTP' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.7",
+    "title": "Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.8",
+    "title": "Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.9",
+    "title": "Ensure 'Turn off the \"Order Prints\" picture task' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off the \"Order Prints\" picture task' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.10",
+    "title": "Ensure 'Turn off the \"Publish to Web\" task for files and folders' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off the \"Publish to Web\" task for files and folders' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.11",
+    "title": "Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'",
+    "level": "L2",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.12",
+    "title": "Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'",
+    "level": "L2",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.20.1.13",
+    "title": "Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'"
+  },
+  {
     "id": "18.9.23.1",
     "title": "Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'",
-    "level": "L1",
-    "automated": true,
+    "level": "L2",
+    "automated": false,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'"
   },
@@ -2113,11 +2241,11 @@
   },
   {
     "id": "18.9.26.7",
-    "title": "Ensure 'Post-authentication actions: Grace period (hours)' is set to 'Enabled: 8 or fewer hours, but not 0' (MS only) ....................................................................... 689 Page 13 === PAGE 15 ===",
+    "title": "Ensure 'Post-authentication actions: Grace period (hours)' is set to 'Enabled: 8 or fewer hours, but not 0' (MS only)",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Post-authentication actions: Grace period (hours)' is set to 'Enabled: 8 or fewer hours, but not 0' (MS only) ....................................................................... 689 Page 13 === PAGE 15 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Post-authentication actions: Grace period (hours)' is set to 'Enabled: 8 or fewer hours, but not 0' (MS only)"
   },
   {
     "id": "18.9.26.8",
@@ -2146,7 +2274,7 @@
   {
     "id": "18.9.28.1",
     "title": "Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'"
@@ -2169,11 +2297,11 @@
   },
   {
     "id": "18.9.29.3",
-    "title": "Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'",
+    "title": "Ensure 'Do not enumerate connected users on domain- joined computers' is set to 'Enabled'",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'"
+    "remediation_hint": "Configure via GPO: Ensure 'Do not enumerate connected users on domain- joined computers' is set to 'Enabled'"
   },
   {
     "id": "18.9.29.4",
@@ -2202,7 +2330,7 @@
   {
     "id": "18.9.33.1",
     "title": "Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'"
@@ -2210,10 +2338,42 @@
   {
     "id": "18.9.33.2",
     "title": "Ensure 'Allow upload of User Activities' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Allow upload of User Activities' is set to 'Disabled'"
+  },
+  {
+    "id": "18.9.35.6.1",
+    "title": "Ensure 'Allow network connectivity during connected- standby (on battery)' is set to 'Disabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Allow network connectivity during connected- standby (on battery)' is set to 'Disabled'"
+  },
+  {
+    "id": "18.9.35.6.2",
+    "title": "Ensure 'Allow network connectivity during connected- standby (plugged in)' is set to 'Disabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Allow network connectivity during connected- standby (plugged in)' is set to 'Disabled'"
+  },
+  {
+    "id": "18.9.35.6.3",
+    "title": "Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'",
+    "level": "L1",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.35.6.4",
+    "title": "Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'",
+    "level": "L1",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'"
   },
   {
     "id": "18.9.37.1",
@@ -2242,7 +2402,7 @@
   {
     "id": "18.9.38.2",
     "title": "Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (MS only)",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (MS only)"
@@ -2256,17 +2416,49 @@
     "remediation_hint": "Configure via GPO: Ensure 'Configure validation of ROCA-vulnerable WHfB keys during authentication' is set to 'Enabled: Block' (DC only)"
   },
   {
+    "id": "18.9.49.5.1",
+    "title": "Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'"
+  },
+  {
+    "id": "18.9.49.11.1",
+    "title": "Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'"
+  },
+  {
     "id": "18.9.51.1",
     "title": "Ensure 'Turn off the advertising ID' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn off the advertising ID' is set to 'Enabled'"
   },
   {
+    "id": "18.9.53.1.1",
+    "title": "Ensure 'Enable Windows NTP Client' is set to 'Enabled'",
+    "level": "L1",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Enable Windows NTP Client' is set to 'Enabled'"
+  },
+  {
+    "id": "18.9.53.1.2",
+    "title": "Ensure 'Enable Windows NTP Server' is set to 'Disabled' (MS only)",
+    "level": "L1",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Enable Windows NTP Server' is set to 'Disabled' (MS only)"
+  },
+  {
     "id": "18.10.4.1",
     "title": "Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'"
@@ -2304,12 +2496,20 @@
     "remediation_hint": "Configure via GPO: Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'"
   },
   {
-    "id": "18.10.11.1",
-    "title": "Ensure 'Allow Use of Camera' is set to 'Disabled' ........................... 786 Page 15 === PAGE 17 ===",
+    "id": "18.10.9.1.1",
+    "title": "Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'",
     "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.11.1",
+    "title": "Ensure 'Allow Use of Camera' is set to 'Disabled'",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Allow Use of Camera' is set to 'Disabled' ........................... 786 Page 15 === PAGE 17 ==="
+    "remediation_hint": "Configure via GPO: Ensure 'Allow Use of Camera' is set to 'Disabled'"
   },
   {
     "id": "18.10.13.1",
@@ -2322,7 +2522,7 @@
   {
     "id": "18.10.13.2",
     "title": "Ensure 'Turn off cloud optimized content' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn off cloud optimized content' is set to 'Enabled'"
@@ -2361,11 +2561,11 @@
   },
   {
     "id": "18.10.16.2",
-    "title": "Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage' 805",
-    "level": "L1",
+    "title": "Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage' 805"
+    "remediation_hint": "Configure via GPO: Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'"
   },
   {
     "id": "18.10.16.3",
@@ -2378,7 +2578,7 @@
   {
     "id": "18.10.16.4",
     "title": "Ensure 'Enable OneSettings Auditing' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Enable OneSettings Auditing' is set to 'Enabled'"
@@ -2386,7 +2586,7 @@
   {
     "id": "18.10.16.5",
     "title": "Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Limit Diagnostic Log Collection' is set to 'Enabled'"
@@ -2394,7 +2594,7 @@
   {
     "id": "18.10.16.6",
     "title": "Ensure 'Limit Dump Collection' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Limit Dump Collection' is set to 'Enabled'"
@@ -2402,7 +2602,7 @@
   {
     "id": "18.10.18.1",
     "title": "Ensure 'Enable App Installer' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Enable App Installer' is set to 'Disabled'"
@@ -2450,10 +2650,74 @@
   {
     "id": "18.10.18.7",
     "title": "Ensure 'Enable Windows Package Manager command line interfaces' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Enable Windows Package Manager command line interfaces' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.26.1.1",
+    "title": "Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.26.1.2",
+    "title": "Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
+  },
+  {
+    "id": "18.10.26.2.1",
+    "title": "Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.26.2.2",
+    "title": "Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'"
+  },
+  {
+    "id": "18.10.26.3.1",
+    "title": "Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.26.3.2",
+    "title": "Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
+  },
+  {
+    "id": "18.10.26.4.1",
+    "title": "Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.26.4.2",
+    "title": "Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
   },
   {
     "id": "18.10.29.2",
@@ -2481,16 +2745,16 @@
   },
   {
     "id": "18.10.29.5",
-    "title": "Ensure 'Turn off shell protocol protected mode' is set to 'Disabled' 858",
+    "title": "Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Turn off shell protocol protected mode' is set to 'Disabled' 858"
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'"
   },
   {
     "id": "18.10.36.1",
     "title": "Ensure 'Turn off location' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn off location' is set to 'Enabled'"
@@ -2498,7 +2762,7 @@
   {
     "id": "18.10.40.1",
     "title": "Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'"
@@ -2514,10 +2778,146 @@
   {
     "id": "18.10.56.1",
     "title": "Ensure 'Turn off Push To Install service' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn off Push To Install service' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.2.2",
+    "title": "Ensure 'Do not allow passwords to be saved' is set to 'Enabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Do not allow passwords to be saved' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.2.1",
+    "title": "Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled'",
+    "level": "L2",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.3.1",
+    "title": "Ensure 'Allow UI Automation redirection' is set to 'Disabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Allow UI Automation redirection' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.57.3.3.2",
+    "title": "Ensure 'Do not allow COM port redirection' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Do not allow COM port redirection' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.3.3",
+    "title": "Ensure 'Do not allow drive redirection' is set to 'Enabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Do not allow drive redirection' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.3.4",
+    "title": "Ensure 'Do not allow location redirection' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Do not allow location redirection' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.3.5",
+    "title": "Ensure 'Do not allow LPT port redirection' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Do not allow LPT port redirection' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.3.6",
+    "title": "Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.3.7",
+    "title": "Ensure 'Do not allow WebAuthn redirection' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Do not allow WebAuthn redirection' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.9.1",
+    "title": "Ensure 'Always prompt for password upon connection' is set to 'Enabled'",
+    "level": "L1",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Always prompt for password upon connection' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.9.2",
+    "title": "Ensure 'Require secure RPC communication' is set to 'Enabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Require secure RPC communication' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.9.3",
+    "title": "Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'"
+  },
+  {
+    "id": "18.10.57.3.9.4",
+    "title": "Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'",
+    "level": "L1",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.57.3.9.5",
+    "title": "Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'"
+  },
+  {
+    "id": "18.10.57.3.10.1",
+    "title": "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'"
+  },
+  {
+    "id": "18.10.57.3.11.1",
+    "title": "Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.57.3.11.2",
+    "title": "Ensure 'Do not use temporary folders per session' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Do not use temporary folders per session' is set to 'Disabled'"
   },
   {
     "id": "18.10.58.1",
@@ -2531,14 +2931,14 @@
     "id": "18.10.58.2",
     "title": "Ensure 'Turn on Basic feed authentication over HTTP' is set to 'Disabled'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Turn on Basic feed authentication over HTTP' is set to 'Disabled'"
   },
   {
     "id": "18.10.59.2",
     "title": "Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'"
@@ -2554,7 +2954,7 @@
   {
     "id": "18.10.59.4",
     "title": "Ensure 'Allow search highlights' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Allow search highlights' is set to 'Disabled'"
@@ -2562,15 +2962,23 @@
   {
     "id": "18.10.63.1",
     "title": "Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'"
   },
   {
+    "id": "18.10.77.2.1",
+    "title": "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'"
+  },
+  {
     "id": "18.10.81.1",
     "title": "Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'"
@@ -2602,7 +3010,7 @@
   {
     "id": "18.10.82.3",
     "title": "Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'"
@@ -2626,7 +3034,7 @@
   {
     "id": "18.10.88.1",
     "title": "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'"
@@ -2634,18 +3042,122 @@
   {
     "id": "18.10.88.2",
     "title": "Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'"
   },
   {
+    "id": "18.10.90.1.1",
+    "title": "Ensure 'Allow Basic authentication' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Allow Basic authentication' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.90.1.2",
+    "title": "Ensure 'Allow unencrypted traffic' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.90.1.3",
+    "title": "Ensure 'Disallow Digest authentication' is set to 'Enabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Disallow Digest authentication' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.90.2.1",
+    "title": "Ensure 'Allow Basic authentication' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Allow Basic authentication' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.90.2.2",
+    "title": "Ensure 'Allow remote server management through WinRM' is set to 'Disabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Allow remote server management through WinRM' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.90.2.3",
+    "title": "Ensure 'Allow unencrypted traffic' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.90.2.4",
+    "title": "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'"
+  },
+  {
     "id": "18.10.91.1",
     "title": "Ensure 'Allow Remote Shell Access' is set to 'Disabled'",
-    "level": "L1",
+    "level": "L2",
     "automated": true,
     "family": "reg-dword",
     "remediation_hint": "Configure via GPO: Ensure 'Allow Remote Shell Access' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.93.2.1",
+    "title": "Ensure 'Prevent users from modifying settings' is set to 'Enabled'",
+    "level": "L1",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'Prevent users from modifying settings' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.94.1.1",
+    "title": "Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'",
+    "level": "L1",
+    "automated": true,
+    "family": "reg-dword",
+    "remediation_hint": "Configure via GPO: Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.94.2.1",
+    "title": "Ensure 'Configure Automatic Updates' is set to 'Enabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Configure Automatic Updates' is set to 'Enabled'"
+  },
+  {
+    "id": "18.10.94.2.2",
+    "title": "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'"
+  },
+  {
+    "id": "18.10.94.4.1",
+    "title": "Ensure 'Manage preview builds' is set to 'Disabled'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Manage preview builds' is set to 'Disabled'"
+  },
+  {
+    "id": "18.10.94.4.2",
+    "title": "Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'",
+    "level": "L1",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'"
   },
   {
     "id": "18.11.1",
@@ -2657,82 +3169,98 @@
   },
   {
     "id": "18.11.2",
-    "title": "Ensure 'Disable HTTP proxy features: Disable proxy authentication' is set to 'Enabled: Disable authentication over loopback interfaces' or higher ............................. 1000 19 Administrative Templates (User) ................................................................................ 1002 19.1 Control Panel ............................................................................................................................ 1004 19.2 Desktop ..................................................................................................................................... 1004 19.3 Network ..................................................................................................................................... 1004 19.4 Shared Folders ......................................................................................................................... 1004 19.5 Start Menu and Taskbar",
+    "title": "Ensure 'Disable HTTP proxy features: Disable proxy authentication' is set to 'Enabled: Disable authentication over loopback interfaces' or higher",
     "level": "L1",
     "automated": true,
     "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Disable HTTP proxy features: Disable proxy authentication' is set to 'Enabled: Disable authentication over loopback interfaces' or higher ............................. 1000 19 Administrative Templates (User) ................................................................................ 1002 19.1 Control Panel ............................................................................................................................ 1004 19.2 Desktop ..................................................................................................................................... 1004 19.3 Network ..................................................................................................................................... 1004 19.4 Shared Folders ......................................................................................................................... 1004 19.5 Start Menu and Taskbar"
+    "remediation_hint": "Configure via GPO: Ensure 'Disable HTTP proxy features: Disable proxy authentication' is set to 'Enabled: Disable authentication over loopback interfaces' or higher"
   },
   {
     "id": "19.5.1.1",
-    "title": "Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled' .............................................................................................................................................. 1006 19.6 System",
+    "title": "Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
-    "remediation_hint": "Configure via GPO: Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled' .............................................................................................................................................. 1006 19.6 System"
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'"
+  },
+  {
+    "id": "19.6.6.1.1",
+    "title": "Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'"
   },
   {
     "id": "19.7.5.1",
     "title": "Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'"
   },
   {
     "id": "19.7.5.2",
     "title": "Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'"
   },
   {
     "id": "19.7.8.1",
     "title": "Ensure 'Configure Windows spotlight on lock screen' is set to 'Disabled'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Configure Windows spotlight on lock screen' is set to 'Disabled'"
   },
   {
     "id": "19.7.8.2",
     "title": "Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'"
   },
   {
     "id": "19.7.8.3",
     "title": "Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'",
-    "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'"
   },
   {
     "id": "19.7.8.4",
     "title": "Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'",
-    "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'"
   },
   {
     "id": "19.7.8.5",
     "title": "Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'"
   },
   {
     "id": "19.7.26.1",
     "title": "Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'",
     "level": "L1",
-    "automated": true,
-    "family": "reg-dword",
+    "automated": false,
+    "family": "manual",
     "remediation_hint": "Configure via GPO: Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'"
+  },
+  {
+    "id": "19.7.46.2.1",
+    "title": "Ensure 'Prevent Codec Download' is set to 'Enabled'",
+    "level": "L2",
+    "automated": false,
+    "family": "manual",
+    "remediation_hint": "Configure via GPO: Ensure 'Prevent Codec Download' is set to 'Enabled'"
   }
 ]

@@ -8,7 +8,9 @@ name = "ohbs-image"
 # Single source of truth: ohbs_image/_logging.py VERSION (read via AST, no import).
 dynamic = ["version"]
 description = "ohbs-hardened golden image builder for Tencent Cloud — config-driven CLI, 12 OS profiles, bundled ohbs-os engine"
-license = "MIT"
+# PEP 621 table form: compatible with every setuptools >= 62.3 (the bare
+# "MIT" string needs setuptools >= 77 and breaks pinned-build environments).
+license = {text = "MIT"}
 readme = "README.md"
 authors = [{name = "ohbs-image contributors"}]
 requires-python = ">=3.11"
