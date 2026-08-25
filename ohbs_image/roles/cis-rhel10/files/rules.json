@@ -4426,6 +4426,25 @@
     "page": 688
   },
   {
+    "id": "5.3.2.3.3",
+    "title": "Ensure pam_pwhistory includes use_authtok",
+    "section": "5.3.2.3",
+    "levels": [
+      1
+    ],
+    "platforms": [
+      "Server",
+      "Workstation"
+    ],
+    "family": "authselect_feature",
+    "params": {
+      "feature": "with-pwhistory"
+    },
+    "risk": "safe",
+    "page": 696,
+    "assessment": "Automated"
+  },
+  {
     "id": "5.3.2.3.1",
     "title": "Ensure password history remember is configured",
     "section": "5.3.2.3",
@@ -4466,25 +4485,6 @@
     },
     "risk": "safe",
     "page": 694
-  },
-  {
-    "id": "5.3.2.3.3",
-    "title": "Ensure pam_pwhistory includes use_authtok",
-    "section": "5.3.2.3",
-    "levels": [
-      1
-    ],
-    "platforms": [
-      "Server",
-      "Workstation"
-    ],
-    "family": "authselect_feature",
-    "params": {
-      "feature": "with-pwhistory"
-    },
-    "risk": "safe",
-    "page": 696,
-    "assessment": "Automated"
   },
   {
     "id": "5.3.2.4.1",
