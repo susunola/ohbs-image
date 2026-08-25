@@ -7,6 +7,8 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-08-25
+
 ### Added (documentation — roadmap K)
 - **CONTRIBUTING pre-PR checklist synced with CI** — the local checklist
   now runs the full gate sequence CI executes, including the script gates

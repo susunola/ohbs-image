@@ -23,7 +23,7 @@ def package_version() -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tag", required=True, help="Release tag, e.g. v0.18.0")
+    parser.add_argument("--tag", required=True, help="Release tag, e.g. v0.18.1")
     args = parser.parse_args(argv)
     version = package_version()
     expected = f"v{version}"
