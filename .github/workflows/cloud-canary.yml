@@ -13,6 +13,15 @@ on:
         default: tencentos3
         type: choice
         options: [tencentos3, win2022]
+      level:
+        description: CIS level to harden and gate
+        default: "1"
+        type: choice
+        options: ["1", "2"]
+      build_instance_type:
+        description: Instance type for the short-lived build CVM
+        default: SA5.MEDIUM2
+        type: string
       confirm_cost:
         description: I approve billed cloud resources
         default: false
@@ -33,6 +42,8 @@ jobs:
     timeout-minutes: 180
     env:
       CANARY_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'tencentos3' }}
+      CANARY_LEVEL: ${{ github.event_name == 'workflow_dispatch' && inputs.level || '1' }}
+      CANARY_BUILD_INSTANCE_TYPE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_instance_type || 'SA5.MEDIUM2' }}
       OHBS_IMAGE_STATE_DIR: ${{ runner.temp }}/ohbs-image-canary-state
       E2E_TARGET_REGION: ${{ secrets.TC_E2E_REGION }}
       E2E_TARGET_ZONE: ${{ secrets.TC_E2E_ZONE }}
@@ -72,7 +83,8 @@ jobs:
             --region "$E2E_TARGET_REGION" --zone "$E2E_TARGET_ZONE" \
             --vpc-id "$E2E_TARGET_VPC_ID" --subnet-id "$E2E_TARGET_SUBNET_ID" \
             --security-group-id "$E2E_TARGET_SG_ID" \
-            --target-mode single --profile "$CANARY_PROFILE" --level 1 --yes
+            --target-mode single --profile "$CANARY_PROFILE" --level "$CANARY_LEVEL" \
+            --build-instance-type "$CANARY_BUILD_INSTANCE_TYPE" --yes
       - name: Archive canary evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

@@ -92,6 +92,17 @@ jobs:
           python3 scripts/generate_engines.py
           python3 scripts/check_engine_drift.py
 
+      # Exercise the CLI supply-chain gates against the checked-out roles.
+      # The unit suite mocks profiles and state; this step runs the shipped
+      # commands on the real bundled data, catching runtime regressions
+      # (schema refs, profile-name drift, format changes) mocks cannot see.
+      # The script gates above stay: they enforce invariants the CLI does not
+      # (cross-role engine sha256 drift, numeric CIS rule ordering).
+      - name: Verify CLI supply-chain gates
+        run: |
+          ohbs-image engine verify
+          ohbs-image catalog verify
+
       - name: Run tests (with coverage report)
         # Coverage is reported but NOT gated (--cov-fail-under=0) on purpose:
         # the number is the safety net for future refactors — it shows which

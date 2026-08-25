@@ -283,9 +283,12 @@ Set `OHBS_IMAGE_COSCLI_CONFIG` when CI uses a non-default coscli
 configuration file.
 
 The opt-in `.github/workflows/cloud-canary.yml` runs a weekly real-cloud
-TencentOS 3 L1 acceptance only when repository variable
+acceptance (TencentOS 3 L1 by default) only when repository variable
 `OHBS_ENABLE_CLOUD_CANARY=true`. It is disabled by default because it creates
-billed CVMs; manual runs require explicit cost confirmation.
+billed CVMs; manual runs require explicit cost confirmation. Manual dispatch
+additionally accepts `profile` (`tencentos3` / `win2022`), `level` (1/2) and
+`build_instance_type` (default `SA5.MEDIUM2`) so a canary can be targeted
+without editing the workflow.
 
 ## Configuration
 

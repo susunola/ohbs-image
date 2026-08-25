@@ -7,6 +7,21 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (canary & CI — roadmap J)
+- **CLI supply-chain gates in CI** — `ci.yml` now runs the shipped
+  `engine verify` + `catalog verify` commands against the checked-out
+  roles, exercising the real bundled data (unit tests mock profiles and
+  state). The script gates stay: `check_engine_drift.py` / 
+  `check_catalog_guidance.py` enforce invariants the CLI does not cover
+  (cross-role engine SHA-256 drift, numeric CIS rule ordering)
+  (J-281..J-290).
+- **Cloud canary parameterization** — `cloud-canary.yml` manual runs now
+  accept `level` (1/2, default 1) and `build_instance_type` (default
+  `SA5.MEDIUM2`) inputs in addition to `profile`; scheduled runs keep the
+  same defaults, and the cost-confirmation gate is unchanged. The
+  hardening/gate level and build-CVM size are no longer hardcoded
+  (J-291..J-300).
+
 ### Added (supply chain — roadmap I)
 - **`catalog list`** — enumerates every bundled rule catalog with rule
   count, guidance entries, chapter count and SHA-256; `--output json`

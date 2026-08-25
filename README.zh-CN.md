@@ -237,6 +237,8 @@ ohbs-image clean
 
 `.github/workflows/cloud-canary.yml` 提供真实云 Canary，默认关闭。只有仓库变量
 `OHBS_ENABLE_CLOUD_CANARY=true` 时才会定时创建收费 CVM；手动执行也必须显式确认成本。
+手动触发时可额外指定 `profile`（`tencentos3` / `win2022`）、`level`（1/2）和
+`build_instance_type`（默认 `SA5.MEDIUM2`），无需改工作流即可定向执行 Canary。
 
 ## 配置文件
 
