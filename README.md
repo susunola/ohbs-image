@@ -172,6 +172,9 @@ ohbs-image config migrate --apply             # atomic legacy config migration
 ohbs-image report diff --before RUN --after RUN # compare lineage metadata
 ohbs-image report list [--profile P] [--status ok|failed] [--limit N]
 ohbs-image report show RUN_ID              # single-run evidence + run manifest
+ohbs-image engine list                     # bundled engines: version + sha256 per profile
+ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
+ohbs-image engine version                  # ohbs-image + per-family engine versions
 ohbs-image doctor [--output text|json|sarif] [--only GROUP] [--offline] [--report-path FILE]
 ohbs-image plan [--output json]                # read-only build/resource/gate preview
 ohbs-image state path                          # print the evidence directory

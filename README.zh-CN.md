@@ -151,6 +151,9 @@ ohbs-image clean
 | `ohbs-image report diff --before RUN --after RUN` | 比较两次构建元数据差异 |
 | `ohbs-image report list [--profile P] [--status ok\|failed] [--limit N]` | 列出血缘证据索引 |
 | `ohbs-image report show RUN_ID` | 查看单次运行的证据摘要 + 运行清单 |
+| `ohbs-image engine list` | 列出各 profile 捆绑引擎的版本 + sha256 |
+| `ohbs-image engine verify` | 语法校验全部捆绑引擎（CI 门禁） |
+| `ohbs-image engine version` | 输出 ohbs-image 与各系引擎版本 |
 | `ohbs-image doctor --output json` | 结构化诊断工具链、配置、凭据和只读云访问 |
 | `ohbs-image plan --output json` | 不创建资源的构建预览 |
 | `ohbs-image state path` | 打印证据目录路径 |

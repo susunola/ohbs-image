@@ -40,6 +40,7 @@ __all__ = [
     '_BANNER_ART', '_CIS_REGION_DASHES', '_FORBIDDEN_CLEAN_PREFIXES', '_RULE_FAIL_RE', '_apply_rule_overrides', '_assert_no_markers', '_atomic_write_bytes',
     '_audit_inspec', '_audit_oscap', '_audit_render', '_audit_results_sarif', '_audit_results_xccdf', '_audit_ssh_args',
     '_build_fingerprint', '_build_sarif', '_build_xccdf', '_bundle_role', '_bundled_rules_hash', '_catalog_basename',
+    '_engine_path', '_engine_version',
     '_catalog_path', '_check_ansible_windows_collection',
     '_check_bundled_role', '_check_pywinrm', '_check_security_group_ingress', '_clean_is_safe', '_color', '_creds', '_delete_images',
     '_drift_diff', '_extract_image_ids', '_extract_rule_statuses', '_extract_sbom_count', '_extract_sbom_sha', '_extract_score',
@@ -54,7 +55,7 @@ __all__ = [
     '_new_run_id', '_read_release_manifest', '_read_run_manifest', '_release_manifest_path', '_release_transition', '_run_manifest_is_active', '_run_manifest_path', '_validate_env_var_name', '_validate_shell_arg', '_validate_value_present', '_verify_release_manifest', '_write_build_html_report', '_write_build_result', '_write_provenance', '_write_release_manifest', '_write_run_manifest', '_write_sarif', '_write_xccdf',
     '_yaml_list', 'banner', 'build_parser', 'cmd_audit', 'cmd_build', 'cmd_check_source',
     'cmd_clean', 'cmd_cleanup_images', 'cmd_cleanup_runs', 'cmd_drift', 'cmd_images', 'cmd_init', 'cmd_list',
-    'cmd_configure', 'cmd_discover', 'cmd_doctor', 'cmd_plan', 'cmd_state_init', 'cmd_state_path', 'cmd_state_prune', 'cmd_state_status', 'cmd_state_sync', 'cmd_pending', 'cmd_preflight', 'cmd_promote', 'cmd_rollback', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate', 'cmd_verify_release',
+    'cmd_configure', 'cmd_discover', 'cmd_doctor', 'cmd_engine_list', 'cmd_engine_verify', 'cmd_engine_version', 'cmd_plan', 'cmd_state_init', 'cmd_state_path', 'cmd_state_prune', 'cmd_state_status', 'cmd_state_sync', 'cmd_pending', 'cmd_preflight', 'cmd_promote', 'cmd_rollback', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate', 'cmd_verify_release',
     'cmd_verify', 'cmd_verify_image', 'fail', 'info', 'load_config', 'logger',
     'main', 'ok', 'render_all', 'render_finalize', 'render_install', 'render_pkrvars',
     'render_site', 'render_site_audit', 'resolve', 'run_packer', 'run_preflight', 'warn',
@@ -149,6 +150,13 @@ from ._config import (
     resolve,
 )
 from ._discover import cmd_discover
+from ._engine import (
+    _engine_path,
+    _engine_version,
+    cmd_engine_list,
+    cmd_engine_verify,
+    cmd_engine_version,
+)
 from ._logging import (
     VERSION,
     ConfigError,

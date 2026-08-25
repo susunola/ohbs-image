@@ -7,6 +7,20 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (engine — roadmap H)
+- **`engine list`** — enumerates every bundled hardening engine with its
+  parsed in-engine version, SHA-256, size and family (Linux/Windows);
+  `--output json` emits `engine-list/v1` (H-221..H-228).
+- **`engine verify`** — CI-ready syntax gate: Linux engines are parsed as
+  Python (AST, no bytecode written), Windows engines are checked for
+  emptiness and NUL corruption; exit `0` only when all 12 bundled engines
+  pass, `engine-verify/v1` in JSON mode (H-229..H-240).
+- **`engine version`** — prints ohbs-image plus per-family engine versions
+  in one line (H-241..H-244).
+- **`list --versions` engine column fix** — the engine column previously
+  reported the ohbs-image version; it now shows each profile's real
+  bundled engine version (e.g. `1.0.0` / `1.2.0-windows`) (H-245..H-250).
+
 ### Added (state backend — roadmap G)
 - **`state path`** — prints the absolute evidence root
   (`OHBS_IMAGE_STATE_DIR` or `~/.ohbs-image`); script-friendly, no

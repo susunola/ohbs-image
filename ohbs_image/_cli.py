@@ -38,6 +38,7 @@ from ._config_tools import (
     cmd_config_validate,
 )
 from ._discover import cmd_discover
+from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
@@ -51,7 +52,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test",
     ],
     "manage & evidence": [
-        "state", "config", "report", "list", "images", "clean",
+        "state", "config", "report", "engine", "list", "images", "clean",
         "cleanup-images", "cleanup-runs", "pending", "audit", "drift",
         "check-source", "verify", "verify-image",
     ],
@@ -282,6 +283,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_show.add_argument("run_id")
     p_show.add_argument("--output", choices=["text", "json"], default="text")
     p_show.set_defaults(func=cmd_report_show)
+
+    p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
+    engine_sub = p_engine.add_subparsers(dest="engine_command")
+    p_elist = engine_sub.add_parser(
+        "list", help="Enumerate bundled engines per profile (version + sha256)")
+    p_elist.add_argument("--output", choices=["text", "json"], default="text")
+    p_elist.set_defaults(func=cmd_engine_list)
+    p_everify = engine_sub.add_parser(
+        "verify", help="Syntax-check every bundled engine (CI-ready)")
+    p_everify.add_argument("--output", choices=["text", "json"], default="text")
+    p_everify.set_defaults(func=cmd_engine_verify)
+    p_ev = engine_sub.add_parser(
+        "version", help="Print ohbs-image and per-family engine versions")
+    p_ev.set_defaults(func=cmd_engine_version)
 
     p_pre = sub.add_parser("preflight", parents=[common], help="Run pre-flight checks")
     p_pre.set_defaults(func=cmd_preflight)
