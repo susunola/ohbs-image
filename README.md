@@ -1088,7 +1088,8 @@ accepted the associated cloud cost and change-control policy.
 - [x] CLI supply-chain gates in CI (`engine verify` + `catalog verify` on real bundled data)
 - [x] Pre-PR gate checklist synced with CI (CONTRIBUTING runs the full nine-gate sequence)
 - [x] SLSA L2: reproducible release builds (pinned build environment — fixed runner image, exact Python patch, pinned build backend, `--no-isolation`)
-- [ ] STIG benchmark profiles (same engine, DISA content — roadmap)
+- [ ] 等保 2.0 (MLPS) mapping — CIS rules ↔ 等保 2.0 安全通用要求 control map (海外 CIS / 国内等保 dual view: coverage map, gap analysis, 等保 section in the HTML report)
+- [ ] STIG benchmark profiles (same engine, DISA content — deferred; lower priority than the 等保 2.0 mapping)
 
 ## Contributing
 

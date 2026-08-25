@@ -359,3 +359,66 @@ class TestPlanNeverMutates:
         assert rc == 0
         doc = json.loads(capsys.readouterr().out)
         assert doc["mutates_cloud"] is False
+
+
+# ---------------------------------------------------------------- py3.14 help validation
+def _iter_subparsers(parser):
+    """Yield the child parsers registered under *parser* (any nesting)."""
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            yield from action.choices.values()
+
+
+class TestHelpStringsValid:
+    """argparse on Python 3.14 validates help strings at add_argument time
+    (``_check_help`` expands %-format eagerly, without the auto-escape
+    ``_get_help_string`` applies on <=3.13), so any literal ``%`` in a help
+    string must be written as ``%%``. Walk the whole parser tree and fail on
+    bare percent signs, then render every parser's help to prove it works."""
+
+    def test_no_bare_percent_in_any_help_string(self):
+        import re
+
+        parser = build_parser()
+
+        def walk(p, seen):
+            for action in p._actions:
+                if not action.help:
+                    continue
+                # "%%" is the argparse escape for a literal "%"; "%(name)s"
+                # is a legal placeholder. Anything else is a bare "%" that
+                # py3.14 rejects at add_argument time.
+                cleaned = re.sub(r"%%|%\([^)]*\)s", "", action.help)
+                if "%" in cleaned:
+                    where = action.option_strings or [action.dest or "?"]
+                    raise AssertionError(
+                        f"bare % in help of {where}: {action.help!r}"
+                    )
+            for child in _iter_subparsers(p):
+                if child not in seen:
+                    seen.add(child)
+                    walk(child, seen)
+
+        walk(parser, set())
+
+    def test_full_help_renders(self):
+        # Exercising format_help() forces every help string through argparse's
+        # %-expansion — the exact path py3.14 validates eagerly. Render every
+        # parser in the tree so no subparser action escapes the check.
+        parser = build_parser()
+
+        def walk(p, seen):
+            text = p.format_help()
+            assert text, f"empty help for {p.prog}"
+            for child in _iter_subparsers(p):
+                if child not in seen:
+                    seen.add(child)
+                    walk(child, seen)
+
+        walk(parser, set())
+        report = next(c for c in _iter_subparsers(parser)
+                      if c.prog.rsplit(" ", 1)[-1] == "report")
+        cost = next(c for c in _iter_subparsers(report)
+                    if c.prog.rsplit(" ", 1)[-1] == "cost")
+        assert "--hourly-price" in cost.format_help()
+        assert "10%)" in cost.format_help()

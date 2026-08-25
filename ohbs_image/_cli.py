@@ -312,7 +312,7 @@ def build_parser() -> argparse.ArgumentParser:
                      "(instance type, spot, duration)")
     p_cost.add_argument("--hourly-price", type=float, default=None,
                         help="On-demand USD/hour to estimate spend from "
-                             "recorded durations (spot runs at 10%)")
+                             "recorded durations (spot runs at 10%%)")
     p_cost.add_argument("--output", choices=["text", "json"], default="text")
     p_cost.set_defaults(func=cmd_report_cost)
 
