@@ -13,7 +13,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.18.1-blue?logo=pypi&logoColor=white" alt="Version 0.18.1">
   <img src="https://img.shields.io/badge/python-3.11_|_3.12_|_3.13-blue?logo=python&logoColor=white" alt="Python 3.11+">
-  <img src="https://img.shields.io/badge/profiles-12-orange" alt="12 profiles">
+  <img src="https://img.shields.io/badge/profiles-13-orange" alt="13 profiles">
   <img src="https://img.shields.io/badge/platform-Tencent%20Cloud-0052D9" alt="Tencent Cloud">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT">
   <a href="https://github.com/susunola/ohbs-image/actions/workflows/ci.yml"><img src="https://github.com/susunola/ohbs-image/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -34,7 +34,7 @@
 > **Repository / CLI / package:** `ohbs-image` · Full name: **oh baseline image** — part of the **oh baseline** (ohbs) family.
 **Config-driven golden-image builder for Tencent Cloud.** ohbs-image launches a short-lived CVM, applies CIS hardening from its bundled ohbs-os engine, re-audits against a configurable score gate, and captures the result as a custom image — fully repeatable and auditable, every time. Built for DevOps and security teams that need hardened base images they can trust in CI pipelines, Auto Scaling launch templates, and Terraform image references.
 
-Zero pip dependencies. 12 OS profiles across Linux and Windows. Build-time gate with configurable score threshold. All roles ship inside the package — no Galaxy, no network drift.
+Zero pip dependencies. 13 OS profiles across Linux and Windows. Build-time gate with configurable score threshold. All roles ship inside the package — no Galaxy, no network drift.
 
 Beyond the build itself, ohbs-image covers the full **build → test → distribute** governance loop:
 
@@ -305,7 +305,7 @@ accepted — if both exist, `[ohbs]` wins with a warning.
 [build]
 profile             = "tencentos3"
 #   Linux: ubuntu2004 | ubuntu2204 | ubuntu2404 |
-#          rhel8 | rhel9 | rhel10 |
+#          rhel8 | rhel9 | rhel10 | rocky9 |
 #          tencentos3 | tencentos4
 #   Windows: win2016 | win2019 | win2022 | win2025
 region              = "ap-guangzhou"
@@ -552,6 +552,7 @@ Windows builds use the Packer `ansible` provisioner (controller-side) over WinRM
 | `rhel8` | RHEL 8 | root | dnf | `roles/cis-rhel8/` |
 | `rhel9` | RHEL 9 | root | dnf | `roles/cis-rhel9/` |
 | `rhel10` | RHEL 10 | root | dnf | `roles/cis-rhel10/` |
+| `rocky9` | Rocky Linux 9 | root | dnf | `roles/cis-rocky9/` |
 | `tencentos3` | TencentOS Server 3 | root | dnf | `roles/cis-tencentos3/` |
 | `tencentos4` | TencentOS Server 4 | root | dnf | `roles/cis-tencentos4/` |
 

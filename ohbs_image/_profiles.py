@@ -47,6 +47,11 @@ PROFILES: dict[str, dict[str, Any]] = {
     "rhel8":       _rhel_profile("cis-rhel8", "rhel-8", ansible_core_spec="ansible-core>=2.11"),
     "rhel9":       _rhel_profile("cis-rhel9", "rhel-9"),
     "rhel10":      _rhel_profile("cis-rhel10", "rhel-10"),
+    # Rocky 9 ships the same EL9 userspace as RHEL 9 — the v2.0.0 rule
+    # catalogs are rule-for-rule identical (297/297, 0 level diffs), so the
+    # rhel9 payload is shared verbatim with only the benchmark identity
+    # changed (CIS Rocky Linux 9 Benchmark v2.0.0, see role vars).
+    "rocky9":      _rhel_profile("cis-rocky9", "rocky-9"),
     "tencentos3":  _tlinux_profile("cis-tencentos3", "tencentos-3", ansible_core_spec="ansible-core>=2.11"),
     # TencentOS Server 4's public images ship with sshd on the standard
     # port 22 (not 36000 like TencentOS 3). Verified empirically: the
@@ -93,7 +98,7 @@ SAMPLE_CONFIG = """\
 [build]
 profile             = "tencentos3"
 #   Linux profiles: ubuntu2004 | ubuntu2204 | ubuntu2404 |
-#                   rhel8 | rhel9 | rhel10 |
+#                   rhel8 | rhel9 | rhel10 | rocky9 |
 #                   tencentos3 | tencentos4
 #   Windows:        win2016 | win2019 | win2022 | win2025
 region              = "ap-guangzhou"

@@ -7,6 +7,15 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (profiles)
+- **Rocky Linux 9 profile (`rocky9`, L1/L2)** — new `cis-rocky9` role with
+  the CIS Rocky Linux 9 Benchmark v2.0.0 identity. The v2.0.0 rule catalogs
+  of Rocky 9 and RHEL 9 are rule-for-rule identical (297/297 rules, 0 level
+  diffs, single whitespace-only title difference), so the role shares the
+  verified rhel9 payload (rules/guidance/sections/engine) verbatim; the
+  engine joins the linux drift group so the SHA-256 gate keeps it honest.
+  `ohbs-image list` now shows 13 profiles.
+
 ## [0.18.1] - 2026-08-25
 
 ### Added (documentation — roadmap K)

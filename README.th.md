@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-%3E%3D3.11-blue?logo=python&logoColor=white" alt="Python >= 3.11">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT">
-  <img src="https://img.shields.io/badge/profiles-12-orange" alt="12 profiles">
+  <img src="https://img.shields.io/badge/profiles-13-orange" alt="13 profiles">
   <img src="https://img.shields.io/badge/platform-Tencent%20Cloud-0052D9" alt="Tencent Cloud">
   <a href="https://github.com/susunola/ohbs-image/actions/workflows/ci.yml"><img src="https://github.com/susunola/ohbs-image/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
@@ -155,7 +155,7 @@ TOML array และ `level` / `min_score` / `assume_role_duration` / `ssh_port`
 [build]
 profile             = "tencentos3"
 #   Linux: ubuntu2004 | ubuntu2204 | ubuntu2404 |
-#          rhel8 | rhel9 | rhel10 |
+#          rhel8 | rhel9 | rhel10 | rocky9 |
 #          tencentos3 | tencentos4
 #   Windows: win2016 | win2019 | win2022 | win2025
 region              = "ap-guangzhou"
@@ -293,6 +293,7 @@ AK/SK ผ่าน environment variable เท่านั้น (HCL `sensitive
 | `rhel8` | RHEL 8 | root | dnf | `roles/cis-rhel8/` |
 | `rhel9` | RHEL 9 | root | dnf | `roles/cis-rhel9/` |
 | `rhel10` | RHEL 10 | root | dnf | `roles/cis-rhel10/` |
+| `rocky9` | Rocky Linux 9 | root | dnf | `roles/cis-rocky9/` |
 | `tencentos3` | TencentOS Server 3 | root | dnf | `roles/cis-tencentos3/` |
 | `tencentos4` | TencentOS Server 4 | root | dnf | `roles/cis-tencentos4/` |
 

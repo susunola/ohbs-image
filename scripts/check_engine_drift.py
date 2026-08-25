@@ -20,7 +20,8 @@ GROUPS = {
     "linux": (
         "ohbs_engine.py",
         ("cis-ubuntu2004", "cis-ubuntu2204", "cis-ubuntu2404", "cis-rhel8",
-         "cis-rhel9", "cis-rhel10", "cis-tencentos3", "cis-tencentos4"),
+         "cis-rhel9", "cis-rhel10", "cis-rocky9", "cis-tencentos3",
+         "cis-tencentos4"),
     ),
     "windows-legacy": (
         "ohbs_engine.ps1", ("cis-win2016", "cis-win2019", "cis-win2025"),

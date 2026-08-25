@@ -63,12 +63,13 @@ def check_role(role: Path) -> list[str]:
 
 def main() -> int:
     errors: list[str] = []
-    for role in sorted(path for path in ROLES.iterdir() if path.is_dir()):
+    roles = sorted(path for path in ROLES.iterdir() if path.is_dir())
+    for role in roles:
         errors.extend(check_role(role))
     if errors:
         print("catalog guidance check failed:", *errors, sep="\n", file=sys.stderr)
         return 1
-    print("catalog guidance: 12 role catalogs and guidance maps OK")
+    print(f"catalog guidance: {len(roles)} role catalogs and guidance maps OK")
     return 0
 
 

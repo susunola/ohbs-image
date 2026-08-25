@@ -50,7 +50,7 @@ jobs:
           # 3) every bundled OS role shipped (package-data)
           roles_dir = os.path.join(os.path.dirname(ohbs_image.__file__), "roles")
           roles = sorted(os.listdir(roles_dir))
-          assert len(roles) == 12, f"expected 12 roles, got {len(roles)}: {roles}"
+          assert len(roles) == 13, f"expected 13 roles, got {len(roles)}: {roles}"
 
           # spot-check a role data file made it into the wheel
           rp = os.path.join(roles_dir, "cis-tencentos4", "files", "rules.json")

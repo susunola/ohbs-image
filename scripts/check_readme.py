@@ -34,7 +34,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # module at parse time (kept as a flat alternation for the regex).
 _PROFILE_NAMES = (
     "ubuntu2004", "ubuntu2204", "ubuntu2404",
-    "rhel8", "rhel9", "rhel10",
+    "rhel8", "rhel9", "rhel10", "rocky9",
     "tencentos3", "tencentos4",
     "win2016", "win2019", "win2022", "win2025",
 )

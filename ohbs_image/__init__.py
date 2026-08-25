@@ -66,7 +66,7 @@ __all__ = [
 #
 #   _logging.py     logging/colors + ConfigError + VERSION          (no deps)
 #   _templates.py   embedded HCL/YAML/shell template strings        (no deps)
-#   _profiles.py    12 OS profile definitions                       (no deps)
+#   _profiles.py    13 OS profile definitions                       (no deps)
 #   _config.py      config load/resolve/validate, dataclasses,
 #                   path helpers                                    -> logging, profiles
 #   _render.py      packer/HCL rendering, rule overrides, role bundling

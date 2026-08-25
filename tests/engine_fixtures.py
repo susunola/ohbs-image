@@ -27,6 +27,7 @@ ENGINE_PATHS = {
     "cis-rhel8": "ohbs_image/roles/cis-rhel8/files/ohbs_engine.py",
     "cis-rhel9": "ohbs_image/roles/cis-rhel9/files/ohbs_engine.py",
     "cis-rhel10": "ohbs_image/roles/cis-rhel10/files/ohbs_engine.py",
+    "cis-rocky9": "ohbs_image/roles/cis-rocky9/files/ohbs_engine.py",
     "cis-tencentos3": "ohbs_image/roles/cis-tencentos3/files/ohbs_engine.py",
     "cis-tencentos4": "ohbs_image/roles/cis-tencentos4/files/ohbs_engine.py",
     "cis-ubuntu2004": "ohbs_image/roles/cis-ubuntu2004/files/ohbs_engine.py",

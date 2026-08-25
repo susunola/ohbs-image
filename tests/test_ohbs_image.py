@@ -2072,8 +2072,8 @@ class TestMain:
 # PROFILES integrity checks
 # ---------------------------------------------------------------------------
 class TestProfiles:
-    def test_count_is_12(self):
-        assert len(PROFILES) == 12, f"Expected 12 profiles, got {len(PROFILES)}"
+    def test_count_is_13(self):
+        assert len(PROFILES) == 13, f"Expected 13 profiles, got {len(PROFILES)}"
 
     def test_all_have_os_tag(self):
         for name, p in PROFILES.items():
@@ -3926,8 +3926,8 @@ class TestRuleIdAndBenchmark:
         import hashlib
         hashes = set()
         for role in ("cis-tencentos4", "cis-tencentos3", "cis-rhel8",
-                     "cis-rhel9", "cis-rhel10", "cis-ubuntu2004",
-                     "cis-ubuntu2204", "cis-ubuntu2404"):
+                     "cis-rhel9", "cis-rhel10", "cis-rocky9",
+                     "cis-ubuntu2004", "cis-ubuntu2204", "cis-ubuntu2404"):
             with open(f"ohbs_image/roles/{role}/files/ohbs_engine.py", "rb") as fh:
                 data = fh.read()
             hashes.add(hashlib.sha256(data).hexdigest())
@@ -6145,7 +6145,7 @@ class TestOutputYmlListsSkippedManual:
     def test_all_output_ymls_include_skipped_manual(self):
         import glob as _g
         outputs = sorted(_g.glob("ohbs_image/roles/cis-*/tasks/output.yml"))
-        assert len(outputs) == 12
+        assert len(outputs) == 13
         for p in outputs:
             content = Path(p).read_text(encoding="utf-8")
             assert "skipped_manual" in content, p
@@ -6235,7 +6235,7 @@ class TestLinuxRunYmlSurvivesEngineCrash:
         import glob as _g
         linux = [p for p in _g.glob("ohbs_image/roles/cis-*/tasks/run.yml")
                  if "cis-win" not in p]
-        assert len(linux) == 8
+        assert len(linux) == 9
         for p in linux:
             content = Path(p).read_text(encoding="utf-8")
             assert "failed_when: false" in content, p
@@ -6281,7 +6281,7 @@ class TestPreflightRangeValidation:
         import glob as _g
         linux = [p for p in _g.glob("ohbs_image/roles/cis-*/tasks/preflight.yml")
                  if "cis-win" not in p]
-        assert len(linux) == 8
+        assert len(linux) == 9
         for p in linux:
             content = Path(p).read_text(encoding="utf-8")
             assert "Validate cis_min_score range" in content, p

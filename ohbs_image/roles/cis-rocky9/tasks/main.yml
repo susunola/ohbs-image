@@ -1,0 +1,17 @@
+---
+- name: Pre-flight checks
+  ansible.builtin.import_tasks: preflight.yml
+  tags: [cis, always]
+
+- name: Run CIS benchmark
+  ansible.builtin.import_tasks: run.yml
+  tags: [cis, scan, apply]
+
+- name: Gate on findings
+  ansible.builtin.import_tasks: gate.yml
+  when: cis_fail_on_findings | bool or (cis_min_score | int) > 0
+  tags: [cis, gate]
+
+- name: Print build summary
+  ansible.builtin.import_tasks: output.yml
+  tags: [cis, output]
