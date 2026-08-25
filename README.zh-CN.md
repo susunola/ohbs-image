@@ -154,6 +154,8 @@ ohbs-image clean
 | `ohbs-image engine list` | 列出各 profile 捆绑引擎的版本 + sha256 |
 | `ohbs-image engine verify` | 语法校验全部捆绑引擎（CI 门禁） |
 | `ohbs-image engine version` | 输出 ohbs-image 与各系引擎版本 |
+| `ohbs-image catalog list` | 列出捆绑规则目录（规则数、guidance、sha256） |
+| `ohbs-image catalog verify [--strict]` | 规则目录 JSON + guidance 交叉引用门禁 |
 | `ohbs-image doctor --output json` | 结构化诊断工具链、配置、凭据和只读云访问 |
 | `ohbs-image plan --output json` | 不创建资源的构建预览 |
 | `ohbs-image state path` | 打印证据目录路径 |

@@ -8,6 +8,7 @@ from collections.abc import Iterable
 import ohbs_image
 
 from ._audit import cmd_audit
+from ._catalog_tools import cmd_catalog_list, cmd_catalog_verify
 from ._commands import (
     cmd_build,
     cmd_check_source,
@@ -52,7 +53,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test",
     ],
     "manage & evidence": [
-        "state", "config", "report", "engine", "list", "images", "clean",
+        "state", "config", "report", "catalog", "engine", "list", "images", "clean",
         "cleanup-images", "cleanup-runs", "pending", "audit", "drift",
         "check-source", "verify", "verify-image",
     ],
@@ -297,6 +298,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_ev = engine_sub.add_parser(
         "version", help="Print ohbs-image and per-family engine versions")
     p_ev.set_defaults(func=cmd_engine_version)
+
+    p_catalog = sub.add_parser("catalog", help="Inspect and verify the bundled rule catalogs")
+    catalog_sub = p_catalog.add_subparsers(dest="catalog_command")
+    p_clist = catalog_sub.add_parser(
+        "list", help="Enumerate bundled catalogs (rules, guidance, sha256)")
+    p_clist.add_argument("--output", choices=["text", "json"], default="text")
+    p_clist.set_defaults(func=cmd_catalog_list)
+    p_cverify = catalog_sub.add_parser(
+        "verify", help="Validate catalog JSON + guidance cross-references (CI-ready)")
+    p_cverify.add_argument("--strict", action="store_true",
+                           help="Fail on guidance cross-reference drift "
+                                "(default: report as warnings)")
+    p_cverify.add_argument("--output", choices=["text", "json"], default="text")
+    p_cverify.set_defaults(func=cmd_catalog_verify)
 
     p_pre = sub.add_parser("preflight", parents=[common], help="Run pre-flight checks")
     p_pre.set_defaults(func=cmd_preflight)

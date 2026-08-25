@@ -42,6 +42,8 @@ in the changelog.
 | `state prune` | `0` pruned or previewed · `1` no criteria given or rewrite failure |
 | `engine list` / `engine version` | always `0` |
 | `engine verify` | `0` all bundled engines valid · `1` one or more engines broken |
+| `catalog list` | always `0` |
+| `catalog verify` | `0` catalogs healthy (drift shown as warnings) · `1` corruption or `--strict` drift |
 | `config schema` / `explain` | `0` ok · `1` key not documented or key missing |
 | `config validate` | `0` valid · `1` invalid configuration · `2` file missing/unreadable |
 | `config diff` | `0` identical · `1` differences found (or either file unreadable) |

@@ -7,6 +7,23 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added (supply chain — roadmap I)
+- **`catalog list`** — enumerates every bundled rule catalog with rule
+  count, guidance entries, chapter count and SHA-256; `--output json`
+  emits `catalog-list/v1` (I-251..I-258).
+- **`catalog verify`** — CI gate for catalog integrity: missing file,
+  invalid JSON, empty catalog, id-less rules and malformed
+  guidance/sections always fail; guidance cross-reference drift (entries
+  pointing at unknown rules, or rules without guidance) is reported as
+  warnings by default and fails only under `--strict`. The default keeps
+  legacy Windows catalogs visible (their known guidance gaps are surfaced
+  every run) without breaking the pipeline; `catalog-verify/v1` in JSON
+  mode (I-259..I-275).
+- **Honest drift report** — `catalog verify` text output surfaced real
+  data gaps in the bundled Windows catalogs (e.g. win2016: 422 rules vs
+  337 guidance entries, `18.9.108.x` ghost references), which were
+  previously invisible to operators (I-276..I-280).
+
 ### Added (engine — roadmap H)
 - **`engine list`** — enumerates every bundled hardening engine with its
   parsed in-engine version, SHA-256, size and family (Linux/Windows);
