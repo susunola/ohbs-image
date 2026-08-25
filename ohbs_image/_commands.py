@@ -15,7 +15,7 @@ from typing import Any, cast
 import ohbs_image
 
 from ._audit import _drift_diff, _write_sarif, _write_xccdf
-from ._config import ResolvedConfig, load_config, resolve
+from ._config import ResolvedConfig, load_config, load_config_layered, resolve
 from ._logging import VERSION, ConfigError, banner, fail, info, logger, ok, warn
 from ._packer import (
     _extract_image_ids,
@@ -130,9 +130,11 @@ def cmd_init(args: argparse.Namespace) -> int:
     info("Then run: ohbs-image preflight / validate / build")
     return 0
 
-def _load_resolve_preflight(config_path: str, workdir: str) -> tuple[ResolvedConfig, Path] | None:
+def _load_resolve_preflight(config_path: str, workdir: str,
+                            overlays: list[str] | None = None
+                            ) -> tuple[ResolvedConfig, Path] | None:
     """Load config, resolve, run preflight. Returns (ResolvedConfig, workdir) or None on failure."""
-    r = _load_resolved(config_path)
+    r = _load_resolved(config_path, overlays)
     if r is None:
         return None
 
@@ -159,18 +161,27 @@ def _prep_for(args: argparse.Namespace) -> tuple[ResolvedConfig, Path] | None:
     MagicMock-based test doubles behave the same.
     """
     if vars(args).get("dry_run", False):
-        r = _load_resolved(args.config)
+        r = _load_resolved(args.config, getattr(args, "overlay", None))
         if r is None:
             return None
         wd = Path(args.workdir).resolve()
         wd.mkdir(parents=True, exist_ok=True)
         return r, wd
-    return ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    return ohbs_image._load_resolve_preflight(
+        args.config, args.workdir, getattr(args, "overlay", None))
 
 
-def _load_resolved(config_path: str) -> ResolvedConfig | None:
-    """Load configuration without build-only Packer or connectivity checks."""
+def _load_resolved(config_path: str,
+                   overlays: list[str] | None = None) -> ResolvedConfig | None:
+    """Load configuration without build-only Packer or connectivity checks.
+
+    Roadmap E — when ``overlays`` is given, the files are deep-merged on
+    top of ``config_path`` (later files override earlier ones).
+    """
     try:
+        if overlays:
+            paths = [Path(config_path)] + [Path(o) for o in overlays]
+            return resolve(load_config_layered(paths))
         return resolve(load_config(Path(config_path)))
     except ConfigError as exc:
         fail(str(exc))
@@ -178,7 +189,8 @@ def _load_resolved(config_path: str) -> ResolvedConfig | None:
 
 def cmd_preflight(args: argparse.Namespace) -> int:
     """Run pre-flight checks."""
-    result = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    result = ohbs_image._load_resolve_preflight(args.config, args.workdir,
+                                                getattr(args, "overlay", None))
     return 0 if result is not None else 1
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -551,7 +563,7 @@ def cmd_cleanup_runs(args: argparse.Namespace) -> int:
     if not isinstance(older_than, int) or older_than <= 0:
         fail("--older-than must be a positive number of hours")
         return 1
-    r = _load_resolved(args.config)
+    r = _load_resolved(args.config, getattr(args, "overlay", None))
     if r is None:
         return 1
     cutoff = datetime.now(UTC).timestamp() - older_than * 3600
@@ -608,7 +620,8 @@ def cmd_check_source(args: argparse.Namespace) -> int:
     Schedule it on a timer alongside 'build --skip-if-unchanged' so a
     vendor OS image update automatically triggers a rebuild.
     """
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir,
+                                              getattr(args, "overlay", None))
 
     if prep is None:
         return 1
@@ -664,7 +677,8 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
     When called from cmd_build, *image_id* is passed explicitly.
     """
     if resolved is None:
-        prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+        prep = ohbs_image._load_resolve_preflight(args.config, args.workdir,
+                                              getattr(args, "overlay", None))
 
         if prep is None:
             return 1
@@ -842,7 +856,8 @@ def cmd_drift(args: argparse.Namespace) -> int:
     """
     if getattr(args, "save_baseline", False):
         return cmd_save_baseline(args)
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir,
+                                              getattr(args, "overlay", None))
 
     if prep is None:
         return 1
@@ -909,7 +924,8 @@ def cmd_drift(args: argparse.Namespace) -> int:
 
 def cmd_save_baseline(args: argparse.Namespace) -> int:
     """ohbs-image drift --save-baseline — persist the current host scan as a baseline."""
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir,
+                                              getattr(args, "overlay", None))
 
     if prep is None:
         return 1
@@ -1156,7 +1172,8 @@ def cmd_pending(args: argparse.Namespace) -> int:
     The check is input-only; 'build --skip-if-unchanged' additionally
     verifies the previous image still exists before skipping.
     """
-    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir)
+    prep = ohbs_image._load_resolve_preflight(args.config, args.workdir,
+                                              getattr(args, "overlay", None))
 
     if prep is None:
         return 1

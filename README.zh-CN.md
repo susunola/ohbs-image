@@ -110,7 +110,7 @@ ohbs-image clean
 
 ```
 ════════════════════════════════════════════════════════
-  ohbs-image 0.5.0 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.18.1 — tencentos3 (L1) → ap-guangzhou-4
 ════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: output will be in this color
 [packer]  ==> tencentcloud-cvm: Creating temporary keypair...
@@ -148,6 +148,7 @@ ohbs-image clean
 | `ohbs-image config get ohbs.level` | 打印某个键的有效值（含默认值） |
 | `ohbs-image config explain --all` | 输出全部配置键参考 |
 | `ohbs-image config migrate --apply` | 原子迁移旧配置到 schema v1 |
+| `ohbs-image config merge base.toml env.toml` | 深度合并分层配置并校验合并结果 |
 | `ohbs-image report diff --before RUN --after RUN` | 比较两次构建元数据差异 |
 | `ohbs-image report list [--profile P] [--status ok\|failed] [--limit N]` | 列出血缘证据索引 |
 | `ohbs-image report show RUN_ID` | 查看单次运行的证据摘要 + 运行清单 |
@@ -202,6 +203,7 @@ ohbs-image clean
 | 参数 | 默认值 | 适用范围 | 说明 |
 |---|---|---|---|
 | `--config <path>` | `./ohbs-image.toml` | 全部 | 配置文件路径 |
+| `--overlay <toml>` | — | 所有接受 `--config` 的命令 | 在 `--config` 之上叠加配置文件（可重复；后层逐键覆盖前层） |
 | `--workdir <dir>` | `./.ohbs-image-build` | 全部 | 渲染输出目录 |
 | `--quiet` | — | validate / build | 精简 packer 输出 |
 | `--debug` | — | validate / build | 启用 Packer 调试日志（`PACKER_LOG=1`） |
@@ -249,6 +251,11 @@ ohbs-image clean
 `assume_role_duration` / `ssh_port` 必须是整数（拒绝浮点和布尔值）。加固配置节
 名为 `[ohbs]`（`ohbs-image init` 生成的名字），旧的 `[cis]` 仍然兼容 — 两者
 同时存在时 `[ohbs]` 生效并打印警告。
+
+配置文件支持分层覆盖，便于按环境覆盖个别键：任何命令都可加 `--overlay <file>`
+（可重复），或先用 `ohbs-image config merge base.toml team.toml local.toml`
+预览合并结果。合并语义：表递归合并、后层逐键覆盖；列表与标量整体替换（不追加）。
+覆盖层可以是部分配置 — 只有合并后的结果必须完整且有效。
 
 ```toml
 [build]
@@ -310,7 +317,7 @@ benchmark = "CIS-v1.0.0"
 
 | 节 | 字段 | 类型 | 说明 |
 |---|---|---|---|
-| `[build]` | `profile` | string | 12 个画像之一 |
+| `[build]` | `profile` | string | 13 个画像之一 |
 | | `region` | string | 腾讯云地域，如 `ap-guangzhou` |
 | | `zone` | string | 可用区，如 `ap-guangzhou-4` |
 | | `instance_type` | string | CVM 实例规格，如 `S5.MEDIUM2` |
@@ -399,7 +406,7 @@ Windows 构建使用 Packer 的 `ansible` provisioner（控制器侧），通过
 ### 设计要点
 
 **捆绑角色，无 Galaxy。**
-12 个 ohbs-os 引擎角色全部随包发布在 `ohbs_image/roles/` 目录下。构建时工具
+13 个 ohbs-os 引擎角色全部随包发布在 `ohbs_image/roles/` 目录下。构建时工具
 将角色复制到工作目录。无网络依赖，无版本漂移。
 
 **`ansible-local`（Linux）— 实例内自包含。**

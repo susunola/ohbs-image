@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import tomllib
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from ipaddress import ip_address
 from pathlib import Path
@@ -194,8 +195,8 @@ def _validate_https_url(value: str, label: str) -> str:
     return value
 
 
-def load_config(path: Path) -> dict[str, Any]:
-    """Load and validate ohbs-image.toml.  Raises ConfigError on invalid input."""
+def _parse_config(path: Path) -> dict[str, Any]:
+    """Parse one config file (no validation). Raises ConfigError."""
     if not path.exists():
         raise ConfigError(
             f"Configuration file not found: {path}\n"
@@ -203,10 +204,54 @@ def load_config(path: Path) -> dict[str, Any]:
         )
 
     try:
-        data = tomllib.loads(path.read_bytes().decode("utf-8"))
+        return tomllib.loads(path.read_bytes().decode("utf-8"))
     except Exception as exc:
         raise ConfigError(f"Failed to parse {path}: {exc}") from exc
 
+
+def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """Deep-merge ``overlay`` into ``base`` and return a new dict.
+
+    Roadmap E — overlay semantics: tables merge recursively (later layers
+    win per key); lists and scalars are REPLACED by the overlay (a later
+    layer's list is authoritative, not appended). Neither input is
+    mutated.
+    """
+    result = dict(base)
+    for key, value in overlay.items():
+        current = result.get(key)
+        if isinstance(current, dict) and isinstance(value, dict):
+            result[key] = deep_merge(current, value)
+        else:
+            result[key] = value
+    return result
+
+
+def load_config_layered(paths: Sequence[Path]) -> dict[str, Any]:
+    """Load and merge multiple config files, then validate the result.
+
+    Roadmap E — layered configuration: files are parsed in order and
+    deep-merged so each later file overrides the earlier ones key-by-key
+    (see :func:`deep_merge`). The merged dict then goes through exactly
+    the same validation as :func:`load_config`, so a layer that leaves a
+    required field unset still fails loudly. Raises ConfigError on any
+    missing/unparseable file or an invalid merged result.
+    """
+    if not paths:
+        raise ConfigError("No configuration files given.")
+    merged: dict[str, Any] = {}
+    for path in paths:
+        merged = deep_merge(merged, _parse_config(path))
+    return _validate_config(merged)
+
+
+def load_config(path: Path) -> dict[str, Any]:
+    """Load and validate ohbs-image.toml.  Raises ConfigError on invalid input."""
+    return _validate_config(_parse_config(path))
+
+
+def _validate_config(data: dict[str, Any]) -> dict[str, Any]:
+    """Validate a parsed config dict (schema gate, required fields, types)."""
     # Roadmap E — schema versioning: the version gate is read here so a
     # config written by a newer ohbs-image fails loudly instead of being
     # silently mis-resolved. Missing schema_version means v1 (legacy).

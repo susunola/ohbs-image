@@ -16,6 +16,19 @@ can be traced across rebuilds.
   engine joins the linux drift group so the SHA-256 gate keeps it honest.
   `ohbs-image list` now shows 13 profiles.
 
+### Added (layered configuration — roadmap E)
+- **`config merge <base> <overlay>…`** — deep-merges layered config files
+  and validates the merged result: tables merge recursively, later layers
+  win key-by-key, and lists/scalars are REPLACED (never appended). Exit
+  `0` valid / `1` invalid merged config / `2` unreadable file;
+  `--output <file>` writes the merged TOML, `--output-json` emits a
+  `{"valid", "layers"}` report.
+- **`--overlay <file>`** — repeatable global flag on every command that
+  takes `--config`: layers the file over the base config with the same
+  deep-merge semantics, so environment-specific settings (region, zone,
+  instance type, level) can live in small per-environment TOML files
+  instead of a fork of the full configuration.
+
 ## [0.18.1] - 2026-08-25
 
 ### Added (documentation — roadmap K)

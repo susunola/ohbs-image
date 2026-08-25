@@ -17,7 +17,7 @@ from typing import Any
 
 import ohbs_image
 
-from ._config import ResolvedConfig, _lineage_path, _state_dir, load_config, resolve
+from ._config import ResolvedConfig, _lineage_path, _state_dir, load_config, load_config_layered, resolve
 from ._discover import discover_resources
 from ._logging import ConfigError, banner, fail, info, ok, warn
 from ._profiles import PROFILES
@@ -634,28 +634,33 @@ def _cloud_checks(r: ResolvedConfig, sid: str, skey: str, tok: str | None) -> li
 
 
 def collect_doctor_checks(config_path: str, *, cloud: bool = True, offline: bool = False,
-                          only: str | None = None) -> list[DoctorCheck]:
+                          only: str | None = None,
+                          overlays: list[str] | None = None) -> list[DoctorCheck]:
     """Run every enabled doctor diagnostic and return the results.
 
     *cloud* toggles Tencent Cloud API checks (False = --no-cloud); *offline*
     additionally skips network probes such as the public-IP lookup and clock
     skew. *only* restricts the run to one diagnostic group (DOCTOR_GROUPS).
+    *overlays* (roadmap E) deep-merges additional config files on top of
+    *config_path* before validation.
 
     Exit-code contract: EXIT_READY when no check fails, EXIT_BLOCKED when at
     least one check fails, EXIT_CONFIG when the configuration cannot be read.
     """
     checks: list[DoctorCheck] = _toolchain_checks()
     r: ResolvedConfig | None = None
-    path = Path(config_path)
-    if not path.exists():
+    paths = [Path(config_path)] + [Path(o) for o in (overlays or [])]
+    missing = [str(p) for p in paths if not p.exists()]
+    if missing:
         checks.append(DoctorCheck(
-            "config", "fail", f"Configuration not found: {path}",
+            "config", "fail", "Configuration not found: " + ", ".join(missing),
             fix="Run: ohbs-image configure", group="config"))
     else:
         try:
-            r = resolve(load_config(path))
+            r = resolve(load_config_layered(paths))
             checks.append(DoctorCheck(
-                "config", "pass", "Configuration is valid", str(path.resolve()), group="config"))
+                "config", "pass", "Configuration is valid",
+                ", ".join(str(p) for p in paths), group="config"))
         except ConfigError as exc:
             checks.append(DoctorCheck(
                 "config", "fail", "Configuration is invalid", str(exc),
@@ -768,7 +773,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     out_format = getattr(args, "output", "text")
     started = time.perf_counter()
     checks = collect_doctor_checks(args.config, cloud=not (args.no_cloud or offline),
-                                   offline=offline, only=only)
+                                   offline=offline, only=only,
+                                   overlays=getattr(args, "overlay", None))
     duration_ms = int((time.perf_counter() - started) * 1000)
     blocked = any(check.status == "fail" for check in checks)
     config_broken = any(check.id == "config" and check.status == "fail" for check in checks)
@@ -1077,7 +1083,12 @@ def _plan_diff_last(r: ResolvedConfig) -> list[dict[str, str]]:
 
 def cmd_plan(args: argparse.Namespace) -> int:
     try:
-        r = resolve(load_config(Path(args.config)))
+        overlays = getattr(args, "overlay", None)
+        if overlays:
+            paths = [Path(args.config)] + [Path(o) for o in overlays]
+            r = resolve(load_config_layered(paths))
+        else:
+            r = resolve(load_config(Path(args.config)))
     except ConfigError as exc:
         fail(str(exc))
         return 2

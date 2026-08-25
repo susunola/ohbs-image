@@ -107,7 +107,7 @@ ohbs-image clean
 
 ```
 ════════════════════════════════════════════════════════
-  ohbs-image 0.5.0 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.18.1 — tencentos3 (L1) → ap-guangzhou-4
 ════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: output will be in this color
 [packer]  ==> tencentcloud-cvm: Creating temporary keypair...
@@ -133,10 +133,12 @@ ohbs-image clean
 | `ohbs-image validate` | Render template และรัน `packer validate` |
 | `ohbs-image build` | Render + `packer build` (สร้าง image) |
 | `ohbs-image clean` | ลบไดเรกทอรี `.ohbs-image-build/` |
+| `ohbs-image config merge base.toml env.toml` | Deep-merge ไฟล์ config แบบเลเยอร์ และตรวจสอบผลลัพธ์ |
 
 | Flag | ค่าเริ่มต้น | คำอธิบาย |
 |---|---|---|
 | `--config <path>` | `./ohbs-image.toml` | ไฟล์ตั้งค่า |
+| `--overlay <file>` | — | ไฟล์ config ที่ซ้อนทับบน `--config` (ระบุซ้ำได้ ไฟล์หลังชนะทีละ key) |
 | `--workdir <dir>` | `./.ohbs-image-build` | ไดเรกทอรีสำหรับ render ผลลัพธ์ |
 | `--quiet` | — | ลด output ของเครื่องมือ (validate / build) |
 | `-y` / `--yes` | — | ข้ามข้อความยืนยันก่อน build |
@@ -150,6 +152,11 @@ TOML array และ `level` / `min_score` / `assume_role_duration` / `ssh_port`
 ต้องเป็นจำนวนเต็ม (ปฏิเสธ float และ boolean) section สำหรับ hardening ชื่อ
 `[ohbs]` (เป็นแบบที่ `ohbs-image init` สร้างให้) — ชื่อเดิม `[cis]` ยังใช้ได้
 แต่ถ้ามีทั้งสองอัน `[ohbs]` จะชนะพร้อมแสดง warning
+
+ไฟล์ config ซ้อนทับกันได้ (เหมาะกับค่าที่ต่างกันตาม environment): ใช้ `--overlay <file>`
+ซ้ำได้กับทุกคำสั่ง หรือใช้ `ohbs-image config merge base.toml env.toml` เพื่อดูผลลัพธ์ที่รวมกัน
+table จะ merge แบบ recursive (เลเยอร์หลังชนะทีละ key) ส่วน list กับ scalar จะถูกแทนที่ทั้งค่า
+(ไม่ append) — overlay เป็นไฟล์บางส่วนได้ แค่ผลลัพธ์ที่รวมกันต้องสมบูรณ์และถูกต้อง
 
 ```toml
 [build]
@@ -189,7 +196,7 @@ benchmark = "CIS-v1.0.0"
 
 | Section | Field | Type | คำอธิบาย |
 |---|---|---|---|
-| `[build]` | `profile` | string | หนึ่งใน 12 profile ที่รองรับ |
+| `[build]` | `profile` | string | หนึ่งใน 13 profile ที่รองรับ |
 | | `region` | string | Region ของ Tencent Cloud เช่น `ap-guangzhou` |
 | | `zone` | string | Availability zone เช่น `ap-guangzhou-4` |
 | | `instance_type` | string | สเปก CVM เช่น `S5.MEDIUM2` |

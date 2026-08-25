@@ -108,7 +108,7 @@ ohbs-image clean
 
 ```
 ════════════════════════════════════════════════════════
-  ohbs-image 0.5.0 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.18.1 — tencentos3 (L1) → ap-guangzhou-4
 ════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: output will be in this color
 [packer]  ==> tencentcloud-cvm: Creating temporary keypair...
@@ -134,10 +134,12 @@ ohbs-image clean
 | `ohbs-image validate` | テンプレートをレンダリングし `packer validate` を実行 |
 | `ohbs-image build` | レンダリング + `packer build`（イメージを生成） |
 | `ohbs-image clean` | `.ohbs-image-build/` 作業ディレクトリを削除 |
+| `ohbs-image config merge base.toml env.toml` | レイヤー構成を深くマージし、結果を検証 |
 
 | フラグ | デフォルト | 説明 |
 |---|---|---|
 | `--config <path>` | `./ohbs-image.toml` | 設定ファイル |
+| `--overlay <file>` | — | `--config` の上に重ねる構成ファイル（繰り返し指定可。後ろのファイルがキー単位で優先） |
 | `--workdir <dir>` | `./.ohbs-image-build` | レンダリング出力ディレクトリ |
 | `--quiet` | — | ツール出力を抑制（validate / build） |
 | `-y` / `--yes` | — | ビルド確認のプロンプトをスキップ |
@@ -151,6 +153,12 @@ ohbs-image clean
 必要があります（浮動小数点・真偽値は拒否）。ハードニングのセクション名は
 `[ohbs]`（`ohbs-image init` が生成）です — 旧来の `[cis]` も利用可能ですが、
 両方存在する場合は警告付きで `[ohbs]` が優先されます。
+
+構成ファイルはレイヤー化できます（環境ごとの差分用）。任意のコマンドで
+`--overlay <file>` を繰り返し指定するか、`ohbs-image config merge base.toml env.toml`
+でマージ結果を確認できます。テーブルは再帰マージ（後ろのレイヤーがキー単位で優先）、
+リストとスカラーは置換（追加ではない）。オーバーレイは部分的なものでよく、
+マージ結果だけが完全で有効である必要があります。
 
 ```toml
 [build]
@@ -190,7 +198,7 @@ benchmark = "CIS-v1.0.0"
 
 | セクション | フィールド | 型 | 説明 |
 |---|---|---|---|
-| `[build]` | `profile` | string | 12 プロファイルのいずれか |
+| `[build]` | `profile` | string | 13 プロファイルのいずれか |
 | | `region` | string | Tencent Cloud リージョン（例：`ap-guangzhou`） |
 | | `zone` | string | アベイラビリティゾーン（例：`ap-guangzhou-4`） |
 | | `instance_type` | string | CVM インスタンス仕様（例：`S5.MEDIUM2`） |
@@ -260,7 +268,7 @@ Windows ビルドは Packer の `ansible` プロビジョナー（コントロ�
 ### 設計上の判断
 
 **ロールは同梱、Galaxy なし。**
-12 種すべての ohbs-os エンジンロールをパッケージ内の `ohbs_image/roles/` に同梱。ビルド
+13 種すべての ohbs-os エンジンロールをパッケージ内の `ohbs_image/roles/` に同梱。ビルド
 時にツールが選択されたロールを作業ディレクトリへコピー。ネットワーク依存なし、
 バージョン漂流なし。
 

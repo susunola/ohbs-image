@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from ._config import load_config, resolve
+from ._config import load_config, load_config_layered, resolve
 from ._logging import ConfigError, fail, ok, warn
 from ._profiles import PROFILES
 
@@ -297,6 +297,81 @@ def _jsonable(value: Any) -> Any:
     if isinstance(value, (str, int, float, bool, list, dict)) or value is None:
         return value
     return str(value)
+
+
+def cmd_config_merge(args: argparse.Namespace) -> int:
+    """Roadmap E — deep-merge layered config files and validate the result.
+
+    Exit codes: 0 merged and valid, 1 invalid merged config, 2 unreadable
+    file. With --output the merged TOML is written (or a JSON validity
+    report with --output-json); otherwise the merged TOML is printed.
+    """
+    paths = [Path(args.base)] + [Path(p) for p in args.overlays]
+    missing = [str(p) for p in paths if not p.exists()]
+    if missing:
+        fail("Configuration file not found: " + ", ".join(missing))
+        return 2
+    try:
+        data = load_config_layered(paths)
+    except OSError as exc:
+        fail(f"Could not read config: {exc}")
+        return 2
+    except ConfigError as exc:
+        fail(str(exc))
+        return 1
+    if getattr(args, "output_json", False):
+        print(json.dumps({"valid": True, "layers": [str(p) for p in paths]},
+                         ensure_ascii=False, indent=2))
+        return 0
+    merged = _toml_dumps(data)
+    if args.output:
+        Path(args.output).write_text(merged, encoding="utf-8")
+        ok(f"Merged configuration -> {args.output}")
+    else:
+        print(merged, end="")
+    ok("Layered configuration merged and valid: " + " < ".join(str(p) for p in paths))
+    return 0
+
+
+def _toml_dumps(data: dict[str, Any]) -> str:
+    """Render a parsed config dict back to TOML (schema_version first)."""
+    lines: list[str] = []
+    scalar_keys = [k for k in data if not isinstance(data[k], dict)]
+    if "schema_version" in scalar_keys:
+        scalar_keys.remove("schema_version")
+        lines.append(f"schema_version = {data['schema_version']}")
+        lines.append("")
+    for key in scalar_keys:
+        lines.append(f"{key} = {_fmt_toml(data[key])}")
+    if scalar_keys:
+        lines.append("")
+    for section, table in data.items():
+        if not isinstance(table, dict):
+            continue
+        if section == "cis":
+            # [cis] is a synthetic alias of [ohbs] created during
+            # validation; never emit it back into a user config file.
+            continue
+        lines.append(f"[{section}]")
+        for key, value in table.items():
+            if isinstance(value, dict):
+                lines.append(f"[{section}.{key}]")
+                for sub_key, sub_value in value.items():
+                    lines.append(f"{sub_key} = {_fmt_toml(sub_value)}")
+            else:
+                lines.append(f"{key} = {_fmt_toml(value)}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _fmt_toml(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(_fmt_toml(v) for v in value) + "]"
+    return json.dumps(str(value), ensure_ascii=False)
 
 
 def cmd_config_migrate(args: argparse.Namespace) -> int:

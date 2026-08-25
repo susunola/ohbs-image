@@ -34,6 +34,7 @@ from ._config_tools import (
     cmd_config_diff,
     cmd_config_explain,
     cmd_config_get,
+    cmd_config_merge,
     cmd_config_migrate,
     cmd_config_schema,
     cmd_config_validate,
@@ -99,6 +100,10 @@ def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--config", default="ohbs-image.toml",
                         help="Path to config file (default ./ohbs-image.toml)")
+    common.add_argument("--overlay", action="append", default=None, metavar="TOML",
+                        help="Additional config file layered on top of --config "
+                             "(repeatable; later files override earlier ones "
+                             "key-by-key — roadmap E)")
     common.add_argument("--workdir", default=DEFAULT_WORKDIR,
                         help=f"Rendered working directory (default ./{DEFAULT_WORKDIR})")
     common.add_argument("--state-dir", default=argparse.SUPPRESS,
@@ -261,6 +266,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_migrate.add_argument("--apply", action="store_true",
                            help="Atomically update --config in place")
     p_migrate.set_defaults(func=cmd_config_migrate)
+    p_merge = config_sub.add_parser(
+        "merge", help="Deep-merge layered config files and validate the result")
+    p_merge.add_argument("base", help="Base configuration file")
+    p_merge.add_argument("overlays", nargs="+",
+                         help="Overlay files (later files override earlier ones)")
+    p_merge.add_argument("--output",
+                         help="Write the merged TOML to this file (default: print)")
+    p_merge.add_argument("--output-json", action="store_true", dest="output_json",
+                         help="Emit a JSON validity report instead of merged TOML")
+    p_merge.set_defaults(func=cmd_config_merge)
 
     p_report = sub.add_parser("report", help="Compare and inspect build evidence")
     report_sub = p_report.add_subparsers(dest="report_command")

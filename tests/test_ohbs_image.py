@@ -2772,7 +2772,7 @@ class TestCleanupRuns:
     def test_cleanup_uses_minimal_config_path_and_dry_run(self, valid_toml, monkeypatch):
         from ohbs_image import cmd_cleanup_runs, resolve
         r = resolve(valid_toml)
-        monkeypatch.setattr("ohbs_image._commands._load_resolved", lambda _: r)
+        monkeypatch.setattr("ohbs_image._commands._load_resolved", lambda _, *_o: r)
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
                             lambda *a: (_ for _ in ()).throw(AssertionError("no preflight")))
         monkeypatch.setattr("ohbs_image._list_ephemeral_instances", lambda _: [{
@@ -2806,7 +2806,7 @@ class TestCleanupRuns:
     def test_skips_unexpired_manifest_run(self, valid_toml, monkeypatch):
         from ohbs_image import cmd_cleanup_runs, resolve
         r = resolve(valid_toml)
-        monkeypatch.setattr("ohbs_image._commands._load_resolved", lambda _: r)
+        monkeypatch.setattr("ohbs_image._commands._load_resolved", lambda _, *_o: r)
         monkeypatch.setattr("ohbs_image._list_ephemeral_instances", lambda _: [{
             "InstanceId": "ins-active", "CreatedTime": "2020-01-01T00:00:00Z",
             "Tags": [{"Key": "managed_by", "Value": "ohbs-image"},
@@ -3474,7 +3474,7 @@ class TestFingerprintAndChangeDetection:
                             lambda: home / ".ohbs-image" / "lineage.jsonl")
         monkeypatch.setattr("ohbs_image._image_ids_still_exist", lambda r, ids: True)
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         args = mock.MagicMock(config="c", workdir="w")
         assert cmd_pending(args) == 0  # unchanged → no rebuild needed
 
@@ -3494,7 +3494,7 @@ class TestFingerprintAndChangeDetection:
         monkeypatch.setattr("ohbs_image._lineage_path",
                             lambda: home / ".ohbs-image" / "lineage.jsonl")
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         args = mock.MagicMock(config="c", workdir="w")
         assert cmd_pending(args) == 1  # changed → rebuild required
 
@@ -4212,7 +4212,7 @@ class TestVerifyImage:
         from ohbs_image import cmd_verify_image
         r = resolve(valid_toml)
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         assert cmd_verify_image(mock.MagicMock(config="c", workdir="w",
                                                image="", min_score=85.0)) == 1
 
@@ -4220,7 +4220,7 @@ class TestVerifyImage:
         from ohbs_image import cmd_verify_image
         r = resolve(valid_toml)
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_setup_keypair",
                             lambda r_: ("key-probe", "/tmp/probe_key", "ssh-ed25519 AAAA"))
         launched = {}
@@ -4260,7 +4260,7 @@ class TestVerifyImage:
         from ohbs_image import cmd_verify_image
         r = resolve(valid_toml)
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_setup_keypair",
                             lambda r_: ("key-probe", "/tmp/probe_key", "ssh-ed25519 AAAA"))
         monkeypatch.setattr("ohbs_image._probe_launch", lambda *a, **k: "ins-probe")
@@ -4336,7 +4336,7 @@ class TestBuildNewFeatures:
     def test_build_skips_when_unchanged(self, tmp_path, monkeypatch):
         from ohbs_image import PackerResult, cmd_build
         r, wd = self._prep(tmp_path)
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, wd))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, wd))
         monkeypatch.setattr("ohbs_image._build_fingerprint", lambda r_: "fp123")
         monkeypatch.setattr("ohbs_image._last_successful_fingerprint",
                             lambda r_: ("fp123", ["img-old"]))
@@ -4357,7 +4357,7 @@ class TestBuildNewFeatures:
         from ohbs_image import cmd_build
         valid_toml["ohbs"]["rules_include"] = ["1.1.1.1"]
         r = resolve(valid_toml)
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, tmp_path / "build"))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, tmp_path / "build"))
         render = mock.MagicMock()
         monkeypatch.setattr("ohbs_image.render_all", render)
         args = mock.MagicMock(config="x", workdir=str(tmp_path / "build"), yes=True,
@@ -4368,7 +4368,7 @@ class TestBuildNewFeatures:
     def test_build_requires_verifiable_artifacts(self, valid_toml, tmp_path, monkeypatch):
         from ohbs_image import PackerResult, cmd_build
         r = resolve(valid_toml)
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, tmp_path / "build"))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, tmp_path / "build"))
         monkeypatch.setattr("ohbs_image.render_all", lambda w, r: "image-name")
         monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k: PackerResult(exit_code=0))
         lineage = []
@@ -4392,7 +4392,7 @@ class TestBuildNewFeatures:
         r.subnet_id = "subnet-x"
         r.security_group_id = "sg-x"
         r.associate_public_ip = True
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, wd))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, wd))
         monkeypatch.setattr("ohbs_image.render_all", lambda w, r: None)
         monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k:
                             PackerResult(exit_code=0, stdout_lines=[
@@ -4417,7 +4417,7 @@ class TestBuildNewFeatures:
         r.subnet_id = "subnet-x"
         r.security_group_id = "sg-x"
         r.associate_public_ip = True
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, wd))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, wd))
         monkeypatch.setattr("ohbs_image.render_all", lambda w, r: None)
         monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k:
                             PackerResult(exit_code=0, stdout_lines=[
@@ -4435,7 +4435,7 @@ class TestBuildNewFeatures:
         r.secret_id_env = "TENCENTCLOUD_SECRET_ID"
         r.secret_key_env = "TENCENTCLOUD_SECRET_KEY"
         r.security_token_env = "TENCENTCLOUD_SECURITY_TOKEN"
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, wd))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, wd))
         monkeypatch.setattr("ohbs_image.render_all", lambda w, r: None)
         monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k:
                             PackerResult(exit_code=0, stdout_lines=[
@@ -4454,7 +4454,7 @@ class TestBuildNewFeatures:
         r.secret_id_env = "TENCENTCLOUD_SECRET_ID"
         r.secret_key_env = "TENCENTCLOUD_SECRET_KEY"
         r.security_token_env = "TENCENTCLOUD_SECURITY_TOKEN"
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, wd))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, wd))
         monkeypatch.setattr("ohbs_image.render_all", lambda w, r: None)
         monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k:
                             PackerResult(exit_code=0, stdout_lines=[
@@ -4507,7 +4507,7 @@ class TestAttestationPolicy:
         provenance = tmp_path / "unsigned.provenance.json"
         provenance.write_text("{}", encoding="utf-8")
         shared: list[object] = []
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, tmp_path / "build"))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, tmp_path / "build"))
         monkeypatch.setattr("ohbs_image.render_all", lambda w, r: "image-name")
         monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k: PackerResult(
             exit_code=0, stdout_lines=["Created image ID: img-new", "Score: 95%"]))
@@ -4879,7 +4879,7 @@ class TestDrift:
         from ohbs_image import cmd_drift
         r = resolve(valid_toml)
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         assert cmd_drift(mock.MagicMock(config="c", workdir="w", host="")) == 1
 
     def test_cmd_drift_no_drift(self, valid_toml, monkeypatch, tmp_path):
@@ -4888,7 +4888,7 @@ class TestDrift:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(100.0, {"1.1.1": "pass"}))
         baseline = self._doc(100.0, {"1.1.1": "pass"})
@@ -4905,7 +4905,7 @@ class TestDrift:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(50.0, {"1.1.1": "fail"}))
         baseline = self._doc(100.0, {"1.1.1": "pass"})
@@ -4925,7 +4925,7 @@ class TestDrift:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(100.0, {"1.1.1": "pass"}))
         monkeypatch.setattr("ohbs_image._fetch_baseline", lambda r, image_id: None)
@@ -4946,7 +4946,7 @@ class TestDrift:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(100.0, {"1.1.1": "pass"}))
         monkeypatch.setattr("ohbs_image._fetch_baseline", lambda r, image_id: None)
@@ -4965,7 +4965,7 @@ class TestDrift:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(100.0, {"1.1.1": "pass"}))
         monkeypatch.setattr("ohbs_image._fetch_baseline", lambda r, image_id: None)
@@ -4983,7 +4983,7 @@ class TestDrift:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(100.0, {"1.1.1": "pass"}))
         monkeypatch.setattr("ohbs_image._fetch_baseline", lambda r, image_id: None)
@@ -5004,7 +5004,7 @@ class TestDrift:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(100.0, {"1.1.1": "pass"}))
         bl = tmp_path / "bl.json"
@@ -5023,7 +5023,7 @@ class TestDrift:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(100.0, {"1.1.1": "pass"}))
         fetched = []
@@ -5046,7 +5046,7 @@ class TestDrift:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(100.0, {"1.1.1": "pass"}))
         fetched = []
@@ -5070,7 +5070,7 @@ class TestDrift:
         monkeypatch.setattr("ohbs_image._lineage_path",
                             lambda: home / ".ohbs-image" / "lineage.jsonl")
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: self._doc(99.0, {"1.1.1": "pass"}))
         args = mock.MagicMock(config="c", workdir="w", host="1.2.3.4",
@@ -5210,7 +5210,7 @@ class TestCheckSource:
         monkeypatch.setattr("ohbs_image._source_image_created",
                             lambda r_: "2026-08-01T00:00:00Z")
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         assert cmd_check_source(mock.MagicMock(config="c", workdir="w")) == 0
 
     def test_check_source_refreshed(self, valid_toml, tmp_path, monkeypatch):
@@ -5230,7 +5230,7 @@ class TestCheckSource:
         monkeypatch.setattr("ohbs_image._source_image_created",
                             lambda r_: "2026-08-05T00:00:00Z")
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         assert cmd_check_source(mock.MagicMock(config="c", workdir="w")) == 1
 
     def test_check_source_ignores_scan_records(self, valid_toml, tmp_path, monkeypatch):
@@ -5253,7 +5253,7 @@ class TestCheckSource:
         monkeypatch.setattr("ohbs_image._source_image_created",
                             lambda r_: "2026-08-01T00:00:00Z")
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         assert cmd_check_source(mock.MagicMock(config="c", workdir="w")) == 1
 
     def test_check_source_query_failure_is_unknown(self, valid_toml, tmp_path, monkeypatch):
@@ -5261,7 +5261,7 @@ class TestCheckSource:
         r = resolve(valid_toml)
         monkeypatch.setattr("ohbs_image._source_image_created", lambda r_: None)
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         assert cmd_check_source(mock.MagicMock(config="c", workdir="w")) == 2
 
     def test_check_source_ignores_different_source_image(self, valid_toml, tmp_path, monkeypatch):
@@ -5280,7 +5280,7 @@ class TestCheckSource:
         monkeypatch.setattr("ohbs_image._source_image_created",
                             lambda r_: "2026-08-01T00:00:00Z")
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         assert cmd_check_source(mock.MagicMock(config="c", workdir="w")) == 1
 
 
@@ -5412,7 +5412,7 @@ class TestVerifyImageMinScoreFallback:
         from ohbs_image import cmd_verify_image
         valid_toml.setdefault("ohbs", {})["min_score"] = 92
         r = resolve(valid_toml)
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, tmp_path / "w"))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_setup_keypair",
                             lambda r_: ("key-probe", "/tmp/probe_key", "ssh-ed25519 AAAA"))
         monkeypatch.setattr("ohbs_image._probe_teardown_keypair", lambda *a, **k: None)
@@ -5430,7 +5430,7 @@ class TestVerifyImageMinScoreFallback:
     def test_probe_launch_failure_returns_cleanly(self, valid_toml, monkeypatch, tmp_path):
         from ohbs_image import cmd_verify_image
         r = resolve(valid_toml)
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, tmp_path / "w"))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_setup_keypair",
                             lambda r_: ("key-probe", "/tmp/probe_key", "ssh-ed25519 AAAA"))
         teardowns = []
@@ -5451,7 +5451,7 @@ class TestVerifyImageMinScoreFallback:
         coerced back to the 85 default)."""
         from ohbs_image import cmd_verify_image
         r = resolve(valid_toml)
-        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w: (r, tmp_path / "w"))
+        monkeypatch.setattr("ohbs_image._load_resolve_preflight", lambda c, w, *_o: (r, tmp_path / "w"))
         monkeypatch.setattr("ohbs_image._probe_setup_keypair",
                             lambda r_: ("key-probe", "/tmp/probe_key", "ssh-ed25519 AAAA"))
         monkeypatch.setattr("ohbs_image._probe_teardown_keypair", lambda *a, **k: None)
@@ -5973,7 +5973,7 @@ class TestDriftZeroScoreNotDiscarded:
         r.ssh_username = "root"
         r.ssh_port = 22
         monkeypatch.setattr("ohbs_image._load_resolve_preflight",
-                            lambda c, w: (r, tmp_path / "w"))
+                            lambda c, w, *_o: (r, tmp_path / "w"))
         baseline = {"summary": {"all": {"score": 0.0, "fail": 1, "pass": 0}},
                     "results": [{"id": "1.1.1", "status": "fail"}]}
         current = {"summary": {"all": {"score": 50.0, "fail": 1, "pass": 0}},

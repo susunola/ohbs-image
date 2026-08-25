@@ -169,6 +169,7 @@ ohbs-image config diff a.toml b.toml          # field-level config comparison
 ohbs-image config get ohbs.level              # effective value of one key (defaults applied)
 ohbs-image config explain --all               # full configuration key reference
 ohbs-image config migrate --apply             # atomic legacy config migration
+ohbs-image config merge base.toml env.toml    # deep-merge layered configs (validate result)
 ohbs-image report diff --before RUN --after RUN # compare lineage metadata
 ohbs-image report list [--profile P] [--status ok|failed] [--limit N]
 ohbs-image report show RUN_ID              # single-run evidence + run manifest
@@ -221,6 +222,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | Flag | Applies to | Description |
 |---|---|---|
 | `--config <path>` | all | Config file path (default `./ohbs-image.toml`) |
+| `--overlay <toml>` | all commands that accept `--config` | Additional config file layered over `--config` (repeatable; later files win key-by-key) |
 | `--workdir <dir>` | all | Build output directory (default `./.ohbs-image-build`) |
 | `--state-dir <dir>` | all state-aware commands | Evidence state directory (or `OHBS_IMAGE_STATE_DIR`; it may precede the command) |
 | `--quiet` | validate, build, scan | Suppress packer output |
@@ -300,6 +302,13 @@ be TOML arrays of non-empty strings, and `level`, `min_score`, `assume_role_dura
 must be integers (floats and booleans are rejected). The hardening section is
 `[ohbs]` (what `ohbs-image init` generates); the legacy `[cis]` name is still
 accepted — if both exist, `[ohbs]` wins with a warning.
+
+Configuration files can be layered for environment-specific overrides:
+pass `--overlay <file>` on any command (repeatable) or use
+`ohbs-image config merge base.toml team.toml local.toml` to preview the
+merged result. Layers deep-merge: tables merge recursively and later files
+win key-by-key; lists and scalars are replaced, not appended. Overlay files
+may be partial — only the merged result must be complete and valid.
 
 ```toml
 [build]
