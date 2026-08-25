@@ -82,6 +82,16 @@ jobs:
       - name: Verify rules.json canonical format
         run: python3 scripts/format_rules.py --check
 
+      # Catalog data-quality gate: every role's rules.json (and guidance.json)
+      # must satisfy the semantic schema in scripts/validate_rules.py — required
+      # fields, correct types, enum constraints, unique ids, and guidance ids
+      # that actually exist in the catalog. This blocks bad catalog edits before
+      # they can reach an expensive cloud e2e run. The historical Linux
+      # 'automated'-field gap is reported as a non-blocking warning (use
+      # --strict or --write-backfill to act on it).
+      - name: Validate rule catalogs (data quality)
+        run: python3 scripts/validate_rules.py
+
       # Delivery reports merge rules.json + guidance.json + runtime evidence.
       # Validate that relationship independently of the CLI test suite.
       - name: Verify catalog and CIS guidance integrity
