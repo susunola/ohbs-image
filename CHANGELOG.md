@@ -375,6 +375,10 @@ can be traced across rebuilds.
   the sibling rules in the ubuntu catalogs.
 
 ### Added
+- **Machine-readable real-cloud acceptance results** — protected canary and
+  manual E2E workflows now always publish `acceptance-result.json` and a
+  GitHub run summary before enforcing the final pass/fail result. The
+  representative canary set covers TencentOS 3, Ubuntu 24.04 and Windows 2022.
 - **First-success product workflow** — `configure` (including read-only
   `--discover`), actionable `doctor` text/JSON diagnostics, and read-only
   `plan` output for resources, gates and duration.

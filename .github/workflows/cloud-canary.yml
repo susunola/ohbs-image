@@ -12,7 +12,7 @@ on:
         description: Canary profile
         default: tencentos3
         type: choice
-        options: [tencentos3, win2022]
+        options: [tencentos3, ubuntu2404, win2022]
       level:
         description: CIS level to harden and gate
         default: "1"
@@ -41,7 +41,7 @@ jobs:
     runs-on: [self-hosted, linux, ohbs-image-private]
     timeout-minutes: 180
     env:
-      CANARY_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'tencentos3' }}
+      CANARY_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || vars.OHBS_CLOUD_CANARY_PROFILE || 'tencentos3' }}
       CANARY_LEVEL: ${{ github.event_name == 'workflow_dispatch' && inputs.level || '1' }}
       CANARY_BUILD_INSTANCE_TYPE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_instance_type || 'SA5.MEDIUM2' }}
       E2E_TARGET_REGION: ${{ secrets.TC_E2E_REGION }}
@@ -52,7 +52,9 @@ jobs:
       WINRM_PASSWORD: ${{ secrets.TC_E2E_WINRM_PASSWORD }}
     steps:
       - name: Configure ephemeral evidence state
-        run: echo "OHBS_IMAGE_STATE_DIR=$RUNNER_TEMP/ohbs-image-canary-state" >> "$GITHUB_ENV"
+        run: |
+          echo "OHBS_IMAGE_STATE_DIR=$RUNNER_TEMP/ohbs-image-canary-state" >> "$GITHUB_ENV"
+          echo "OHBS_ACCEPTANCE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -70,12 +72,19 @@ jobs:
         shell: bash
         env:
           LINUX_IMAGE: ${{ secrets.TC_CANARY_TENCENTOS3_IMAGE_ID }}
+          UBUNTU_IMAGE: ${{ secrets.TC_CANARY_UBUNTU2404_IMAGE_ID }}
           WINDOWS_IMAGE: ${{ secrets.TC_CANARY_WIN2022_IMAGE_ID }}
         run: |
-          if [ "$CANARY_PROFILE" = "win2022" ]; then image="$WINDOWS_IMAGE"; else image="$LINUX_IMAGE"; fi
+          case "$CANARY_PROFILE" in
+            ubuntu2404) image="$UBUNTU_IMAGE" ;;
+            win2022) image="$WINDOWS_IMAGE" ;;
+            *) image="$LINUX_IMAGE" ;;
+          esac
           test -n "$image"
           echo "E2E_CANARY_IMAGE=$image" >> "$GITHUB_ENV"
       - name: Build and clean-boot verify
+        id: acceptance
+        continue-on-error: true
         run: |
           export "E2E_TARGET_IMAGE_${CANARY_PROFILE}=$E2E_CANARY_IMAGE"
           pip install -e ".[dev]"
@@ -86,6 +95,16 @@ jobs:
             --security-group-id "$E2E_TARGET_SG_ID" \
             --target-mode single --profile "$CANARY_PROFILE" --level "$CANARY_LEVEL" \
             --build-instance-type "$CANARY_BUILD_INSTANCE_TYPE" --yes
+      - name: Write acceptance result and workflow summary
+        if: always()
+        env:
+          ACCEPTANCE_OUTCOME: ${{ steps.acceptance.outcome }}
+        run: |
+          python scripts/write_acceptance_result.py \
+            --status "$ACCEPTANCE_OUTCOME" --profile "$CANARY_PROFILE" --level "$CANARY_LEVEL" \
+            --build-instance-type "$CANARY_BUILD_INSTANCE_TYPE" \
+            --artifact "cloud-canary-$CANARY_PROFILE-${{ github.run_id }}" \
+            --output acceptance-result.json --summary "$GITHUB_STEP_SUMMARY"
       - name: Archive canary evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -93,6 +112,12 @@ jobs:
           name: cloud-canary-${{ env.CANARY_PROFILE }}-${{ github.run_id }}
           path: |
             logs
+            acceptance-result.json
             ${{ env.OHBS_IMAGE_STATE_DIR }}
           retention-days: 90
           if-no-files-found: warn
+      - name: Enforce acceptance result
+        if: always()
+        env:
+          ACCEPTANCE_OUTCOME: ${{ steps.acceptance.outcome }}
+        run: test "$ACCEPTANCE_OUTCOME" = "success"

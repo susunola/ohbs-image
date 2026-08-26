@@ -43,7 +43,9 @@ jobs:
       WINRM_PASSWORD: ${{ secrets.TC_E2E_WINRM_PASSWORD }}
     steps:
       - name: Configure persistent evidence state
-        run: echo "OHBS_IMAGE_STATE_DIR=$RUNNER_TOOL_CACHE/ohbs-image-e2e-state" >> "$GITHUB_ENV"
+        run: |
+          echo "OHBS_IMAGE_STATE_DIR=$RUNNER_TOOL_CACHE/ohbs-image-e2e-state" >> "$GITHUB_ENV"
+          echo "OHBS_ACCEPTANCE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -58,6 +60,8 @@ jobs:
           oidc-provider-id: github
           region: ${{ secrets.TC_E2E_REGION }}
       - name: Run one real build and clean-boot acceptance
+        id: acceptance
+        continue-on-error: true
         env:
           E2E_SOURCE_IMAGE: ${{ secrets.TC_E2E_SOURCE_IMAGE_ID }}
           WINRM_PASSWORD: ${{ secrets.TC_E2E_WINRM_PASSWORD }}
@@ -70,13 +74,28 @@ jobs:
             --vpc-id "$E2E_TARGET_VPC_ID" --subnet-id "$E2E_TARGET_SUBNET_ID" \
             --security-group-id "$E2E_TARGET_SG_ID" \
             --target-mode single --profile "${{ inputs.profile }}" --level "${{ inputs.level }}" --yes
+      - name: Write acceptance result and workflow summary
+        if: always()
+        env:
+          ACCEPTANCE_OUTCOME: ${{ steps.acceptance.outcome }}
+        run: |
+          python scripts/write_acceptance_result.py \
+            --status "$ACCEPTANCE_OUTCOME" --profile "${{ inputs.profile }}" --level "${{ inputs.level }}" \
+            --artifact "real-cloud-acceptance-${{ inputs.profile }}-${{ github.run_id }}" \
+            --output acceptance-result.json --summary "$GITHUB_STEP_SUMMARY"
       - name: Archive real-cloud acceptance evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
-          name: real-cloud-acceptance-${{ github.run_id }}
+          name: real-cloud-acceptance-${{ inputs.profile }}-${{ github.run_id }}
           path: |
             logs
+            acceptance-result.json
             ${{ env.OHBS_IMAGE_STATE_DIR }}
           if-no-files-found: warn
           retention-days: 90
+      - name: Enforce acceptance result
+        if: always()
+        env:
+          ACCEPTANCE_OUTCOME: ${{ steps.acceptance.outcome }}
+        run: test "$ACCEPTANCE_OUTCOME" = "success"
