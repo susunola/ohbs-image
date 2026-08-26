@@ -375,6 +375,11 @@ can be traced across rebuilds.
   the sibling rules in the ubuntu catalogs.
 
 ### Added
+- **One-command launch journey** — `launch` guides an existing configuration
+  through doctor, risk-gated plan, preflight and an optional build under one
+  RUN_ID. It defaults to read-only readiness and requires both `--build` and
+  `--yes` before creating billed cloud resources; failures persist their phase
+  and next recovery action.
 - **Unified run index** — `run list` and `run show RUN_ID` join lineage,
   manifests, saved plans, releases, reports, provenance and cloud acceptance
   results, including interrupted runs that never reached lineage recording.

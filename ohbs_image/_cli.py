@@ -41,6 +41,7 @@ from ._config_tools import (
 )
 from ._discover import cmd_discover
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
+from ._launch import cmd_launch
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
@@ -57,7 +58,7 @@ from ._try import cmd_try
 # renders them under the same lifecycle headings.
 COMMAND_GROUPS: dict[str, list[str]] = {
     "build lifecycle": [
-        "quickstart", "init", "configure", "doctor", "discover", "plan", "preflight",
+        "launch", "quickstart", "init", "configure", "doctor", "discover", "plan", "preflight",
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
@@ -238,7 +239,25 @@ def build_parser() -> argparse.ArgumentParser:
                              "(roadmap D-119)")
     p_plan.add_argument("--schema", action="store_true",
                         help="Print the plan JSON Schema and exit (roadmap D-117)")
+    p_plan.add_argument("--run-id", default="", help=argparse.SUPPRESS)
     p_plan.set_defaults(func=cmd_plan)
+
+    p_launch = sub.add_parser(
+        "launch", parents=[common],
+        help="Guide doctor, plan, preflight and an explicitly approved build")
+    p_launch.add_argument("--build", action="store_true",
+                          help="Continue into the billed cloud build stage")
+    p_launch.add_argument("--yes", action="store_true",
+                          help="Explicitly approve billed resources (required with --build)")
+    p_launch.add_argument("--offline", action="store_true",
+                          help="Skip network checks in doctor (preflight still validates config)")
+    p_launch.add_argument("--output", choices=["text", "json"], default="text")
+    p_launch.add_argument("--quiet", action="store_true")
+    p_launch.add_argument("--debug", action="store_true")
+    p_launch.add_argument("--skip-if-unchanged", action="store_true")
+    p_launch.add_argument("--log-file", default=None)
+    p_launch.add_argument("--result-file", default=None)
+    p_launch.set_defaults(func=cmd_launch)
 
     p_state = sub.add_parser("state", help="Inspect, initialize and synchronize evidence state")
     state_sub = p_state.add_subparsers(dest="state_command")
@@ -421,6 +440,7 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Skip the rebuild when inputs (source image, rules, "
                             "benchmark, level) are unchanged since the last "
                             "successful build")
+    p_bld.add_argument("--run-id", default="", help=argparse.SUPPRESS)
     p_bld.set_defaults(func=cmd_build)
 
     p_cln = sub.add_parser("clean", parents=[common], help="Remove working directory")

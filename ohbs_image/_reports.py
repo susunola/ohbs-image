@@ -254,7 +254,8 @@ def _read_run_manifest(run_id: str) -> dict[str, Any] | None:
 
 def _write_run_manifest(r: ResolvedConfig, *, status: str, phase: str,
                         lease_hours: int = 48, resource: dict[str, str] | None = None,
-                        notification: str | None = None) -> Path | None:
+                        notification: str | None = None,
+                        next_action: str | None = None) -> Path | None:
     """Atomically update the recoverable lifecycle record for one run."""
     if not isinstance(r, ResolvedConfig) or not r.run_id:
         return None
@@ -282,6 +283,8 @@ def _write_run_manifest(r: ResolvedConfig, *, status: str, phase: str,
                 current["resources"].append(resource)
             if notification is not None:
                 current["notification"] = notification
+            if next_action is not None:
+                current["next_action"] = next_action
             _atomic_write_bytes(path, (json.dumps(current, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
             return path
         finally:

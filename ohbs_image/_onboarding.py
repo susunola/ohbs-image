@@ -1178,7 +1178,8 @@ def cmd_plan(args: argparse.Namespace) -> int:
         else:
             ok("plan --check: no high-risk settings")
     if getattr(args, "save", False):
-        run_id = _new_run_id()
+        run_id = getattr(args, "run_id", "") or _new_run_id()
+        doc["run_id"] = run_id
         plans_dir = _state_dir() / "plans"
         plans_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         out = plans_dir / f"{run_id}-plan.json"
