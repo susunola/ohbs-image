@@ -122,6 +122,17 @@ def rollback_channels_for_artifact(artifact_id: str, *, actor: str, reason: str,
 
 
 def cmd_channel_promote(args: argparse.Namespace) -> int:
+    if args.policy:
+        from ._policy import check_artifact
+        try:
+            decision = check_artifact(Path(args.policy), args.artifact_id,
+                                      args.environment or args.channel)
+        except (OSError, ValueError) as exc:
+            fail(str(exc))
+            return 2
+        if not decision["allowed"]:
+            fail(f"Policy {decision['policy_id']} denied promotion")
+            return 1
     try:
         doc = promote_channel(args.bucket, args.channel, args.artifact_id,
                               expected_generation=args.expected_generation,

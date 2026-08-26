@@ -1,0 +1,30 @@
+{
+  "schema": "https://ohbs-image.dev/policy-bundle/v1",
+  "policy_id": "organization-golden-images",
+  "version": "1.0.0",
+  "defaults": {
+    "allowed_status": ["active"],
+    "require_attestation": true,
+    "min_score": 90,
+    "max_age_days": 30,
+    "max_critical_cves": 0
+  },
+  "environments": {
+    "production": {
+      "min_score": 95,
+      "max_age_days": 14
+    }
+  },
+  "exceptions": [
+    {
+      "id": "EXAMPLE-REMOVE-ME",
+      "artifact_id": "img-example",
+      "environment": "development",
+      "controls": ["freshness"],
+      "owner": "platform-team",
+      "approved_by": "security-team",
+      "reason": "Example only; remove before use",
+      "expires_at": "2026-08-27T00:00:00Z"
+    }
+  ]
+}
