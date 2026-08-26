@@ -76,6 +76,7 @@ from ._registry import (
 from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
 from ._run_events import cmd_run_events
 from ._runs import cmd_run_list, cmd_run_show
+from ._service import cmd_serve
 from ._slo import cmd_report_slo
 from ._state import (
     cmd_state_init,
@@ -98,7 +99,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -611,6 +612,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_event_process.add_argument("--actor", default="event-controller")
     p_event_process.add_argument("--output", choices=["text", "json"], default="text")
     p_event_process.set_defaults(func=cmd_event_process)
+
+    p_serve = sub.add_parser("serve", help="Run the authenticated HTTP control plane")
+    p_serve.add_argument("--host", default="127.0.0.1")
+    p_serve.add_argument("--port", type=int, default=8080)
+    p_serve.add_argument("--rbac", required=True, help="Bearer-token RBAC JSON configuration")
+    p_serve.add_argument("--allow-remote", action="store_true",
+                         help="Allow non-loopback listen (put behind TLS)")
+    p_serve.set_defaults(func=cmd_serve)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")
