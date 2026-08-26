@@ -14,9 +14,11 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from ._ancestry import descendants, impact_plan
+from ._approvals import approve, consume_approval, create_approval
 from ._channels import promote_channel, resolve_channel
 from ._config import _lineage_path
 from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
+from ._identity import IdentityError, verify_oidc_token
 from ._logging import fail, info
 from ._metrics import collect_metrics, prometheus_metrics
 from ._registry import _artifact_path, _hash, _read_object, collect_artifacts
@@ -38,6 +40,8 @@ class ControlPlane:
         self._requests: dict[str, deque[float]] = {}
         self._rbac_mtime_ns = -1
         self.tokens: dict[str, dict[str, Any]] = {}
+        self.oidc: dict[str, Any] = {}
+        self.approval_policy: dict[str, Any] = {}
         self._load_rbac(force=True)
 
     def _load_rbac(self, *, force: bool = False) -> None:
@@ -49,11 +53,15 @@ class ControlPlane:
         except (OSError, json.JSONDecodeError) as exc:
             raise ValueError(f"invalid RBAC configuration {self.rbac_path}") from exc
         tokens = rbac.get("tokens") if isinstance(rbac, dict) else None
-        if not isinstance(tokens, dict) or not tokens:
-            raise ValueError("RBAC configuration requires a non-empty tokens object")
+        oidc = rbac.get("oidc") if isinstance(rbac, dict) else None
+        if not isinstance(tokens, dict) and not isinstance(oidc, dict):
+            raise ValueError("RBAC configuration requires tokens or oidc")
         self.tokens = {
-            str(token): principal for token, principal in tokens.items()
+            str(token): principal for token, principal in (tokens or {}).items()
             if isinstance(principal, dict)}
+        self.oidc = oidc if isinstance(oidc, dict) else {}
+        policy = rbac.get("approvals") if isinstance(rbac, dict) else None
+        self.approval_policy = policy if isinstance(policy, dict) else {}
         self._rbac_mtime_ns = mtime_ns
 
     def principal(self, authorization: str) -> dict[str, Any]:
@@ -74,6 +82,11 @@ class ControlPlane:
                     if expires <= datetime.now(UTC):
                         raise AuthorizationError("token expired")
                 return principal
+        if self.oidc:
+            try:
+                return verify_oidc_token(supplied, self.oidc)
+            except IdentityError as exc:
+                raise AuthorizationError(str(exc)) from exc
         raise AuthorizationError("invalid bearer token")
 
     def _rate_allowed(self, authorization: str) -> bool:
@@ -170,6 +183,48 @@ class ControlPlane:
             if parts[:2] != ["api", "v1"]:
                 return self._error(404, "not_found", "route not found")
             route = parts[2:]
+            if method == "POST" and route == ["approvals"]:
+                self._authorize(principal, "promoter")
+                payload = json.loads(body.decode("utf-8"))
+                resource = str(payload.get("resource") or "")
+                operation = payload.get("payload")
+                if not resource or not isinstance(operation, dict):
+                    raise ValueError("approval resource and payload are required")
+                result = create_approval(
+                    self.root, requester=str(principal.get("subject") or "unknown"),
+                    action=str(payload.get("action") or "channel.promote"), resource=resource,
+                    payload=operation,
+                    required=int(self.approval_policy.get("minimum_approvals", 2)),
+                    ttl_seconds=int(self.approval_policy.get("ttl_seconds", 3600)))
+                self._audit(principal, "approval.create", result["approval_id"], "allowed")
+                return self._json(201, result)
+            if method == "POST" and len(route) == 3 and route[0] == "approvals" \
+                    and route[2] == "approve":
+                self._authorize(principal, "approver")
+                result = approve(self.root, route[1],
+                                 approver=str(principal.get("subject") or "unknown"))
+                self._audit(principal, "approval.approve", route[1], "allowed")
+                return self._json(200, result)
+            if method == "GET" and route == ["audit"]:
+                self._authorize(principal, "auditor")
+                query = parse_qs(parsed.query)
+                rows: list[dict[str, Any]] = []
+                audit_path = self.root / "audit" / "service.jsonl"
+                if audit_path.is_file():
+                    for line in audit_path.read_text(encoding="utf-8").splitlines():
+                        try:
+                            item = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        if isinstance(item, dict):
+                            rows.append(item)
+                for field in ("subject", "action", "outcome"):
+                    if query.get(field):
+                        rows = [row for row in rows if row.get(field) == query[field][0]]
+                limit, offset = self._page(query)
+                rows.reverse()
+                return self._json(200, {"count": len(rows), "limit": limit,
+                    "offset": offset, "events": rows[offset:offset + limit]})
             if method == "GET" and route == ["artifacts"]:
                 self._authorize(principal, "viewer")
                 query = parse_qs(parsed.query)
@@ -271,6 +326,14 @@ class ControlPlane:
                     operation_id = (headers or {}).get("Idempotency-Key", "")
                     if not operation_id:
                         return self._json(400, {"error": "Idempotency-Key is required"})
+                    required_channels = {
+                        str(item) for item in self.approval_policy.get("required_channels", [])}
+                    if channel in required_channels:
+                        approval_id = (headers or {}).get("Approval-Id", "")
+                        if not approval_id:
+                            raise AuthorizationError("Approval-Id is required for this channel")
+                        consume_approval(self.root, approval_id, action="channel.promote",
+                                         resource=f"{bucket}/{channel}", payload=payload)
                     result = promote_channel(bucket, channel, str(payload.get("artifact_id") or ""),
                         expected_generation=payload.get("expected_generation"),
                         operation_id=operation_id, actor=str(principal.get("subject") or "unknown"),
@@ -340,6 +403,9 @@ def serve_control_plane(host: str, port: int, root: Path, rbac_path: Path, *,
             self._dispatch()
 
         def do_PUT(self) -> None:  # noqa: N802
+            self._dispatch()
+
+        def do_POST(self) -> None:  # noqa: N802
             self._dispatch()
 
         def log_message(self, format: str, *args: object) -> None:
