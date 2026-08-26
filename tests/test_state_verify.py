@@ -5,6 +5,7 @@ import hashlib
 import json
 from datetime import UTC, datetime, timedelta
 
+from ohbs_image._run_events import append_run_event
 from ohbs_image._state import cmd_state_verify, verify_state
 
 
@@ -81,3 +82,18 @@ def test_strict_promotes_warning_to_nonzero(tmp_path, monkeypatch, capsys):
     assert cmd_state_verify(argparse.Namespace(output="json", strict=False)) == 0
     capsys.readouterr()
     assert cmd_state_verify(argparse.Namespace(output="json", strict=True)) == 1
+
+
+def test_manifest_event_head_detects_truncated_tail(tmp_path):
+    run_id = "44444444-4444-4444-4444-444444444444"
+    append_run_event(run_id, "CREATED", root=tmp_path)
+    final = append_run_event(run_id, "READY", root=tmp_path)
+    _write(tmp_path / "runs" / f"{run_id}.json", {
+        "run_id": run_id, "status": "ready", "state": "READY",
+        "event_sequence": final["sequence"], "event_hash": final["event_hash"]})
+    path = tmp_path / "events" / f"{run_id}.jsonl"
+    path.write_text(path.read_text(encoding="utf-8").splitlines()[0] + "\n", encoding="utf-8")
+
+    result = verify_state(tmp_path)
+
+    assert "manifest-event-head-mismatch" in {item["code"] for item in result["findings"]}

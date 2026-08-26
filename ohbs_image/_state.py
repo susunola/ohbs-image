@@ -16,16 +16,17 @@ from typing import Any, Protocol
 from ._config import _state_dir
 from ._logging import fail, info, ok
 from ._reports import _state_lock
+from ._run_events import read_run_events, verify_event_chain
 
 STATE_STATUS_SCHEMA = "https://ohbs-image.dev/state-status/v1"
 STATE_PRUNE_SCHEMA = "https://ohbs-image.dev/state-prune/v1"
 STATE_VERIFY_SCHEMA = "https://ohbs-image.dev/state-verify/v1"
 
 # Evidence subdirectories created by `state init` under the state root.
-_STATE_SUBDIRS = ("plans", "runs", "releases", "provenance", "reports", "acceptance")
+_STATE_SUBDIRS = ("plans", "runs", "releases", "provenance", "reports", "acceptance", "events")
 
 # Every `state status` bucket, in stable output order.
-_STATUS_BUCKETS = ("lineage", "runs", "plans", "releases", "provenance", "reports", "acceptance")
+_STATUS_BUCKETS = ("lineage", "runs", "plans", "releases", "provenance", "reports", "acceptance", "events")
 
 
 class StateBackend(Protocol):
@@ -131,7 +132,7 @@ def _evidence_counts(root: Path) -> dict[str, int]:
                 if line.strip())
     patterns = {"runs": "*.json", "plans": "*-plan.json",
                 "releases": "*.json", "provenance": "*.provenance.json",
-                "reports": "*", "acceptance": "*.json"}
+                "reports": "*", "acceptance": "*.json", "events": "*.jsonl"}
     for name, pattern in patterns.items():
         directory = root / name
         if directory.is_dir():
@@ -353,6 +354,28 @@ def verify_state(root: Path) -> dict[str, Any]:
         if doc is not None:
             _verify_release(root, path, doc, known_runs, findings)
 
+    for path in sorted((root / "events").glob("*.jsonl")):
+        run_id = path.name.removesuffix(".jsonl")
+        known_runs.add(run_id)
+        events = read_run_events(run_id, root)
+        if not events and path.stat().st_size:
+            _verify_finding(findings, "error", "invalid-event-log",
+                            str(path.relative_to(root)), "event log contains no readable events")
+        for message in verify_event_chain(run_id, root):
+            _verify_finding(findings, "error", "invalid-event-chain",
+                            str(path.relative_to(root)), message)
+        manifest = _verify_json(root / "runs" / f"{run_id}.json", root, [])
+        if events and manifest:
+            if manifest.get("state") != events[-1].get("to"):
+                _verify_finding(findings, "error", "manifest-event-state-mismatch",
+                                str(path.relative_to(root)),
+                                f"manifest state {manifest.get('state')} != last event {events[-1].get('to')}")
+            if (manifest.get("event_sequence") != events[-1].get("sequence")
+                    or manifest.get("event_hash") != events[-1].get("event_hash")):
+                _verify_finding(findings, "error", "manifest-event-head-mismatch",
+                                str(path.relative_to(root)),
+                                "manifest event head does not match the final event")
+
     uuid_in_name = re.compile(r"([0-9a-f]{8}-[0-9a-f-]{27})")
     for directory in ("provenance", "reports"):
         for path in sorted((root / directory).glob("*")):
@@ -423,7 +446,9 @@ def _prune_evidence_files(root: Path, drop_ids: set[str]) -> list[str]:
         if not run_id:
             continue
         for candidate in (root / "runs" / f"{run_id}.json",
-                          root / "plans" / f"{run_id}-plan.json"):
+                          root / "plans" / f"{run_id}-plan.json",
+                          root / "events" / f"{run_id}.jsonl",
+                          root / "acceptance" / f"{run_id}.json"):
             if candidate.is_file():
                 removed.append(str(candidate))
         provenance = root / "provenance"

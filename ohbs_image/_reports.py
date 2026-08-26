@@ -21,6 +21,7 @@ import ohbs_image
 from ._config import ResolvedConfig
 from ._logging import VERSION, info, ok, warn
 from ._models import DeliveryReportView
+from ._run_events import append_run_event, state_for_manifest
 
 
 @dataclass
@@ -274,6 +275,7 @@ def _write_run_manifest(r: ResolvedConfig, *, status: str, phase: str,
             }
             current["status"] = status
             current["phase"] = phase
+            current["state"] = state_for_manifest(status, phase)
             current["updated_at"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
             if status == "active":
                 current["lease_expires_at"] = (datetime.now(UTC) + timedelta(hours=lease_hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -286,6 +288,16 @@ def _write_run_manifest(r: ResolvedConfig, *, status: str, phase: str,
             if next_action is not None:
                 current["next_action"] = next_action
             _atomic_write_bytes(path, (json.dumps(current, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+            try:
+                event = append_run_event(
+                    r.run_id, str(current["state"]), phase=phase,
+                    reason=next_action or notification or "", root=path.parent.parent)
+                current["event_sequence"] = event["sequence"]
+                current["event_hash"] = event["event_hash"]
+                _atomic_write_bytes(
+                    path, (json.dumps(current, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+            except (OSError, ValueError) as exc:
+                warn(f"Could not append run event for {r.run_id}: {exc}")
             return path
         finally:
             lock.rmdir()

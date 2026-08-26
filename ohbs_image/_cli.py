@@ -47,6 +47,7 @@ from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._quickstart import cmd_quickstart
 from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
+from ._run_events import cmd_run_events
 from ._runs import cmd_run_list, cmd_run_show
 from ._state import (
     cmd_state_init,
@@ -314,6 +315,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_run_show.add_argument("run_id")
     p_run_show.add_argument("--output", choices=["text", "json"], default="text")
     p_run_show.set_defaults(func=cmd_run_show)
+    p_run_events = run_sub.add_parser("events", help="Show the immutable state-transition log")
+    p_run_events.add_argument("run_id")
+    p_run_events.add_argument("--output", choices=["text", "json"], default="text")
+    p_run_events.set_defaults(func=cmd_run_events)
 
     p_config = sub.add_parser("config", help="Inspect, validate and migrate configuration contracts")
     config_sub = p_config.add_subparsers(dest="config_command")
