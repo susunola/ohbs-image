@@ -1,5 +1,5 @@
 CONSOLE_HTML = """<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,35 +7,35 @@ CONSOLE_HTML = """<!doctype html>
   <link rel="stylesheet" href="/console.css">
 </head>
 <body>
-  <a class="skip" href="#main">跳到主要内容</a>
+  <a class="skip" href="#main">Skip to main content</a>
   <header class="topbar">
     <div class="brand"><span class="mark" aria-hidden="true">O</span><div><b>ohbs-image</b><small>CONTROL PLANE</small></div></div>
     <form id="session" class="session" autocomplete="off">
       <label for="token">Bearer Token</label>
-      <input id="token" name="token" type="password" required placeholder="仅保存在当前页面内存">
-      <button type="submit">连接</button>
-      <button id="disconnect" class="quiet" type="button">断开</button>
+      <input id="token" name="token" type="password" required placeholder="Kept in page memory only">
+      <button type="submit">Connect</button>
+      <button id="disconnect" class="quiet" type="button">Disconnect</button>
     </form>
   </header>
   <main id="main">
     <section class="intro">
-      <div><p class="eyebrow">GOLDEN IMAGE OPERATIONS</p><h1>可信镜像，一眼可查。</h1><p>只读优先的团队入口。浏览 Artifact、检查生命周期状态，并观察控制面健康度。</p></div>
-      <div id="connection" class="connection" role="status"><span></span>未连接</div>
+      <div><p class="eyebrow">GOLDEN IMAGE OPERATIONS</p><h1>Trusted images,<br>at a glance.</h1><p>A read-first workspace for teams to inspect artifacts, lifecycle state, and control-plane health.</p></div>
+      <div id="connection" class="connection" role="status"><span></span>Disconnected</div>
     </section>
-    <section class="metrics" aria-label="资产摘要">
-      <article><span>可见 ARTIFACT</span><strong id="total">—</strong><small>当前身份范围</small></article>
-      <article><span>ACTIVE</span><strong id="active">—</strong><small>可供消费</small></article>
-      <article><span>QUARANTINED</span><strong id="quarantined">—</strong><small>隔离观察</small></article>
-      <article><span>REVOKED</span><strong id="revoked">—</strong><small>永久撤销</small></article>
+    <section class="metrics" aria-label="Artifact summary">
+      <article><span>VISIBLE ARTIFACTS</span><strong id="total">—</strong><small>Within identity scope</small></article>
+      <article><span>ACTIVE</span><strong id="active">—</strong><small>Available to consume</small></article>
+      <article><span>QUARANTINED</span><strong id="quarantined">—</strong><small>Held for review</small></article>
+      <article><span>REVOKED</span><strong id="revoked">—</strong><small>Permanently blocked</small></article>
     </section>
     <section class="panel">
-      <div class="panel-head"><div><p class="eyebrow">REGISTRY</p><h2>Artifact 资产</h2></div><div class="tools"><label for="bucket">Bucket</label><input id="bucket" placeholder="全部授权范围"><button id="refresh" type="button">刷新</button></div></div>
-      <div id="notice" class="notice">输入 Token 后连接控制面。Token 不会写入浏览器存储。</div>
-      <div class="table-wrap"><table><thead><tr><th>Artifact</th><th>Bucket / Version</th><th>平台</th><th>状态</th><th>创建时间</th></tr></thead><tbody id="artifacts"><tr><td colspan="5" class="empty">等待连接</td></tr></tbody></table></div>
+      <div class="panel-head"><div><p class="eyebrow">REGISTRY</p><h2>Artifact inventory</h2></div><div class="tools"><label for="bucket">Bucket</label><input id="bucket" placeholder="All authorized buckets"><button id="refresh" type="button">Refresh</button></div></div>
+      <div id="notice" class="notice">Enter a token to connect. Tokens are never written to browser storage.</div>
+      <div class="table-wrap"><table><thead><tr><th>Artifact</th><th>Bucket / Version</th><th>Platform</th><th>Status</th><th>Created</th></tr></thead><tbody id="artifacts"><tr><td colspan="5" class="empty">Waiting for connection</td></tr></tbody></table></div>
     </section>
     <section class="split">
-      <article class="panel"><div class="panel-head"><div><p class="eyebrow">OBSERVABILITY</p><h2>控制面指标</h2></div></div><pre id="metrics">连接后加载 Prometheus 指标</pre></article>
-      <article class="panel guide"><p class="eyebrow">TRUST BOUNDARY</p><h2>安全边界</h2><ol><li><b>只读起步</b><span>界面当前不开放治理写操作。</span></li><li><b>身份裁剪</b><span>列表由服务端按 Bucket 权限过滤。</span></li><li><b>内存会话</b><span>Token 刷新页面即清除。</span></li></ol></article>
+      <article class="panel"><div class="panel-head"><div><p class="eyebrow">OBSERVABILITY</p><h2>Control-plane metrics</h2></div></div><pre id="metrics">Prometheus metrics load after connection</pre></article>
+      <article class="panel guide"><p class="eyebrow">TRUST BOUNDARY</p><h2>Security model</h2><ol><li><b>Read first</b><span>Governance writes are not exposed in this console.</span></li><li><b>Identity scoped</b><span>The server filters results by Bucket authorization.</span></li><li><b>Memory-only session</b><span>Refreshing the page clears the token.</span></li></ol></article>
     </section>
   </main>
   <footer>ohbs-image · evidence-first golden image governance</footer>
@@ -57,7 +57,7 @@ CONSOLE_JS = """(() => {
   const connection = byId('connection');
   const body = byId('artifacts');
   function setNotice(message, error) { notice.textContent = message; notice.classList.toggle('error', Boolean(error)); }
-  function setConnected(value) { connection.classList.toggle('online', value); connection.lastChild.textContent = value ? '已连接' : '未连接'; }
+  function setConnected(value) { connection.classList.toggle('online', value); connection.lastChild.textContent = value ? 'Connected' : 'Disconnected'; }
   function cell(row, value, code) { const td = document.createElement('td'); const el = code ? document.createElement('code') : document.createElement('span'); el.textContent = value || '—'; td.appendChild(el); row.appendChild(td); }
   function render(rows) {
     body.textContent = '';
@@ -71,19 +71,19 @@ CONSOLE_JS = """(() => {
       cell(tr, item.created_at || item.registered_at);
       body.appendChild(tr); if (Object.hasOwn(counts, status)) counts[status] += 1;
     });
-    if (!rows.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 5; td.className = 'empty'; td.textContent = '当前权限范围没有 Artifact'; tr.appendChild(td); body.appendChild(tr); }
+    if (!rows.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 5; td.className = 'empty'; td.textContent = 'No artifacts are visible in the current scope'; tr.appendChild(td); body.appendChild(tr); }
     byId('total').textContent = String(rows.length); Object.keys(counts).forEach((key) => { byId(key).textContent = String(counts[key]); });
   }
   async function request(path, text) { const response = await fetch(path, {headers: {'Authorization': 'Bearer ' + token}}); if (!response.ok) { let message = 'HTTP ' + response.status; try { message = (await response.json()).error || message; } catch (_) {} throw new Error(message); } return text ? response.text() : response.json(); }
   async function load() {
-    if (!token) { setNotice('请先输入 Bearer Token。', true); return; }
+    if (!token) { setNotice('Enter a Bearer token first.', true); return; }
     const bucket = byId('bucket').value.trim(); const query = bucket ? '?bucket=' + encodeURIComponent(bucket) : '';
-    setNotice('正在读取控制面…', false);
-    try { const [registry, metrics] = await Promise.all([request('/api/v1/artifacts' + query, false), request('/api/v1/metrics', true)]); render(registry.artifacts || []); byId('metrics').textContent = metrics; setConnected(true); setNotice('数据已按当前身份的 Bucket 权限裁剪。', false); }
+    setNotice('Reading the control plane…', false);
+    try { const [registry, metrics] = await Promise.all([request('/api/v1/artifacts' + query, false), request('/api/v1/metrics', true)]); render(registry.artifacts || []); byId('metrics').textContent = metrics; setConnected(true); setNotice('Data is scoped to the current identity and its authorized Buckets.', false); }
     catch (error) { setConnected(false); setNotice(error.message, true); }
   }
   session.addEventListener('submit', (event) => { event.preventDefault(); token = byId('token').value; byId('token').value = ''; load(); });
   byId('refresh').addEventListener('click', load);
-  byId('disconnect').addEventListener('click', () => { token = ''; setConnected(false); render([]); byId('metrics').textContent = '连接后加载 Prometheus 指标'; setNotice('会话已清除。', false); });
+  byId('disconnect').addEventListener('click', () => { token = ''; setConnected(false); render([]); byId('metrics').textContent = 'Prometheus metrics load after connection'; setNotice('Session cleared.', false); });
 })();
 """.encode()

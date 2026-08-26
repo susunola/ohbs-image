@@ -47,3 +47,4 @@ htmlcov/
 logs/
 run.log
 packer-plugin-tencentcloud_v1.2.0_x5.0_linux_amd64
+.ohbs-rbac.local.json
