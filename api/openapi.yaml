@@ -5,15 +5,25 @@ info:
   description: Stable v1 contract for querying and governing golden-image assets.
 servers:
   - url: /api/v1
+security:
+  - bearerAuth: []
 paths:
+  /health:
+    get:
+      operationId: getHealth
+      security: []
+      responses:
+        '200': {description: Service is accepting requests, content: {application/json: {schema: {type: object, required: [status, service], properties: {status: {const: ok}, service: {const: ohbs-image}}}}}}
   /artifacts:
     get:
       operationId: listArtifacts
       parameters:
         - {name: bucket, in: query, schema: {type: string}}
         - {name: status, in: query, schema: {type: string, enum: [active, quarantined, revoked]}}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Offset'}
       responses:
-        '200': {description: Artifact list, content: {application/json: {schema: {type: array, items: {$ref: '../schemas/v1/artifact.schema.json'}}}}}
+        '200': {description: Paginated artifact list, content: {application/json: {schema: {type: object, required: [count, limit, offset, artifacts], properties: {count: {type: integer}, limit: {type: integer}, offset: {type: integer}, artifacts: {type: array, items: {$ref: '../schemas/v1/artifact.schema.json'}}}}}}}
   /artifacts/{artifactId}:
     get:
       operationId: getArtifact
@@ -26,6 +36,13 @@ paths:
       operationId: listDescendants
       parameters: [{$ref: '#/components/parameters/ArtifactId'}]
       responses: {'200': {description: Descendant impact graph, content: {application/json: {schema: {type: object}}}}}
+  /artifacts/{artifactId}/impact:
+    get:
+      operationId: getArtifactImpact
+      parameters: [{$ref: '#/components/parameters/ArtifactId'}]
+      responses:
+        '200': {description: Bucket-scoped ancestry and channel blast radius, content: {application/json: {schema: {type: object}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
   /channels/{bucket}/{channel}:
     get:
       operationId: resolveChannel
@@ -40,10 +57,54 @@ paths:
     get:
       operationId: getMetrics
       responses: {'200': {description: Prometheus metrics, content: {text/plain: {schema: {type: string}}}}}
+  /runs:
+    get:
+      operationId: listRuns
+      parameters:
+        - {name: profile, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string}}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Offset'}
+      responses:
+        '200': {description: Paginated, identity-scoped run summaries, content: {application/json: {schema: {type: object}}}}
+  /runs/{runId}:
+    get:
+      operationId: getRun
+      parameters: [{name: runId, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Run and associated evidence, content: {application/json: {schema: {type: object}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /rebuild-requests:
+    get:
+      operationId: listRebuildRequests
+      parameters:
+        - {name: status, in: query, schema: {type: string}}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Offset'}
+      responses:
+        '200': {description: Paginated rebuild requests visible to the identity, content: {application/json: {schema: {type: object}}}}
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
   parameters:
     ArtifactId: {name: artifactId, in: path, required: true, schema: {type: string}}
     Bucket: {name: bucket, in: path, required: true, schema: {type: string}}
     Channel: {name: channel, in: path, required: true, schema: {type: string}}
+    Limit: {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}
+    Offset: {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
   responses:
-    NotFound: {description: Resource not found}
+    NotFound: {description: Resource not found, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: string}
+            message: {type: string}

@@ -284,6 +284,12 @@ ohbs-image ancestry verify [--output json]             # cycles and malformed ed
 ohbs-image event process rebuild-event.json            # dry-run impact + rebuild plan
 ohbs-image event process rebuild-event.json --apply    # quarantine + rollback + queued requests
 ohbs-image serve --rbac rbac.json                      # API + Web Console at http://127.0.0.1:8181/
+
+The service exposes public health checks at `/healthz` and `/api/v1/health`.
+Authenticated v1 endpoints include paginated Artifact and Run queries,
+Artifact impact analysis, Channel resolution/promotion, rebuild requests, and
+Prometheus metrics. Responses are filtered by the caller's authorized Buckets;
+errors use a stable `{error: {code, message}}` envelope.
 ohbs-image channel promote PROFILE stable IMAGE_ID [--expected-generation N]  # atomic CAS pointer move
 ohbs-image channel promote PROFILE stable IMAGE_ID --operation-id deploy-42   # idempotent worker retry + fencing
 ohbs-image channel resolve PROFILE stable [--output json]  # verify pointer + artifact integrity
