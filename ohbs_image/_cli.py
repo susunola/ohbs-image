@@ -19,7 +19,6 @@ from ._benchmark import cmd_benchmark_compare, cmd_benchmark_run
 from ._build_checkpoints import cmd_run_checkpoints
 from ._catalog_tools import cmd_catalog_list, cmd_catalog_verify
 from ._channels import cmd_channel_list, cmd_channel_promote, cmd_channel_resolve
-from ._compliance_pack import PROFILES as COMPLIANCE_PROFILES, cmd_compliance_assess
 from ._commands import (
     cmd_build,
     cmd_check_source,
@@ -41,6 +40,8 @@ from ._commands import (
     cmd_verify_image,
     cmd_verify_release,
 )
+from ._compliance_pack import PROFILES as COMPLIANCE_PROFILES
+from ._compliance_pack import cmd_compliance_assess
 from ._config import _lineage_path
 from ._config_tools import (
     cmd_config_diff,

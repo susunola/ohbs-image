@@ -8,6 +8,25 @@ can be traced across rebuilds.
 ## [Unreleased]
 
 ### Added
+- **Verifiable platform assurance** — an append-only hash-chain proof ledger,
+  deterministic scale/recovery exercises, and strict 30/90-day evidence gates
+  prevent synthetic runs or incomplete observation windows from being reported
+  as production reliability. MLPS 2.0 and Xinchuang readiness packs map
+  technical evidence without claiming accredited certification.
+- **Evidence-led operations Console** — authenticated dashboard summaries,
+  trace waterfalls, lineage impact, policy simulation and approval-gated policy
+  publishing bring operational evidence, exception expiry, and release decisions
+  into one safe control surface.
+- **Certifiable extension ecosystem** — scanners, signers, notifiers, feeds, and
+  distributors share versioned entry-point contracts, duplicate protection, and
+  deterministic offline self-tests. A reusable extension template and signed
+  Terraform Provider release kit include checksums, provenance, six target
+  platforms, compatibility data, and snapshot validation.
+- **Second-cloud architecture proof** — the AWS contract PoC exercises discovery,
+  launch, wait, image creation, distribution, and cleanup through the provider
+  boundary without credentials, network traffic, or billable operations. It is
+  explicitly marked non-production until real IAM, quota, consistency, and boot
+  behaviour are validated.
 - **Release and deployment closure** — upgrade compatibility checks, SHA256
   release manifests, CycloneDX SBOMs, provenance-attested GitHub Release
   assets, documented rollback, and hardened Docker/Compose/systemd/Kubernetes
