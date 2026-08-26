@@ -16,6 +16,7 @@ from typing import Any, cast
 import ohbs_image
 
 from ._audit import _drift_diff, _write_sarif, _write_xccdf
+from ._build_checkpoints import write_build_checkpoint as _write_build_checkpoint
 from ._config import ResolvedConfig, load_config, load_config_layered, resolve
 from ._logging import VERSION, ConfigError, banner, fail, info, logger, ok, warn
 from ._packer import (
@@ -37,6 +38,15 @@ from ._reports import (
 )
 
 _RUN_LEASE_HEARTBEAT_SECONDS = 300
+
+
+def write_build_checkpoint(r: ResolvedConfig, phase: str,
+                           artifacts: dict[str, Any] | None = None) -> None:
+    """Persist recovery data without turning local state I/O into a cloud-build failure."""
+    try:
+        _write_build_checkpoint(r, phase, artifacts)
+    except (OSError, TypeError, ValueError) as exc:
+        warn(f"Could not persist build checkpoint {phase}: {exc}")
 
 
 def _start_run_lease_heartbeat(r: ResolvedConfig) -> tuple[threading.Event, threading.Thread]:
@@ -286,6 +296,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     # records match the actual image (recomputing _image_name() here would
     # roll the timestamp forward).
     image_name = ohbs_image.render_all(workdir, r)
+    write_build_checkpoint(r, "rendered", {"image_name": image_name})
 
     if vars(args).get("dry_run", False):
         info("--dry-run: rendered working directory only; no CVM, image or "
@@ -347,6 +358,12 @@ def cmd_build(args: argparse.Namespace) -> int:
     signed = False
 
     if success:
+        write_build_checkpoint(r, "snapshot-created", {
+            "image_name": image_name, "image_ids": image_ids, "score": score,
+            "sbom_sha256": sbom_sha, "sbom_packages": sbom_count,
+        })
+
+    if success:
         rep = _save_build_report(r, image_name, result.stdout_lines, workdir)
         # An exit code alone is not enough evidence to distribute a hardened
         # image.  A real build must identify the snapshot and archive its
@@ -382,6 +399,10 @@ def cmd_build(args: argparse.Namespace) -> int:
         if rep:
             info(f"Audit report archived -> {rep}")
         signed = bool(prov and prov.with_suffix(prov.suffix + ".sig").is_file())
+        write_build_checkpoint(r, "evidence-ready", {
+            "audit_report": str(rep) if rep else "",
+            "provenance": str(prov) if prov else "", "signed": signed,
+        })
         if getattr(r, "attestation_required", False) is True and not signed:
             fail("required attestation was not signed — image will not be approved, "
                  "shared, or sent to deployment automation")
@@ -411,6 +432,7 @@ def cmd_build(args: argparse.Namespace) -> int:
                 _send_notification(r, False, image_ids, score, image_name)
                 _close_build_log(_fh)
                 return vrc
+        write_build_checkpoint(r, "verified", {"clean_boot": bool(r.verify_boot)})
         # An explicitly requested result artifact is part of the release
         # contract.  Do not share or trigger deployment if it could not be
         # written for the downstream automation that requested it.
@@ -451,6 +473,9 @@ def cmd_build(args: argparse.Namespace) -> int:
             return 1
         if release_manifests:
             info("Release manifest -> " + ", ".join(str(path) for path in release_manifests))
+        write_build_checkpoint(r, "release-ready", {
+            "release_manifests": [str(path) for path in (release_manifests or [])],
+        })
         # Build → attest → verify → distribute.  A successful lineage record
         # is emitted only after every enabled release gate, including an
         # explicitly requested automation result artifact, has passed.
@@ -466,6 +491,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             warn("[image].share_org_units is not supported by "
                  "ModifyImageSharePermission (account IDs only) — skipped: "
                  + ", ".join(r.image_share_org_units))
+        write_build_checkpoint(r, "distributed", {"share_accounts": r.image_share_accounts})
     else:
         fail("packer build failed (see output above)")
         ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
@@ -480,7 +506,12 @@ def cmd_build(args: argparse.Namespace) -> int:
 
     _close_build_log(_fh)
     ohbs_image._write_run_manifest(r, status="completed" if success else "failed",
-                                   phase="release-complete" if success else "packer-build")
+                                   phase="release-complete" if success else "packer-build",
+                                   event_metadata=None if success else {
+                                       "failure_category": result.failure_category or "unknown",
+                                       "retryable": result.retryable,
+                                       "attempts": result.attempts,
+                                   })
     return result.exit_code
 
 def cmd_images(args: argparse.Namespace) -> int:

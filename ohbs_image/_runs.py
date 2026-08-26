@@ -95,6 +95,14 @@ def collect_runs(root: Path | None = None) -> list[dict[str, Any]]:
                 item["events"] = events
             _attach(item, state, path, "events")
 
+    for path in sorted((state / "checkpoints").glob("*.json")):
+        item = _entry(index, path.stem)
+        if item is not None:
+            doc = _json_object(path)
+            if doc:
+                item["checkpoints"] = doc
+            _attach(item, state, path, "checkpoints")
+
     for run_id, item in index.items():
         for directory, kind in (("provenance", "provenance"), ("reports", "report")):
             for path in sorted((state / directory).glob(f"*.{run_id}.*")):

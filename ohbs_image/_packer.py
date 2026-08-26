@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from ._config import PackerResult, ResolvedConfig, _validate_value_present
+from ._failures import classify_failure, retry_delay
 from ._logging import banner, fail, info, ok, warn
 from ._render import _check_ansible_windows_collection, _check_bundled_role, _check_pywinrm
 from ._tc_cloud import _check_security_group_ingress
@@ -37,7 +38,8 @@ _INIT_TRANSIENT_RE = re.compile(
 def _is_transient_init_failure(combined: str) -> bool:
     """True when a failed `packer init` looks like a retryable network/rate-limit
     failure rather than a genuine HCL/plugin error."""
-    return bool(_INIT_TRANSIENT_RE.search(combined or ""))
+    failure = classify_failure(combined, phase="packer-init")
+    return failure.retryable or bool(_INIT_TRANSIENT_RE.search(combined or ""))
 
 
 def run_packer(
@@ -116,7 +118,7 @@ def run_packer(
                      "Check network / plugin registry access.")
                 return PackerResult(exit_code=1)
             warn(f"packer init timed out (attempt {attempt + 1}/{INIT_MAX_ATTEMPTS}) — retrying")
-            time.sleep(min(2 ** attempt, remaining_seconds()))
+            time.sleep(min(retry_delay(attempt + 1), remaining_seconds()))
             continue
 
         if init_res.returncode == 0:
@@ -127,7 +129,7 @@ def run_packer(
         if attempt == INIT_MAX_ATTEMPTS - 1:
             break  # exhausted retries — surface the last failure
         warn(f"packer init failed transiently (attempt {attempt + 1}/{INIT_MAX_ATTEMPTS}) — retrying")
-        time.sleep(min(2 ** attempt, remaining_seconds()))
+        time.sleep(min(retry_delay(attempt + 1), remaining_seconds()))
 
     assert init_res is not None  # loop always assigns on non-FileNotFound paths
     if init_res.returncode != 0:
@@ -135,9 +137,13 @@ def run_packer(
         if combined.strip():
             print(combined.rstrip("\n"), file=sys.stderr)
         fail("packer init failed (see output above).")
+        failure = classify_failure(combined, phase="packer-init")
         return PackerResult(
             exit_code=init_res.returncode,
             stdout_lines=combined.splitlines(),
+            failure_category=failure.category.value,
+            retryable=failure.retryable,
+            attempts=attempt + 1,
         )
 
     # 2. packer <subcmd>
@@ -192,9 +198,14 @@ def run_packer(
                 reader.join(timeout=10)
                 fail(f"packer {subcmd} exhausted the total {timeout // 60} minute time budget; "
                      "process terminated.")
-                return PackerResult(exit_code=1, stdout_lines=lines)
+                return PackerResult(exit_code=1, stdout_lines=lines,
+                                    failure_category="timeout", retryable=True)
             reader.join(timeout=30)
-            return PackerResult(exit_code=proc.returncode, stdout_lines=lines)
+            failure = classify_failure("\n".join(lines), phase=f"packer-{subcmd}")
+            return PackerResult(exit_code=proc.returncode, stdout_lines=lines,
+                                failure_category=(failure.category.value
+                                                  if proc.returncode else ""),
+                                retryable=failure.retryable if proc.returncode else False)
         else:
             # Inherit stdout/stderr from parent (live output, no capture).
             # Popen + communicate (not subprocess.run) so the timeout path

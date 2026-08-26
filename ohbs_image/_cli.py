@@ -8,6 +8,7 @@ from collections.abc import Callable, Iterable
 import ohbs_image
 
 from ._audit import cmd_audit
+from ._build_checkpoints import cmd_run_checkpoints
 from ._catalog_tools import cmd_catalog_list, cmd_catalog_verify
 from ._commands import (
     cmd_build,
@@ -46,9 +47,11 @@ from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._quickstart import cmd_quickstart
+from ._reconcile import cmd_state_reconcile
 from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
 from ._run_events import cmd_run_events
 from ._runs import cmd_run_list, cmd_run_show
+from ._slo import cmd_report_slo
 from ._state import (
     cmd_state_init,
     cmd_state_path,
@@ -302,6 +305,12 @@ def build_parser() -> argparse.ArgumentParser:
                             help="Preview what would be removed without changing anything")
     p_st_prune.add_argument("--output", choices=["text", "json"], default="text")
     p_st_prune.set_defaults(func=cmd_state_prune)
+    p_st_reconcile = state_sub.add_parser(
+        "reconcile", help="Detect expired runs and recorded orphan resources")
+    p_st_reconcile.add_argument("--apply", action="store_true",
+                                help="Mark expired local runs failed; never deletes cloud resources")
+    p_st_reconcile.add_argument("--output", choices=["text", "json"], default="text")
+    p_st_reconcile.set_defaults(func=cmd_state_reconcile)
 
     p_run = sub.add_parser("run", help="Inspect unified run state and evidence")
     run_sub = p_run.add_subparsers(dest="run_command")
@@ -319,6 +328,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_run_events.add_argument("run_id")
     p_run_events.add_argument("--output", choices=["text", "json"], default="text")
     p_run_events.set_defaults(func=cmd_run_events)
+    p_run_checkpoints = run_sub.add_parser(
+        "checkpoints", help="Show completed build phases and recoverable artifacts")
+    p_run_checkpoints.add_argument("run_id")
+    p_run_checkpoints.add_argument("--output", choices=["text", "json"], default="text")
+    p_run_checkpoints.set_defaults(func=cmd_run_checkpoints)
     p_run_resume = run_sub.add_parser(
         "resume", help="Resume a failed launch from its last safe checkpoint")
     p_run_resume.add_argument("run_id")
@@ -417,6 +431,10 @@ def build_parser() -> argparse.ArgumentParser:
                              "recorded durations (spot runs at 10%%)")
     p_cost.add_argument("--output", choices=["text", "json"], default="text")
     p_cost.set_defaults(func=cmd_report_cost)
+    p_slo = report_sub.add_parser("slo", help="Summarize run reliability and latency SLOs")
+    p_slo.add_argument("--days", type=int, default=30)
+    p_slo.add_argument("--output", choices=["text", "json"], default="text")
+    p_slo.set_defaults(func=cmd_report_slo)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")

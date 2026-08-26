@@ -23,10 +23,10 @@ STATE_PRUNE_SCHEMA = "https://ohbs-image.dev/state-prune/v1"
 STATE_VERIFY_SCHEMA = "https://ohbs-image.dev/state-verify/v1"
 
 # Evidence subdirectories created by `state init` under the state root.
-_STATE_SUBDIRS = ("plans", "runs", "releases", "provenance", "reports", "acceptance", "events")
+_STATE_SUBDIRS = ("plans", "runs", "releases", "provenance", "reports", "acceptance", "events", "checkpoints")
 
 # Every `state status` bucket, in stable output order.
-_STATUS_BUCKETS = ("lineage", "runs", "plans", "releases", "provenance", "reports", "acceptance", "events")
+_STATUS_BUCKETS = ("lineage", "runs", "plans", "releases", "provenance", "reports", "acceptance", "events", "checkpoints")
 
 
 class StateBackend(Protocol):
@@ -132,7 +132,8 @@ def _evidence_counts(root: Path) -> dict[str, int]:
                 if line.strip())
     patterns = {"runs": "*.json", "plans": "*-plan.json",
                 "releases": "*.json", "provenance": "*.provenance.json",
-                "reports": "*", "acceptance": "*.json", "events": "*.jsonl"}
+                "reports": "*", "acceptance": "*.json", "events": "*.jsonl",
+                "checkpoints": "*.json"}
     for name, pattern in patterns.items():
         directory = root / name
         if directory.is_dir():
