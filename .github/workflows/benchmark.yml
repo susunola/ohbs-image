@@ -1,0 +1,30 @@
+name: Public benchmark
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "ohbs_image/_benchmark.py"
+      - "ohbs_image/_providers.py"
+      - "ohbs_image/_state_db.py"
+      - ".github/workflows/benchmark.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install .
+      - run: ohbs-image benchmark run --iterations 500 --warmups 50 --output benchmark.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ohbs-image-benchmark-${{ github.sha }}
+          path: benchmark.json
+          retention-days: 90

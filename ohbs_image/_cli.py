@@ -15,6 +15,7 @@ from ._ancestry import (
     cmd_ancestry_verify,
 )
 from ._audit import cmd_audit
+from ._benchmark import cmd_benchmark_compare, cmd_benchmark_run
 from ._build_checkpoints import cmd_run_checkpoints
 from ._catalog_tools import cmd_catalog_list, cmd_catalog_verify
 from ._channels import cmd_channel_list, cmd_channel_promote, cmd_channel_resolve
@@ -121,7 +122,7 @@ from ._worker import cmd_worker_run
 # renders them under the same lifecycle headings.
 COMMAND_GROUPS: dict[str, list[str]] = {
     "build lifecycle": [
-        "launch", "quickstart", "init", "configure", "doctor", "discover", "plan", "preflight",
+        "launch", "quickstart", "init", "configure", "doctor", "discover", "plan", "preflight", "benchmark",
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
@@ -247,6 +248,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_provider_verify.add_argument("name")
     p_provider_verify.add_argument("--output", choices=["text", "json"], default="text")
     p_provider_verify.set_defaults(func=cmd_provider_verify)
+
+    p_benchmark = sub.add_parser("benchmark", help="Run reproducible local performance benchmarks")
+    benchmark_sub = p_benchmark.add_subparsers(dest="benchmark_command")
+    p_benchmark_run = benchmark_sub.add_parser("run", help="Measure controller hot paths")
+    p_benchmark_run.add_argument("--iterations", type=int, default=500)
+    p_benchmark_run.add_argument("--warmups", type=int, default=50)
+    p_benchmark_run.add_argument("--output", default="")
+    p_benchmark_run.set_defaults(func=cmd_benchmark_run)
+    p_benchmark_compare = benchmark_sub.add_parser("compare", help="Compare a result against a baseline")
+    p_benchmark_compare.add_argument("current")
+    p_benchmark_compare.add_argument("baseline")
+    p_benchmark_compare.add_argument("--max-regression-percent", type=float, default=20.0)
+    p_benchmark_compare.set_defaults(func=cmd_benchmark_compare)
 
     p_configure = sub.add_parser("configure", help="Generate a minimal build configuration")
     p_configure.add_argument("--target", default="ohbs-image.toml")
