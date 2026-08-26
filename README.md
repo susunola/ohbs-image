@@ -208,6 +208,11 @@ Tencent Cloud adapter and any installed third-party adapters with
 `ohbs-image provider verify PROVIDER`. See
 [`docs/provider-plugin.md`](docs/provider-plugin.md) for the entry-point API.
 
+Performance-sensitive controller paths have a reproducible, cloud-free public
+benchmark: `ohbs-image benchmark run --output benchmark.json`. Compare a run
+against a same-runner baseline with `ohbs-image benchmark compare`; methodology
+and interpretation guidance live in [`docs/benchmark.md`](docs/benchmark.md).
+
 ### Which command should I use?
 
 Four commands overlap at first glance; they serve four different moments of
