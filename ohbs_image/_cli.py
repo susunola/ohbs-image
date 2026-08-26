@@ -46,6 +46,7 @@ from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._quickstart import cmd_quickstart
 from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
+from ._runs import cmd_run_list, cmd_run_show
 from ._state import cmd_state_init, cmd_state_path, cmd_state_prune, cmd_state_status, cmd_state_sync
 from ._try import cmd_try
 
@@ -60,7 +61,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "state", "config", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -268,6 +269,19 @@ def build_parser() -> argparse.ArgumentParser:
                             help="Preview what would be removed without changing anything")
     p_st_prune.add_argument("--output", choices=["text", "json"], default="text")
     p_st_prune.set_defaults(func=cmd_state_prune)
+
+    p_run = sub.add_parser("run", help="Inspect unified run state and evidence")
+    run_sub = p_run.add_subparsers(dest="run_command")
+    p_run_list = run_sub.add_parser("list", help="List runs across every evidence source")
+    p_run_list.add_argument("--limit", type=int, default=20)
+    p_run_list.add_argument("--profile")
+    p_run_list.add_argument("--status")
+    p_run_list.add_argument("--output", choices=["text", "json"], default="text")
+    p_run_list.set_defaults(func=cmd_run_list)
+    p_run_show = run_sub.add_parser("show", help="Show all evidence associated with one run")
+    p_run_show.add_argument("run_id")
+    p_run_show.add_argument("--output", choices=["text", "json"], default="text")
+    p_run_show.set_defaults(func=cmd_run_show)
 
     p_config = sub.add_parser("config", help="Inspect, validate and migrate configuration contracts")
     config_sub = p_config.add_subparsers(dest="config_command")
