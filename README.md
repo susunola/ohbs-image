@@ -265,6 +265,8 @@ ohbs-image run events RUN_ID [--output json]  # immutable, hash-chained state ti
 ohbs-image run resume RUN_ID [--build --yes]  # continue from the last safe launch checkpoint
 ohbs-image run checkpoints RUN_ID [--output json]  # fine-grained build phase checkpoints
 ohbs-image report slo [--days 30] [--output json]  # run success, retry and latency SLOs
+ohbs-image report metrics --format prometheus       # Prometheus exposition format
+ohbs-image report metrics --format otlp-json        # OTLP/JSON metrics document
 ohbs-image registry rebuild [--output json]        # index approved release evidence
 ohbs-image registry list [--bucket PROFILE] [--output json]
 ohbs-image registry show IMAGE_ID [--output json]

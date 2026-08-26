@@ -1,0 +1,23 @@
+groups:
+  - name: ohbs-image.slo
+    rules:
+      - alert: OhbsImageLowBuildSuccessRate
+        expr: ohbs_image_run_success_ratio < 0.98
+        for: 30m
+        labels: {severity: warning}
+        annotations: {summary: "Golden-image build success ratio is below 98%"}
+      - alert: OhbsImageBuildFailures
+        expr: 'ohbs_image_runs_total{outcome="failed"} > 0'
+        for: 15m
+        labels: {severity: warning}
+        annotations: {summary: "Golden-image builds are failing"}
+      - alert: OhbsImageReplicaFailure
+        expr: 'ohbs_image_replicas{status="failed"} > 0'
+        for: 10m
+        labels: {severity: critical}
+        annotations: {summary: "One or more regional image replicas failed"}
+      - alert: OhbsImageReplicaStuck
+        expr: 'ohbs_image_replicas{status="pending"} > 0'
+        for: 1h
+        labels: {severity: warning}
+        annotations: {summary: "Regional image replication has remained pending for one hour"}

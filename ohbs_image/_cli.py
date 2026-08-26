@@ -59,6 +59,7 @@ from ._distribution import (
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
+from ._metrics import cmd_report_metrics
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._policy import cmd_policy_check, cmd_policy_verify
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
@@ -458,6 +459,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_slo.add_argument("--days", type=int, default=30)
     p_slo.add_argument("--output", choices=["text", "json"], default="text")
     p_slo.set_defaults(func=cmd_report_slo)
+    p_metrics = report_sub.add_parser(
+        "metrics", help="Export run, registry, channel and replica metrics")
+    p_metrics.add_argument("--days", type=int, default=30)
+    p_metrics.add_argument("--format", choices=["prometheus", "otlp-json", "json"],
+                           default="prometheus")
+    p_metrics.set_defaults(func=cmd_report_metrics)
 
     p_registry = sub.add_parser("registry", help="Manage versioned golden-image artifacts")
     registry_sub = p_registry.add_subparsers(dest="registry_command")
