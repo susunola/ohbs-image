@@ -10,6 +10,7 @@ import ohbs_image
 from ._audit import cmd_audit
 from ._build_checkpoints import cmd_run_checkpoints
 from ._catalog_tools import cmd_catalog_list, cmd_catalog_verify
+from ._channels import cmd_channel_list, cmd_channel_promote, cmd_channel_resolve
 from ._commands import (
     cmd_build,
     cmd_check_source,
@@ -79,7 +80,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "channel", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -460,6 +461,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_reg_verify = registry_sub.add_parser("verify", help="Verify registry hashes and identities")
     p_reg_verify.add_argument("--output", choices=["text", "json"], default="text")
     p_reg_verify.set_defaults(func=cmd_registry_verify)
+
+    p_channel = sub.add_parser("channel", help="Atomically promote and resolve artifact channels")
+    channel_sub = p_channel.add_subparsers(dest="channel_command")
+    p_channel_promote = channel_sub.add_parser("promote", help="Atomically move a channel pointer")
+    p_channel_promote.add_argument("bucket")
+    p_channel_promote.add_argument("channel")
+    p_channel_promote.add_argument("artifact_id")
+    p_channel_promote.add_argument("--expected-generation", type=int)
+    p_channel_promote.add_argument("--actor", default=os.environ.get("GITHUB_ACTOR") or os.environ.get("USER") or "unknown")
+    p_channel_promote.add_argument("--reason", default="")
+    p_channel_promote.add_argument("--output", choices=["text", "json"], default="text")
+    p_channel_promote.set_defaults(func=cmd_channel_promote)
+    p_channel_resolve = channel_sub.add_parser("resolve", help="Resolve and verify a channel")
+    p_channel_resolve.add_argument("bucket")
+    p_channel_resolve.add_argument("channel")
+    p_channel_resolve.add_argument("--output", choices=["text", "json"], default="text")
+    p_channel_resolve.set_defaults(func=cmd_channel_resolve)
+    p_channel_list = channel_sub.add_parser("list", help="List channel pointers")
+    p_channel_list.add_argument("--bucket")
+    p_channel_list.add_argument("--output", choices=["text", "json"], default="text")
+    p_channel_list.set_defaults(func=cmd_channel_list)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")

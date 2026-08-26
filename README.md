@@ -269,6 +269,9 @@ ohbs-image registry rebuild [--output json]        # index approved release evid
 ohbs-image registry list [--bucket PROFILE] [--output json]
 ohbs-image registry show IMAGE_ID [--output json]
 ohbs-image registry verify [--output json]
+ohbs-image channel promote PROFILE stable IMAGE_ID [--expected-generation N]  # atomic CAS pointer move
+ohbs-image channel resolve PROFILE stable [--output json]  # verify pointer + artifact integrity
+ohbs-image channel list [--bucket PROFILE] [--output json]
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
 ohbs-image engine version                  # ohbs-image + per-family engine versions
