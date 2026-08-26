@@ -60,7 +60,7 @@ include-package-data = false
 version = {attr = "ohbs_image._logging.VERSION"}
 
 [tool.setuptools.package-data]
-ohbs_image = ["py.typed", "roles/**/*"]
+ohbs_image = ["py.typed", "roles/**/*", "compliance/*.json"]
 
 [tool.setuptools.exclude-package-data]
 ohbs_image = ["roles/**/__pycache__/*", "roles/**/*.pyc", "roles/**/*.pyo"]

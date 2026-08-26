@@ -224,6 +224,11 @@ verify it with `ohbs-image proof record|verify|report`; incomplete coverage is
 reported as incomplete rather than promoted as evidence. See
 [`docs/production-proof.md`](docs/production-proof.md).
 
+Generate technical 等保 2.0 or 信创 readiness evidence with
+`ohbs-image compliance assess`. Reports preserve missing/manual controls and
+never claim certification; scope and limitations are documented in
+[`docs/compliance-packs.md`](docs/compliance-packs.md).
+
 Before an upgrade, run `ohbs-image upgrade check TARGET_VERSION`, back up the
 state database, and verify the release attestation, checksums and CycloneDX
 SBOM. Production Docker, Compose, systemd and Kubernetes baselines plus the

@@ -19,6 +19,7 @@ from ._benchmark import cmd_benchmark_compare, cmd_benchmark_run
 from ._build_checkpoints import cmd_run_checkpoints
 from ._catalog_tools import cmd_catalog_list, cmd_catalog_verify
 from ._channels import cmd_channel_list, cmd_channel_promote, cmd_channel_resolve
+from ._compliance_pack import PROFILES as COMPLIANCE_PROFILES, cmd_compliance_assess
 from ._commands import (
     cmd_build,
     cmd_check_source,
@@ -129,7 +130,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "provider", "extension", "proof", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "compliance", "consumer", "distribution", "event", "cve", "dr", "provider", "extension", "proof", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -276,6 +277,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_proof_report.add_argument("--days", type=int, choices=[30, 90], default=30)
     p_proof_report.add_argument("--html", default="")
     p_proof_report.set_defaults(func=cmd_proof_report)
+
+    p_compliance = sub.add_parser("compliance", help="Generate technical compliance evidence packs")
+    compliance_sub = p_compliance.add_subparsers(dest="compliance_command")
+    p_compliance_assess = compliance_sub.add_parser("assess", help="Map artifact evidence to controls")
+    p_compliance_assess.add_argument("artifact_id")
+    p_compliance_assess.add_argument("--profile", choices=COMPLIANCE_PROFILES, required=True)
+    p_compliance_assess.add_argument("--output-dir", default="compliance-output")
+    p_compliance_assess.set_defaults(func=cmd_compliance_assess)
 
     p_benchmark = sub.add_parser("benchmark", help="Run reproducible local performance benchmarks")
     benchmark_sub = p_benchmark.add_subparsers(dest="benchmark_command")
