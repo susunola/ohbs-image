@@ -38,7 +38,6 @@ class Provider(Protocol):
 
     def discover(self, resource: str, region: str, **filters: Any) -> list[dict[str, Any]]: ...
 
-
 class ProviderCompatibilityError(ValueError):
     pass
 
@@ -57,14 +56,20 @@ def verify_provider(provider: object) -> Provider:
         raise ProviderCompatibilityError(f"provider {name!r} must declare ProviderCapabilities")
     if not callable(getattr(provider, "request", None)) or not callable(getattr(provider, "discover", None)):
         raise ProviderCompatibilityError(f"provider {name!r} does not implement the provider protocol")
+    maturity = getattr(provider, "maturity", "external-unverified")
+    if maturity not in {"production", "contract-poc", "external-unverified"}:
+        raise ProviderCompatibilityError(
+            f"provider {name!r} declares an unsupported maturity {maturity!r}"
+        )
     return provider  # type: ignore[return-value]
 
 
 def _builtin_providers() -> dict[str, Provider]:
+    from ._provider_aws_poc import AwsContractProvider
     from ._provider_tencentcloud import TencentCloudProvider
 
-    provider = TencentCloudProvider()
-    return {provider.name: provider}
+    providers = (TencentCloudProvider(), AwsContractProvider())
+    return {provider.name: provider for provider in providers}
 
 
 def load_providers(*, include_external: bool = True) -> dict[str, Provider]:
@@ -93,11 +98,29 @@ def get_provider(name: str) -> Provider:
 
 
 def _provider_document(provider: Provider) -> dict[str, Any]:
+    contract_test = getattr(provider, "contract_test", None)
+    contract = contract_test() if callable(contract_test) else {
+        "schema": "ohbs-image/provider-contract/v1",
+        "offline": True,
+        "checks": [
+            {"name": "request-entrypoint", "passed": callable(provider.request)},
+            {"name": "discovery-entrypoint", "passed": callable(provider.discover)},
+        ],
+        "limitations": ["provider does not expose optional contract_test() certification"],
+    }
+    checks = contract.get("checks")
+    if not isinstance(checks, list) or not checks or not all(
+        isinstance(check, dict) and check.get("passed") is True for check in checks
+    ):
+        raise ProviderCompatibilityError(f"provider {provider.name!r} failed its offline contract test")
     return {
         "name": provider.name,
         "api_version": provider.api_version,
         "compatible": True,
+        "maturity": getattr(provider, "maturity", "external-unverified"),
+        "production_ready": getattr(provider, "maturity", "external-unverified") == "production",
         "capabilities": asdict(provider.capabilities),
+        "contract": contract,
     }
 
 
@@ -108,7 +131,7 @@ def cmd_provider_list(args: argparse.Namespace) -> int:
     else:
         for item in documents:
             enabled = ", ".join(name for name, value in item["capabilities"].items() if value)
-            print(f"{item['name']}\tapi={item['api_version']}\t{enabled}")
+            print(f"{item['name']}\tapi={item['api_version']}\tmaturity={item['maturity']}\t{enabled}")
     return 0
 
 
@@ -117,5 +140,8 @@ def cmd_provider_verify(args: argparse.Namespace) -> int:
     if args.output == "json":
         print(json.dumps(document, indent=2, sort_keys=True))
     else:
-        print(f"provider {document['name']} is compatible with API {PROVIDER_API_VERSION}")
+        print(
+            f"provider {document['name']} is compatible with API {PROVIDER_API_VERSION} "
+            f"({document['maturity']})"
+        )
     return 0
