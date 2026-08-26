@@ -187,6 +187,7 @@ def _write_release_manifest(r: ResolvedConfig, image_ids: list[str], image_name:
                     "profile": r.profile_name,
                     "cis_level": r.level,
                     "region": r.region,
+                    "source_image_id": r.source_image_id,
                     "score": score,
                     "attestation_signed": signed,
                     "evidence": {

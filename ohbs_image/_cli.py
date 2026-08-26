@@ -7,6 +7,13 @@ from collections.abc import Callable, Iterable
 
 import ohbs_image
 
+from ._ancestry import (
+    cmd_ancestry_descendants,
+    cmd_ancestry_impact,
+    cmd_ancestry_link,
+    cmd_ancestry_revoke,
+    cmd_ancestry_verify,
+)
 from ._audit import cmd_audit
 from ._build_checkpoints import cmd_run_checkpoints
 from ._catalog_tools import cmd_catalog_list, cmd_catalog_verify
@@ -83,7 +90,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "channel", "policy", "distribution", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "distribution", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -464,6 +471,34 @@ def build_parser() -> argparse.ArgumentParser:
     p_reg_verify = registry_sub.add_parser("verify", help="Verify registry hashes and identities")
     p_reg_verify.add_argument("--output", choices=["text", "json"], default="text")
     p_reg_verify.set_defaults(func=cmd_registry_verify)
+
+    p_ancestry = sub.add_parser("ancestry", help="Query artifact lineage and blast radius")
+    ancestry_sub = p_ancestry.add_subparsers(dest="ancestry_command")
+    p_anc_desc = ancestry_sub.add_parser("descendants", help="List all downstream artifacts")
+    p_anc_desc.add_argument("artifact_id")
+    p_anc_desc.add_argument("--output", choices=["text", "json"], default="text")
+    p_anc_desc.set_defaults(func=cmd_ancestry_descendants)
+    p_anc_link = ancestry_sub.add_parser("link", help="Add a parent relationship")
+    p_anc_link.add_argument("child")
+    p_anc_link.add_argument("parent")
+    p_anc_link.add_argument("--relation", default="derived_from")
+    p_anc_link.add_argument("--external", action="store_true")
+    p_anc_link.set_defaults(func=cmd_ancestry_link)
+    p_anc_impact = ancestry_sub.add_parser("impact", help="Plan artifact and channel blast radius")
+    p_anc_impact.add_argument("artifact_id")
+    p_anc_impact.add_argument("--output", choices=["text", "json"], default="text")
+    p_anc_impact.set_defaults(func=cmd_ancestry_impact)
+    p_anc_revoke = ancestry_sub.add_parser(
+        "revoke", help="Preview or apply descendant-first cascading revocation")
+    p_anc_revoke.add_argument("artifact_id")
+    p_anc_revoke.add_argument("--reason", required=True)
+    p_anc_revoke.add_argument("--actor")
+    p_anc_revoke.add_argument("--apply", action="store_true")
+    p_anc_revoke.add_argument("--output", choices=["text", "json"], default="text")
+    p_anc_revoke.set_defaults(func=cmd_ancestry_revoke)
+    p_anc_verify = ancestry_sub.add_parser("verify", help="Detect cycles and malformed edges")
+    p_anc_verify.add_argument("--output", choices=["text", "json"], default="text")
+    p_anc_verify.set_defaults(func=cmd_ancestry_verify)
     for status in ("quarantine", "revoke"):
         stored_status = "quarantined" if status == "quarantine" else "revoked"
         p_status = registry_sub.add_parser(status, help=f"Mark an artifact {stored_status}")

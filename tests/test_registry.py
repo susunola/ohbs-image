@@ -2,6 +2,7 @@ import argparse
 import json
 
 from ohbs_image._registry import (
+    change_artifact_status,
     cmd_registry_list,
     collect_artifacts,
     rebuild_registry,
@@ -51,6 +52,18 @@ def test_registry_verify_detects_tampering(tmp_path):
     doc["score"] = 1
     path.write_text(json.dumps(doc))
     assert verify_registry(tmp_path / "registry") == ["img-1: document hash mismatch"]
+
+
+def test_reregister_preserves_revocation_state(tmp_path):
+    release = tmp_path / "releases" / "img-1.json"
+    _release(release)
+    root = tmp_path / "registry"
+    register_release(release, root)
+    change_artifact_status("img-1", "revoked", actor="security", reason="CVE", root=root)
+    path = register_release(release, root)
+    doc = json.loads(path.read_text())
+    assert doc["status"] == "revoked"
+    assert doc["status_history"][0]["reason"] == "CVE"
 
 
 def test_registry_list_json(tmp_path, monkeypatch, capsys):
