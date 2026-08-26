@@ -183,6 +183,59 @@ def _active_exceptions(doc: dict[str, Any], artifact_id: str, environment: str,
     return waived
 
 
+def explain_policy(
+    doc: dict[str, Any], environment: str, *, artifact_id: str = "",
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Explain effective controls and exception applicability without mutation."""
+    failures = verify_policy(doc)
+    if failures:
+        raise ValueError("invalid policy: " + "; ".join(failures))
+    current = now or datetime.now(UTC)
+    defaults = dict(doc.get("defaults") or {})
+    environments = doc.get("environments")
+    override = environments.get(environment) if isinstance(environments, dict) else None
+    override = override if isinstance(override, dict) else {}
+    effective = _rules_for(doc, environment)
+    controls = [
+        {
+            "control": control,
+            "value": effective.get(control),
+            "source": f"environments.{environment}" if control in override else "defaults",
+        }
+        for control in sorted(set(defaults) | set(override))
+    ]
+    exceptions: list[dict[str, Any]] = []
+    for item in doc.get("exceptions", []):
+        if not isinstance(item, dict):
+            continue
+        artifact_match = item.get("artifact_id") in {None, "", artifact_id}
+        environment_match = item.get("environment") in {None, "", environment}
+        expires = datetime.fromisoformat(str(item["expires_at"]).replace("Z", "+00:00"))
+        applicable = artifact_match and environment_match
+        status = "expired" if expires <= current else "active" if applicable else "not_applicable"
+        exceptions.append({
+            "id": item.get("id"),
+            "status": status,
+            "applicable": applicable and expires > current,
+            "controls": item.get("controls", []),
+            "owner": item.get("owner"),
+            "approved_by": item.get("approved_by"),
+            "expires_at": item.get("expires_at"),
+        })
+    result: dict[str, Any] = {
+        "schema": "https://ohbs-image.dev/policy-explanation/v1",
+        "policy_id": doc.get("policy_id"),
+        "policy_version": doc.get("version"),
+        "environment": environment,
+        "artifact_id": artifact_id or None,
+        "controls": controls,
+        "exceptions": exceptions,
+    }
+    result["document_hash"] = _hash(result)
+    return result
+
+
 def evaluate_policy(doc: dict[str, Any], artifact: dict[str, Any], environment: str, *,
                     now: datetime | None = None) -> dict[str, Any]:
     current = now or datetime.now(UTC)
@@ -291,3 +344,24 @@ def cmd_policy_check(args: argparse.Namespace) -> int:
         for item in decision["checks"]:
             print(f"{item['result']:9s} {item['control']}: {item['actual']} (required {item['required']})")
     return 0 if decision["allowed"] else 1
+
+
+def cmd_policy_explain(args: argparse.Namespace) -> int:
+    try:
+        explanation = explain_policy(
+            load_policy(Path(args.bundle)), args.environment,
+            artifact_id=args.artifact_id or "",
+        )
+    except (OSError, ValueError) as exc:
+        fail(str(exc))
+        return 2
+    if args.output == "json":
+        print(json.dumps(explanation, ensure_ascii=False, indent=2))
+    else:
+        print(f"Policy {explanation['policy_id']}@{explanation['policy_version']}")
+        print(f"Environment: {explanation['environment']}")
+        for control in explanation["controls"]:
+            print(f"{control['control']}: {control['value']}  <- {control['source']}")
+        for item in explanation["exceptions"]:
+            print(f"exception {item['id']}: {item['status']}")
+    return 0

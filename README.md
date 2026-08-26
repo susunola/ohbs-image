@@ -341,6 +341,7 @@ ohbs-image channel promote PROFILE stable IMAGE_ID --operation-id deploy-42   # 
 ohbs-image channel resolve PROFILE stable [--output json]  # verify pointer + artifact integrity
 ohbs-image channel list [--bucket PROFILE] [--output json]
 ohbs-image policy verify organization-policy.json
+ohbs-image policy explain organization-policy.json --environment production --artifact-id IMAGE_ID
 ohbs-image policy check IMAGE_ID --bundle organization-policy.json --environment production
 ohbs-image consumer resolve PROFILE stable --policy organization-policy.json --environment production
 ohbs-image consumer resolve PROFILE stable --policy organization-policy.json --output terraform
