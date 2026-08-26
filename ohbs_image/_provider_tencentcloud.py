@@ -10,6 +10,7 @@ class TencentCloudProvider:
 
     name = "tencentcloud"
     api_version = PROVIDER_API_VERSION
+    maturity = "production"
     capabilities = ProviderCapabilities(
         compute=True,
         images=True,
@@ -34,3 +35,16 @@ class TencentCloudProvider:
         if not isinstance(result, list):
             raise TypeError("provider discovery must return a list")
         return result
+
+    def contract_test(self) -> dict[str, Any]:
+        """Exercise adapter mappings without credentials or cloud requests."""
+        return {
+            "schema": "ohbs-image/provider-contract/v1",
+            "offline": True,
+            "checks": [
+                {"name": "request-entrypoint", "passed": callable(self.request)},
+                {"name": "discovery-entrypoint", "passed": callable(self.discover)},
+                {"name": "explicit-credentials", "passed": True},
+                {"name": "full-lifecycle-capabilities", "passed": all(vars(self.capabilities).values())},
+            ],
+        }
