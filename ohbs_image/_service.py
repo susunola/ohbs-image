@@ -21,7 +21,7 @@ from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
 from ._identity import IdentityError, verify_oidc_token
 from ._logging import fail, info
 from ._metrics import collect_metrics, prometheus_metrics
-from ._registry import _artifact_path, _hash, _read_object, collect_artifacts
+from ._registry import _database, _hash, _read_object, change_artifact_status, get_artifact, put_artifact
 from ._reports import _state_lock
 from ._runs import collect_runs
 from ._telemetry import TraceRecorder, parse_traceparent
@@ -242,25 +242,52 @@ class ControlPlane:
             if method == "GET" and route == ["artifacts"]:
                 self._authorize(principal, "viewer")
                 query = parse_qs(parsed.query)
-                rows = collect_artifacts(self.root / "registry")
+                limit, offset = self._page(query)
+                requested_bucket = query.get("bucket", [""])[0]
+                if requested_bucket and not self._visible(principal, requested_bucket):
+                    raise AuthorizationError("access to artifact bucket is denied")
+                count, rows = _database(self.root / "registry").search_artifacts(
+                    bucket=requested_bucket, status=query.get("status", [""])[0],
+                    version=query.get("version", [""])[0],
+                    query=query.get("q", [""])[0], label=query.get("label", [""])[0],
+                    limit=limit, offset=offset)
                 rows = [row for row in rows if self._visible(
                     principal, row.get("bucket"))]
-                if query.get("bucket"):
-                    rows = [row for row in rows if row.get("bucket") == query["bucket"][0]]
-                if query.get("status"):
-                    rows = [row for row in rows if row.get("status") == query["status"][0]]
-                limit, offset = self._page(query)
-                return self._json(200, {"count": len(rows), "limit": limit,
-                    "offset": offset, "artifacts": rows[offset:offset + limit]})
+                visible_count = count if self._is_admin(principal) or requested_bucket else len(rows)
+                return self._json(200, {"count": visible_count, "limit": limit,
+                    "offset": offset, "artifacts": rows})
+            if method == "POST" and route == ["artifacts"]:
+                self._authorize(principal, "admin")
+                payload = json.loads(body.decode("utf-8"))
+                if not isinstance(payload, dict):
+                    raise ValueError("artifact payload must be an object")
+                put_artifact(payload, self.root / "registry")
+                artifact_id = str(payload.get("artifact_id") or "")
+                self._audit(principal, "artifact.write", artifact_id, "allowed")
+                return self._json(201, payload)
             if method == "GET" and len(route) == 2 and route[0] == "artifacts":
-                doc = _read_object(_artifact_path(route[1], self.root / "registry"))
+                doc = get_artifact(route[1], self.root / "registry")
                 if doc is None:
                     return self._error(404, "not_found", "artifact not found")
                 self._authorize(principal, "viewer", str(doc.get("bucket") or ""))
                 return self._json(200, doc)
+            if method == "PATCH" and len(route) == 3 and route[0] == "artifacts" \
+                    and route[2] == "status":
+                self._authorize(principal, "admin")
+                payload = json.loads(body.decode("utf-8"))
+                if not isinstance(payload, dict):
+                    raise ValueError("status payload must be an object")
+                result = change_artifact_status(
+                    route[1], str(payload.get("status") or ""),
+                    actor=str(principal.get("subject") or "unknown"),
+                    reason=str(payload.get("reason") or ""),
+                    auto_rollback=bool(payload.get("auto_rollback", True)),
+                    root=self.root / "registry")
+                self._audit(principal, "artifact.status", route[1], "allowed")
+                return self._json(200, result)
             if method == "GET" and len(route) == 3 and route[0] == "artifacts" \
                     and route[2] == "descendants":
-                doc = _read_object(_artifact_path(route[1], self.root / "registry"))
+                doc = get_artifact(route[1], self.root / "registry")
                 if doc is None:
                     return self._error(404, "not_found", "artifact not found")
                 self._authorize(principal, "viewer", str(doc.get("bucket") or ""))
@@ -293,7 +320,7 @@ class ControlPlane:
                 return self._json(200, {"run": row})
             if method == "GET" and len(route) == 3 and route[0] == "artifacts" \
                     and route[2] == "impact":
-                doc = _read_object(_artifact_path(route[1], self.root / "registry"))
+                doc = get_artifact(route[1], self.root / "registry")
                 if doc is None:
                     return self._error(404, "not_found", "artifact not found")
                 self._authorize(principal, "viewer", str(doc.get("bucket") or ""))
@@ -316,8 +343,8 @@ class ControlPlane:
                     request = _read_object(path)
                     if request is None:
                         continue
-                    artifact = _read_object(_artifact_path(
-                        str(request.get("artifact_id") or ""), self.root / "registry"))
+                    artifact = get_artifact(
+                        str(request.get("artifact_id") or ""), self.root / "registry")
                     if artifact is not None and self._visible(principal, artifact.get("bucket")):
                         rebuild_rows.append(request)
                 if query.get("status"):

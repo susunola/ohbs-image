@@ -4,7 +4,7 @@ import json
 
 from ohbs_image._ancestry import link_parent
 from ohbs_image._cli import build_parser
-from ohbs_image._registry import register_release
+from ohbs_image._registry import ARTIFACT_SCHEMA, _hash, register_release
 from ohbs_image._service import ControlPlane
 
 
@@ -19,6 +19,7 @@ def _service(tmp_path):
         "view-token": {"subject": "reader", "roles": ["viewer"], "buckets": ["rhel10"]},
         "promote-token": {"subject": "release", "roles": ["viewer", "promoter"], "buckets": ["rhel10"]},
         "audit-token": {"subject": "audit", "roles": ["auditor"], "buckets": []},
+        "admin-token": {"subject": "admin", "roles": ["admin"], "buckets": ["*"]},
         "wrong-bucket": {"subject": "other", "roles": ["viewer"], "buckets": ["ubuntu2404"]}}}),
         encoding="utf-8")
     return ControlPlane(tmp_path, rbac)
@@ -103,6 +104,24 @@ def test_artifact_list_filters_and_paginates(tmp_path):
     status, _, body = service.dispatch(
         "GET", "/api/v1/artifacts?limit=0", "Bearer view-token")
     assert status == 400 and json.loads(body)["error"]["code"] == "invalid_request"
+
+
+def test_artifact_search_and_admin_write_api(tmp_path):
+    service = _service(tmp_path)
+    doc = {"schema": ARTIFACT_SCHEMA, "artifact_id": "img-api", "bucket": "rhel10",
+           "version": "v-api", "status": "active", "created_at": "2026-08-26T00:00:00Z",
+           "labels": {"owner": "platform"}}
+    doc["document_hash"] = _hash(doc)
+    status, _, _ = service.dispatch("POST", "/api/v1/artifacts", "Bearer view-token",
+                                    body=json.dumps(doc).encode())
+    assert status == 403
+    status, _, body = service.dispatch("POST", "/api/v1/artifacts", "Bearer admin-token",
+                                       body=json.dumps(doc).encode())
+    assert status == 201 and json.loads(body)["artifact_id"] == "img-api"
+    status, _, body = service.dispatch(
+        "GET", "/api/v1/artifacts?q=api&label=owner%3Dplatform", "Bearer view-token")
+    result = json.loads(body)
+    assert status == 200 and [row["artifact_id"] for row in result["artifacts"]] == ["img-api"]
 
 
 def test_runs_list_show_and_scope(tmp_path):

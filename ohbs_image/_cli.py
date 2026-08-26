@@ -82,6 +82,7 @@ from ._reconcile import cmd_state_reconcile
 from ._registry import (
     cmd_registry_list,
     cmd_registry_rebuild,
+    cmd_registry_search,
     cmd_registry_show,
     cmd_registry_status,
     cmd_registry_verify,
@@ -531,6 +532,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_reg_show.add_argument("artifact_id")
     p_reg_show.add_argument("--output", choices=["text", "json"], default="text")
     p_reg_show.set_defaults(func=cmd_registry_show)
+    p_reg_search = registry_sub.add_parser("search", help="Search the artifact database")
+    p_reg_search.add_argument("--query", default="")
+    p_reg_search.add_argument("--bucket", default="")
+    p_reg_search.add_argument("--status", default="",
+                              choices=["", "active", "quarantined", "revoked"])
+    p_reg_search.add_argument("--version", default="")
+    p_reg_search.add_argument("--label", default="", metavar="KEY=VALUE")
+    p_reg_search.add_argument("--limit", type=int, default=100)
+    p_reg_search.add_argument("--offset", type=int, default=0)
+    p_reg_search.add_argument("--output", choices=["text", "json"], default="text")
+    p_reg_search.set_defaults(func=cmd_registry_search)
     p_reg_rebuild = registry_sub.add_parser(
         "rebuild", help="Rebuild registry artifacts from release evidence")
     p_reg_rebuild.add_argument("--output", choices=["text", "json"], default="text")
