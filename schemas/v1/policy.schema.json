@@ -6,6 +6,10 @@
     "schema": {"const": "https://ohbs-image.dev/policy/v1"}, "policy_id": {"type": "string", "minLength": 1},
     "extends": {"type": "string"}, "defaults": {"type": "object"},
     "environments": {"type": "object", "additionalProperties": {"type": "object"}},
-    "exceptions": {"type": "array", "items": {"type": "object", "required": ["owner", "approver", "reason", "expires_at"]}}
+    "trust": {"type": "object", "properties": {"require_signature": {"type": "boolean"},
+      "trusted_publishers": {"type": "array", "items": {"type": "string"}},
+      "trusted_approvers": {"type": "array", "items": {"type": "string"}},
+      "enforce_separation": {"type": "boolean"}}},
+    "exceptions": {"type": "array", "items": {"type": "object", "required": ["owner", "approved_by", "reason", "expires_at"]}}
   }, "additionalProperties": true
 }

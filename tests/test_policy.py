@@ -1,7 +1,16 @@
 import json
 from datetime import UTC, datetime
+from unittest import mock
 
-from ohbs_image._policy import evaluate_policy, load_policy, verify_policy
+import pytest
+
+from ohbs_image._policy import (
+    _enforce_policy_trust,
+    evaluate_policy,
+    load_policy,
+    verify_policy,
+    verify_policy_signature,
+)
 
 
 def _policy(**defaults):
@@ -78,3 +87,44 @@ def test_policy_inheritance_merges_defaults_environments_and_exceptions(tmp_path
     assert loaded["defaults"] == {"min_score": 95, "require_attestation": True}
     assert loaded["environments"]["production"] == {"max_age_days": 30,
                                                        "max_critical_cves": 0}
+
+
+def test_trusted_approver_and_separation_are_enforced():
+    policy = _policy()
+    policy["trust"] = {"trusted_approvers": ["security"], "enforce_separation": True}
+    policy["exceptions"] = [{"id": "EX-1", "controls": ["score"],
+                             "owner": "platform", "approved_by": "platform",
+                             "reason": "test", "expires_at": "2026-08-27T00:00:00Z"}]
+    failures = verify_policy(policy)
+    assert any("trusted approver" in item for item in failures)
+    assert any("separation" in item for item in failures)
+
+
+def test_detached_signature_returns_machine_readable_fingerprint(tmp_path):
+    bundle = tmp_path / "policy.json"
+    signature = tmp_path / "policy.json.asc"
+    bundle.write_text("{}", encoding="utf-8")
+    signature.write_text("signature", encoding="utf-8")
+    fingerprint = "A" * 40
+    completed = mock.Mock(returncode=0, stdout=f"[GNUPG:] VALIDSIG {fingerprint} 2026 0 0\n")
+    with mock.patch("subprocess.run", return_value=completed):
+        assert verify_policy_signature(bundle, [fingerprint]) == fingerprint
+
+
+def test_signature_fails_closed_for_untrusted_publisher(tmp_path):
+    bundle = tmp_path / "policy.json"
+    signature = tmp_path / "policy.json.asc"
+    bundle.write_text("{}", encoding="utf-8")
+    signature.write_text("signature", encoding="utf-8")
+    completed = mock.Mock(returncode=0, stdout=f"[GNUPG:] VALIDSIG {'A' * 40} rest\n")
+    with mock.patch("subprocess.run", return_value=completed), \
+            pytest.raises(ValueError, match="not a trusted publisher"):
+        verify_policy_signature(bundle, ["B" * 40])
+
+
+def test_required_signature_rejects_missing_sidecar(tmp_path):
+    bundle = tmp_path / "policy.json"
+    bundle.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="signature not found"):
+        _enforce_policy_trust(bundle, {"trust": {"require_signature": True,
+                                                   "trusted_publishers": ["A" * 40]}})
