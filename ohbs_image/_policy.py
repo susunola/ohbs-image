@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,43 @@ POLICY_SCHEMA = "https://ohbs-image.dev/policy-bundle/v1"
 DECISION_SCHEMA = "https://ohbs-image.dev/policy-decision/v1"
 _CONTROL_NAMES = {"status", "attestation", "score", "freshness", "critical_cves"}
 _SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+
+
+def verify_policy_signature(path: Path, trusted_publishers: list[str], *,
+                            signature: Path | None = None) -> str:
+    signature_path = signature or path.with_suffix(path.suffix + ".asc")
+    if not signature_path.is_file():
+        raise ValueError(f"policy signature not found: {signature_path}")
+    try:
+        result = subprocess.run(
+            ["gpg", "--batch", "--status-fd", "1", "--verify",
+             str(signature_path), str(path)], capture_output=True, text=True,
+            timeout=60, check=False)
+    except FileNotFoundError as exc:
+        raise ValueError("gpg not found; cannot verify required policy signature") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError("policy signature verification timed out") from exc
+    fingerprint = ""
+    for line in result.stdout.splitlines():
+        if line.startswith("[GNUPG:] VALIDSIG "):
+            fingerprint = line.split()[2].upper()
+            break
+    trusted = {item.replace(" ", "").upper() for item in trusted_publishers}
+    if result.returncode != 0 or not fingerprint:
+        raise ValueError("policy signature is invalid")
+    if trusted and fingerprint not in trusted:
+        raise ValueError(f"policy signer {fingerprint} is not a trusted publisher")
+    return fingerprint
+
+
+def _enforce_policy_trust(path: Path, doc: dict[str, Any]) -> str | None:
+    trust = doc.get("trust")
+    if not isinstance(trust, dict) or not trust.get("require_signature"):
+        return None
+    publishers = trust.get("trusted_publishers")
+    if not isinstance(publishers, list) or not publishers:
+        raise ValueError("trust.trusted_publishers is required when signatures are enforced")
+    return verify_policy_signature(path, [str(item) for item in publishers])
 
 
 def _merge(parent: dict[str, Any], child: dict[str, Any]) -> dict[str, Any]:
@@ -84,6 +122,10 @@ def verify_policy(doc: dict[str, Any]) -> list[str]:
         failures.append("exceptions must be an array")
         return failures
     seen_ids: set[str] = set()
+    trust = doc.get("trust")
+    trusted_approvers = ({str(item) for item in trust.get("trusted_approvers", [])}
+                         if isinstance(trust, dict) else set())
+    separate = bool(trust.get("enforce_separation")) if isinstance(trust, dict) else False
     for index, item in enumerate(exceptions):
         prefix = f"exceptions[{index}]"
         if not isinstance(item, dict):
@@ -96,6 +138,11 @@ def verify_policy(doc: dict[str, Any]) -> list[str]:
         for field in ("owner", "approved_by", "reason", "expires_at"):
             if not str(item.get(field) or "").strip():
                 failures.append(f"{prefix}.{field} is required")
+        owner, approver = str(item.get("owner") or ""), str(item.get("approved_by") or "")
+        if trusted_approvers and approver not in trusted_approvers:
+            failures.append(f"{prefix}.approved_by is not a trusted approver")
+        if separate and owner == approver:
+            failures.append(f"{prefix} violates owner/approver separation")
         controls = item.get("controls")
         if not isinstance(controls, list) or not controls or not set(controls) <= _CONTROL_NAMES:
             failures.append(f"{prefix}.controls contains unknown or missing controls")
@@ -201,17 +248,25 @@ def check_artifact(policy_path: Path, artifact_id: str, environment: str,
     failures = verify_policy(doc)
     if failures:
         raise ValueError("invalid policy: " + "; ".join(failures))
+    signer = _enforce_policy_trust(policy_path.resolve(), doc)
     artifact = _read_object(_artifact_path(artifact_id, root))
     if artifact is None or artifact.get("document_hash") != _hash(artifact):
         raise ValueError(f"artifact {artifact_id} not found or failed integrity verification")
     decision = evaluate_policy(doc, artifact, environment)
+    if signer:
+        decision["policy_signer_fingerprint"] = signer
+        decision["document_hash"] = _hash(decision)
     record_decision(decision, root)
     return decision
 
 
 def cmd_policy_verify(args: argparse.Namespace) -> int:
     try:
-        failures = verify_policy(load_policy(Path(args.bundle)))
+        bundle = Path(args.bundle)
+        doc = load_policy(bundle)
+        failures = verify_policy(doc)
+        if not failures:
+            _enforce_policy_trust(bundle.resolve(), doc)
     except (OSError, ValueError) as exc:
         failures = [str(exc)]
     if args.output == "json":
@@ -220,7 +275,7 @@ def cmd_policy_verify(args: argparse.Namespace) -> int:
         for message in failures:
             fail(message)
     else:
-        ok("Policy bundle is valid")
+        ok("Policy bundle and trust requirements are valid")
     return 1 if failures else 0
 
 
