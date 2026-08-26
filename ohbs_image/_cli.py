@@ -42,6 +42,7 @@ from ._config_tools import (
     cmd_config_validate,
 )
 from ._discover import cmd_discover
+from ._distribution import cmd_distribution_plan, cmd_distribution_record
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
@@ -82,7 +83,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "channel", "policy", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "channel", "policy", "distribution", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -508,6 +509,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_policy_check.add_argument("--environment", required=True)
     p_policy_check.add_argument("--output", choices=["text", "json"], default="text")
     p_policy_check.set_defaults(func=cmd_policy_check)
+
+    p_distribution = sub.add_parser(
+        "distribution", help="Plan cached regional replication and record replicas")
+    distribution_sub = p_distribution.add_subparsers(dest="distribution_command")
+    p_dist_plan = distribution_sub.add_parser("plan", help="Plan copies without cloud writes")
+    p_dist_plan.add_argument("artifact_id")
+    p_dist_plan.add_argument("--region", action="append", required=True)
+    p_dist_plan.add_argument("--output", choices=["text", "json"], default="text")
+    p_dist_plan.set_defaults(func=cmd_distribution_plan)
+    p_dist_record = distribution_sub.add_parser("record", help="Record a completed regional copy")
+    p_dist_record.add_argument("artifact_id")
+    p_dist_record.add_argument("--region", required=True)
+    p_dist_record.add_argument("--replica-id", required=True)
+    p_dist_record.set_defaults(func=cmd_distribution_record)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")
