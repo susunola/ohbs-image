@@ -20,6 +20,7 @@ from ._channels import promote_channel, resolve_channel
 from ._config import _lineage_path
 from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
 from ._distribution import execute_distribution
+from ._error_catalog import ERROR_CATALOG, error_document
 from ._evidence_center import summarize_evidence
 from ._identity import IdentityError, verify_oidc_token
 from ._logging import fail, info
@@ -204,6 +205,19 @@ class ControlPlane:
             if parts[:2] != ["api", "v1"]:
                 return self._error(404, "not_found", "route not found")
             route = parts[2:]
+            if method == "GET" and route == ["errors"]:
+                self._authorize(principal, "viewer")
+                return self._json(200, {
+                    "schema": "https://ohbs-image.dev/error-catalog/v1",
+                    "errors": {
+                        code: {
+                            "http_status": item.status,
+                            "retryable": item.retryable,
+                            "action": item.action,
+                        }
+                        for code, item in sorted(ERROR_CATALOG.items())
+                    },
+                })
             if method == "POST" and route == ["approvals"]:
                 self._authorize(principal, "promoter")
                 payload = json.loads(body.decode("utf-8"))
@@ -560,7 +574,9 @@ class ControlPlane:
                     payload = json.loads(body.decode("utf-8"))
                     operation_id = (headers or {}).get("Idempotency-Key", "")
                     if not operation_id:
-                        return self._json(400, {"error": "Idempotency-Key is required"})
+                        return self._error(
+                            400, "idempotency_required", "Idempotency-Key is required"
+                        )
                     required_channels = {
                         str(item) for item in self.approval_policy.get("required_channels", [])}
                     if channel in required_channels:
@@ -600,7 +616,7 @@ class ControlPlane:
 
     @classmethod
     def _error(cls, status: int, code: str, message: str) -> tuple[int, str, bytes]:
-        return cls._json(status, {"error": {"code": code, "message": message}})
+        return cls._json(status, {"error": error_document(code, message, status=status)})
 
 
 def serve_control_plane(host: str, port: int, root: Path, rbac_path: Path, *,

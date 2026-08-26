@@ -14,6 +14,11 @@ paths:
       security: []
       responses:
         '200': {description: Service is accepting requests, content: {application/json: {schema: {type: object, required: [status, service], properties: {status: {const: ok}, service: {const: ohbs-image}}}}}}
+  /errors:
+    get:
+      operationId: getErrorCatalog
+      responses:
+        '200': {description: Stable machine-readable error codes and retry guidance, content: {application/json: {schema: {type: object, required: [schema, errors], properties: {schema: {type: string}, errors: {type: object, additionalProperties: {type: object, required: [http_status, retryable, action], properties: {http_status: {type: integer}, retryable: {type: boolean}, action: {type: string}}}}}}}}}
   /artifacts:
     get:
       operationId: listArtifacts
@@ -104,7 +109,10 @@ components:
       properties:
         error:
           type: object
-          required: [code, message]
+          required: [code, message, retryable, action, documentation]
           properties:
             code: {type: string}
             message: {type: string}
+            retryable: {type: boolean}
+            action: {type: string}
+            documentation: {type: string, format: uri}

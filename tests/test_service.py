@@ -52,6 +52,22 @@ def test_rate_limit_returns_stable_problem(tmp_path):
     assert json.loads(body)["error"]["code"] == "rate_limited"
 
 
+def test_error_envelope_is_actionable_and_catalog_is_discoverable(tmp_path):
+    service = _service(tmp_path)
+    status, _kind, body = service.dispatch(
+        "GET", "/api/v1/errors", "Bearer view-token",
+    )
+    assert status == 200
+    assert json.loads(body)["errors"]["rate_limited"]["retryable"] is True
+    status, _kind, body = service.dispatch(
+        "GET", "/api/v1/missing", "Bearer view-token",
+    )
+    assert status == 404
+    error = json.loads(body)["error"]
+    assert set(error) == {"code", "message", "retryable", "action", "documentation"}
+    assert error["code"] == "not_found"
+
+
 def test_rbac_hot_reload_and_token_expiry(tmp_path):
     service = _service(tmp_path)
     rbac = tmp_path / "rbac.json"
