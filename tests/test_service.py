@@ -78,6 +78,18 @@ def test_console_assets_are_public_but_contain_no_credentials(tmp_path):
     assert status == 200 and kind.startswith("text/css") and b"prefers-reduced-motion" in style
 
 
+def test_console_includes_visual_run_and_lineage_analysis(tmp_path):
+    service = _service(tmp_path)
+    status, _, script = service.dispatch("GET", "/console.js", "")
+    assert status == 200
+    assert b"Execution timeline" in script
+    assert b"Blast radius map" in script
+    status, _, style = service.dispatch("GET", "/console.css", "")
+    assert status == 200
+    assert b".timeline-step" in style
+    assert b".lineage-node" in style
+
+
 def test_service_default_port_is_8181():
     args = build_parser().parse_args(["serve", "--rbac", "rbac.json"])
     assert args.host == "127.0.0.1"
