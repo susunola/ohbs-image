@@ -6,10 +6,12 @@ import subprocess
 import urllib.error
 import urllib.request
 from datetime import UTC
+from pathlib import Path
 from typing import Any, cast
 
 import ohbs_image
 
+from ._cloud_resilience import PROVIDER_BREAKER, classify_provider_error, record_takeover
 from ._config import ResolvedConfig
 from ._logging import ConfigError, ok, warn
 
@@ -99,26 +101,57 @@ def _tc3_api(service: str, action: str, version: str, region: str,
         headers["X-TC-Token"] = token
     req = urllib.request.Request(f"https://{host}", data=payload.encode("utf-8"),
                                  headers=headers, method="POST")
+    operation = f"{service}.{action}"
+    if not PROVIDER_BREAKER.allow(operation):
+        raise ConfigError(f"Tencent Cloud API circuit is open for {operation}; manual takeover required")
+
+    def terminal(failure: Any, attempts: int) -> None:
+        PROVIDER_BREAKER.failure(operation)
+        takeover = os.environ.get("OHBS_IMAGE_CLOUD_FAILURE_LOG", "")
+        if takeover:
+            record_takeover(Path(takeover), operation=operation,
+                            failure=failure, attempts=attempts)
+
     for attempt in range(max_retries):
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
-                return cast("dict[str, Any]", json.loads(resp.read().decode("utf-8")))
+                document = cast("dict[str, Any]", json.loads(resp.read().decode("utf-8")))
+            error = document.get("Response", {}).get("Error")
+            if isinstance(error, dict):
+                failure = classify_provider_error(
+                    str(error.get("Code") or "ProviderError"),
+                    str(error.get("Message") or "provider request failed"), phase=operation)
+                if failure.retryable and attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                terminal(failure, attempt + 1)
+                return document
+            PROVIDER_BREAKER.success(operation)
+            return document
         except urllib.error.HTTPError as exc:
             # Only retry rate-limit/gateway errors; a real 4xx (bad request,
             # auth failure, ...) won't be fixed by trying again.
             if exc.code not in (429, 500, 502, 503, 504) or attempt == max_retries - 1:
+                failure = classify_provider_error(f"HTTP{exc.code}", str(exc), phase=operation)
+                terminal(failure, attempt + 1)
                 raise ConfigError(
                     f"Tencent Cloud API {action} ({service}) request failed: HTTP {exc.code}") from exc
         except urllib.error.URLError as exc:
             # Network-layer failure (DNS, reset, timeout) — worth a retry.
             if attempt == max_retries - 1:
+                failure = classify_provider_error("NetworkError", str(exc.reason), phase=operation)
+                terminal(failure, attempt + 1)
                 raise ConfigError(
                     f"Tencent Cloud API {action} ({service}) request failed: {exc.reason}") from exc
         except (TimeoutError, ConnectionError, OSError) as exc:  # socket.timeout / conn reset
             if attempt == max_retries - 1:
+                failure = classify_provider_error("NetworkError", str(exc), phase=operation)
+                terminal(failure, attempt + 1)
                 raise ConfigError(
                     f"Tencent Cloud API {action} ({service}) network error: {exc}") from exc
         except json.JSONDecodeError as exc:
+            failure = classify_provider_error("InvalidJSON", str(exc), phase=operation)
+            terminal(failure, attempt + 1)
             raise ConfigError(
                 f"Tencent Cloud API {action} ({service}) returned invalid JSON") from exc
         time.sleep(2 ** attempt)
