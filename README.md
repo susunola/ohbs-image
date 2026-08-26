@@ -356,6 +356,7 @@ ohbs-image engine verify                   # syntax-check every bundled engine (
 ohbs-image engine version                  # ohbs-image + per-family engine versions
 ohbs-image catalog list                    # bundled rule catalogs: rules, guidance, sha256
 ohbs-image catalog verify [--strict]       # catalog JSON + guidance cross-reference gate
+ohbs-image catalog lint --report cis-rule-quality.html  # quality baseline + top 50 priorities
 ohbs-image doctor [--output text|json|sarif] [--only GROUP] [--offline] [--report-path FILE]
 ohbs-image plan [--output json]                # read-only build/resource/gate preview
 ohbs-image state path                          # print the evidence directory

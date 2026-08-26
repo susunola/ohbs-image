@@ -7,7 +7,8 @@ from pathlib import Path
 def test_domain_schemas_are_json_schema_2020_12_with_stable_ids():
     paths = sorted(Path("schemas/v1").glob("*.schema.json"))
     assert {path.stem for path in paths} == {
-        "artifact.schema", "channel.schema", "operation.schema", "policy.schema"}
+        "artifact.schema", "channel.schema", "operation.schema", "policy.schema",
+        "rule-quality.schema"}
     for path in paths:
         doc = json.loads(path.read_text(encoding="utf-8"))
         assert doc["$schema"] == "https://json-schema.org/draft/2020-12/schema"

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohbs-image.dev/v1/rule-quality.schema.json",
+  "title": "ohbs-image CIS rule quality record",
+  "type": "object",
+  "required": ["schema", "rule_id", "title", "assessment", "family", "risk", "score", "grade", "priority", "dimensions", "issues"],
+  "properties": {
+    "schema": {"const": "https://ohbs-image.dev/rule-quality/v1"},
+    "rule_id": {"type": "string"},
+    "title": {"type": "string"},
+    "assessment": {"type": "string", "enum": ["Automated", "Manual", ""]},
+    "family": {"type": "string"},
+    "risk": {"type": "string"},
+    "score": {"type": "number", "minimum": 0, "maximum": 100},
+    "grade": {"type": "string", "enum": ["A", "B", "C", "D"]},
+    "priority": {"type": "integer", "minimum": 0},
+    "dimensions": {"type": "object", "additionalProperties": {"type": "boolean"}},
+    "issues": {"type": "array", "items": {"type": "object", "required": ["code", "severity", "message"], "properties": {"code": {"type": "string"}, "severity": {"type": "string", "enum": ["warning", "error"]}, "message": {"type": "string"}}}}
+  },
+  "additionalProperties": false
+}
