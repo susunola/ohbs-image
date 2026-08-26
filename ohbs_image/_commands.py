@@ -45,7 +45,7 @@ def write_build_checkpoint(r: ResolvedConfig, phase: str,
     """Persist recovery data without turning local state I/O into a cloud-build failure."""
     try:
         _write_build_checkpoint(r, phase, artifacts)
-    except (OSError, ValueError) as exc:
+    except (OSError, TypeError, ValueError) as exc:
         warn(f"Could not persist build checkpoint {phase}: {exc}")
 
 
