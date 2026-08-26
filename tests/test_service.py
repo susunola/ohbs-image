@@ -152,6 +152,31 @@ def test_console_operational_read_apis_and_evidence_boundary(tmp_path):
     assert status == 200 and json.loads(body)["run_id"] == "run-console"
 
 
+def test_console_write_operations_require_guards_and_are_audited(tmp_path, monkeypatch):
+    service = _service(tmp_path)
+    status, _, body = service.dispatch(
+        "POST", "/api/v1/artifacts/img-1/rebuild", "Bearer admin-token", body=b"{}")
+    assert status == 400 and json.loads(body)["error"]["code"] == "idempotency_required"
+    status, _, body = service.dispatch(
+        "POST", "/api/v1/artifacts/img-1/rebuild", "Bearer admin-token", body=b"{}",
+        headers={"Idempotency-Key": "console-rebuild-1"})
+    assert status == 202 and json.loads(body)["queued"] == 1
+
+    status, _, body = service.dispatch(
+        "POST", "/api/v1/artifacts/img-1/distribute", "Bearer admin-token",
+        body=json.dumps({"regions": ["ap-shanghai"]}).encode())
+    assert status == 400
+    monkeypatch.setattr("ohbs_image._service.execute_distribution",
+                        lambda *_args, **_kwargs: {"status": "started"})
+    status, _, body = service.dispatch(
+        "POST", "/api/v1/artifacts/img-1/distribute", "Bearer admin-token",
+        body=json.dumps({"regions": ["ap-shanghai"]}).encode(),
+        headers={"X-Confirm-Cost": "true"})
+    assert status == 202 and json.loads(body)["status"] == "started"
+    audit = (tmp_path / "audit" / "service.jsonl").read_text()
+    assert "artifact.rebuild" in audit and "artifact.distribute" in audit
+
+
 def test_runs_list_show_and_scope(tmp_path):
     service = _service(tmp_path)
     runs = tmp_path / "runs"

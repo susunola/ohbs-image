@@ -18,10 +18,12 @@ from ._approvals import approve, consume_approval, create_approval
 from ._channels import promote_channel, resolve_channel
 from ._config import _lineage_path
 from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
+from ._distribution import execute_distribution
 from ._identity import IdentityError, verify_oidc_token
 from ._logging import fail, info
 from ._metrics import collect_metrics, prometheus_metrics
 from ._policy_registry import list_policies
+from ._rebuild_events import EVENT_SCHEMA, process_rebuild_event
 from ._registry import _database, _hash, _read_object, change_artifact_status, get_artifact, put_artifact
 from ._reports import _state_lock
 from ._runs import collect_runs
@@ -303,6 +305,40 @@ class ControlPlane:
                     root=self.root / "registry")
                 self._audit(principal, "artifact.status", route[1], "allowed")
                 return self._json(200, result)
+            if method == "POST" and len(route) == 3 and route[0] == "artifacts" \
+                    and route[2] == "rebuild":
+                self._authorize(principal, "admin")
+                payload = json.loads(body.decode("utf-8")) if body else {}
+                if not isinstance(payload, dict):
+                    raise ValueError("rebuild payload must be an object")
+                operation_id = (headers or {}).get("Idempotency-Key", "")
+                if not operation_id:
+                    return self._error(400, "idempotency_required",
+                                       "Idempotency-Key is required")
+                event = {"schema": EVENT_SCHEMA, "event_id": operation_id,
+                    "type": "base_image.updated", "artifact_id": route[1],
+                    "occurred_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "reason": str(payload.get("reason") or "operator requested rebuild")}
+                result = process_rebuild_event(
+                    event, apply=True, actor=str(principal.get("subject") or "unknown"),
+                    root=self.root / "registry")
+                self._audit(principal, "artifact.rebuild", route[1], "allowed")
+                return self._json(202, result)
+            if method == "POST" and len(route) == 3 and route[0] == "artifacts" \
+                    and route[2] == "distribute":
+                self._authorize(principal, "admin")
+                if (headers or {}).get("X-Confirm-Cost", "").lower() != "true":
+                    return self._error(400, "cost_confirmation_required",
+                                       "X-Confirm-Cost: true is required")
+                payload = json.loads(body.decode("utf-8"))
+                regions = payload.get("regions") if isinstance(payload, dict) else None
+                if not isinstance(regions, list) or not all(
+                        isinstance(region, str) and region for region in regions):
+                    raise ValueError("distribution requires a regions array")
+                result = execute_distribution(route[1], regions, apply=True,
+                                              root=self.root / "registry")
+                self._audit(principal, "artifact.distribute", route[1], "allowed")
+                return self._json(202, result)
             if method == "GET" and len(route) == 3 and route[0] == "artifacts" \
                     and route[2] == "descendants":
                 doc = get_artifact(route[1], self.root / "registry")
