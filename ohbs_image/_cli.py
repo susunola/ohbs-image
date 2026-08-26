@@ -41,7 +41,7 @@ from ._config_tools import (
 )
 from ._discover import cmd_discover
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
-from ._launch import cmd_launch
+from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
@@ -319,6 +319,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_run_events.add_argument("run_id")
     p_run_events.add_argument("--output", choices=["text", "json"], default="text")
     p_run_events.set_defaults(func=cmd_run_events)
+    p_run_resume = run_sub.add_parser(
+        "resume", help="Resume a failed launch from its last safe checkpoint")
+    p_run_resume.add_argument("run_id")
+    p_run_resume.add_argument("--build", action="store_true",
+                              help="Continue into the billed cloud build stage")
+    p_run_resume.add_argument("--yes", action="store_true",
+                              help="Explicitly approve billed resources (required with --build)")
+    p_run_resume.add_argument("--offline", action="store_true")
+    p_run_resume.add_argument("--output", choices=["text", "json"], default="text")
+    p_run_resume.add_argument("--quiet", action="store_true")
+    p_run_resume.add_argument("--debug", action="store_true")
+    p_run_resume.add_argument("--skip-if-unchanged", action="store_true")
+    p_run_resume.add_argument("--log-file", default=None)
+    p_run_resume.add_argument("--result-file", default=None)
+    p_run_resume.add_argument("--timeout", type=int, default=None)
+    p_run_resume.set_defaults(func=cmd_run_resume)
 
     p_config = sub.add_parser("config", help="Inspect, validate and migrate configuration contracts")
     config_sub = p_config.add_subparsers(dest="config_command")

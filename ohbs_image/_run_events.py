@@ -50,6 +50,8 @@ def state_for_manifest(status: str, phase: str) -> str:
         return "READY"
     if status == "completed":
         return "APPROVED" if phase == "release-complete" else "EVIDENCE_READY"
+    if phase == "launch-retry":
+        return "RETRYING"
     if phase == "launch-doctor":
         return "DIAGNOSING"
     if phase == "launch-plan":

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from ohbs_image._launch import cmd_launch
+from ohbs_image._launch import _config_fingerprint, cmd_launch, cmd_run_resume
 
 
 def _args(config, **overrides):
@@ -103,3 +103,51 @@ def test_launch_build_passes_same_run_id(tmp_path, monkeypatch, capsys):
     assert build[0] == "build"
     assert build[build.index("--run-id") + 1] == "run-build"
     assert build[build.index("--timeout") + 1] == "90"
+
+
+def test_resume_skips_completed_stages_and_keeps_run_id(tmp_path, monkeypatch, capsys):
+    config = tmp_path / "ohbs-image.toml"
+    _config(config)
+    checkpoint = {
+        "version": 1, "workflow": "launch", "config": str(config.resolve()),
+        "overlays": [], "config_fingerprint": _config_fingerprint(str(config), []),
+        "workdir": str((tmp_path / ".build").resolve()),
+        "completed_stages": ["doctor", "plan"],
+    }
+    calls = []
+    manifest = {"run_id": "run-resume", "state": "FAILED", "checkpoint": checkpoint}
+    monkeypatch.setattr("ohbs_image._launch.ohbs_image._read_run_manifest",
+                        lambda run_id: manifest)
+    monkeypatch.setattr("ohbs_image._launch.verify_event_chain", lambda run_id: [])
+    monkeypatch.setattr("ohbs_image._launch.ohbs_image.main",
+                        lambda argv: calls.append(argv) or 0)
+    monkeypatch.setattr("ohbs_image._launch.ohbs_image._write_run_manifest",
+                        lambda *args, **kwargs: None)
+
+    args = argparse.Namespace(
+        run_id="run-resume", build=False, yes=False, offline=True, output="json",
+        quiet=False, debug=False, skip_if_unchanged=False, log_file=None,
+        result_file=None, timeout=None)
+    assert cmd_run_resume(args) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["run_id"] == "run-resume"
+    assert [call[0] for call in calls] == ["preflight"]
+
+
+def test_resume_refuses_changed_configuration(tmp_path, monkeypatch, caplog):
+    config = tmp_path / "ohbs-image.toml"
+    _config(config)
+    checkpoint = {
+        "workflow": "launch", "config": str(config), "overlays": [],
+        "config_fingerprint": "stale", "workdir": str(tmp_path / ".build"),
+        "completed_stages": ["doctor"],
+    }
+    monkeypatch.setattr("ohbs_image._launch.ohbs_image._read_run_manifest",
+                        lambda run_id: {"state": "FAILED", "checkpoint": checkpoint})
+    monkeypatch.setattr("ohbs_image._launch.verify_event_chain", lambda run_id: [])
+    args = argparse.Namespace(run_id="run-changed", build=False, yes=False, offline=True,
+                              output="text", quiet=False, debug=False,
+                              skip_if_unchanged=False, log_file=None, result_file=None,
+                              timeout=None)
+    assert cmd_run_resume(args) == 1
+    assert "Configuration changed" in caplog.text
