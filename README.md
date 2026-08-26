@@ -274,6 +274,9 @@ ohbs-image registry revoke IMAGE_ID --reason TEXT      # permanent revoke + auto
 ohbs-image channel promote PROFILE stable IMAGE_ID [--expected-generation N]  # atomic CAS pointer move
 ohbs-image channel resolve PROFILE stable [--output json]  # verify pointer + artifact integrity
 ohbs-image channel list [--bucket PROFILE] [--output json]
+ohbs-image policy verify organization-policy.json
+ohbs-image policy check IMAGE_ID --bundle organization-policy.json --environment production
+ohbs-image channel promote PROFILE stable IMAGE_ID --policy organization-policy.json  # enforced gate
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
 ohbs-image engine version                  # ohbs-image + per-family engine versions
@@ -328,6 +331,11 @@ ohbs-image audit --tool inspec ...            # independent audit: Chef InSpec (
 ohbs-image audit --tool kitty --parse out.csv # independent audit: HardeningKitty (Windows) CSV
 ohbs-image clean                              # remove .ohbs-image-build/
 ```
+
+Policy bundles support relative `extends` inheritance, environment overrides, and
+time-bounded exceptions requiring an owner, approver, reason, and expiry. Start from
+[`docs/policy-bundle.example.json`](docs/policy-bundle.example.json); remove the example
+exception before use. Every check writes a hash-protected decision under the registry state.
 
 | Flag | Applies to | Description |
 |---|---|---|

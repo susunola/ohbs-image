@@ -46,6 +46,7 @@ from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
+from ._policy import cmd_policy_check, cmd_policy_verify
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._quickstart import cmd_quickstart
 from ._reconcile import cmd_state_reconcile
@@ -81,7 +82,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "channel", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "channel", "policy", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -481,6 +482,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_channel_promote.add_argument("--expected-generation", type=int)
     p_channel_promote.add_argument("--actor", default=os.environ.get("GITHUB_ACTOR") or os.environ.get("USER") or "unknown")
     p_channel_promote.add_argument("--reason", default="")
+    p_channel_promote.add_argument("--policy", help="Policy bundle to enforce before promotion")
+    p_channel_promote.add_argument("--environment", help="Policy environment (default: channel name)")
     p_channel_promote.add_argument("--output", choices=["text", "json"], default="text")
     p_channel_promote.set_defaults(func=cmd_channel_promote)
     p_channel_resolve = channel_sub.add_parser("resolve", help="Resolve and verify a channel")
@@ -492,6 +495,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_channel_list.add_argument("--bucket")
     p_channel_list.add_argument("--output", choices=["text", "json"], default="text")
     p_channel_list.set_defaults(func=cmd_channel_list)
+
+    p_policy = sub.add_parser("policy", help="Verify and evaluate organization policy bundles")
+    policy_sub = p_policy.add_subparsers(dest="policy_command")
+    p_policy_verify = policy_sub.add_parser("verify", help="Validate a policy bundle and inheritance")
+    p_policy_verify.add_argument("bundle")
+    p_policy_verify.add_argument("--output", choices=["text", "json"], default="text")
+    p_policy_verify.set_defaults(func=cmd_policy_verify)
+    p_policy_check = policy_sub.add_parser("check", help="Evaluate an artifact for an environment")
+    p_policy_check.add_argument("artifact_id")
+    p_policy_check.add_argument("--bundle", required=True)
+    p_policy_check.add_argument("--environment", required=True)
+    p_policy_check.add_argument("--output", choices=["text", "json"], default="text")
+    p_policy_check.set_defaults(func=cmd_policy_check)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")
