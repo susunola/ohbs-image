@@ -78,6 +78,7 @@ from ._policy_registry import (
     cmd_policy_revoke,
 )
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
+from ._providers import cmd_provider_list, cmd_provider_verify
 from ._quickstart import cmd_quickstart
 from ._rebuild_events import cmd_event_process
 from ._reconcile import cmd_state_reconcile
@@ -124,7 +125,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "provider", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -236,6 +237,16 @@ def build_parser() -> argparse.ArgumentParser:
                             help="instance-types: only list types with available stock")
     p_discover.add_argument("--output", choices=["text", "json"], default="text")
     p_discover.set_defaults(func=cmd_discover)
+
+    p_provider = sub.add_parser("provider", help="Inspect and verify cloud provider plugins")
+    provider_sub = p_provider.add_subparsers(dest="provider_command")
+    p_provider_list = provider_sub.add_parser("list", help="List installed providers and capabilities")
+    p_provider_list.add_argument("--output", choices=["text", "json"], default="text")
+    p_provider_list.set_defaults(func=cmd_provider_list)
+    p_provider_verify = provider_sub.add_parser("verify", help="Verify provider API compatibility")
+    p_provider_verify.add_argument("name")
+    p_provider_verify.add_argument("--output", choices=["text", "json"], default="text")
+    p_provider_verify.set_defaults(func=cmd_provider_verify)
 
     p_configure = sub.add_parser("configure", help="Generate a minimal build configuration")
     p_configure.add_argument("--target", default="ohbs-image.toml")
