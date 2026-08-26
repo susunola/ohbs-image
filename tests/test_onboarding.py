@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from ohbs_image import build_parser
-from ohbs_image._onboarding import cmd_configure, cmd_doctor, cmd_plan
+from ohbs_image._onboarding import _toolchain_checks, _version_probe, cmd_configure, cmd_doctor, cmd_plan
 from ohbs_image._state import CosStateBackend, LocalStateBackend
 
 
@@ -32,6 +32,31 @@ def test_configure_refuses_overwrite(tmp_path):
     target.write_text("owned", encoding="utf-8")
     assert cmd_configure(_configure_args(target)) == 1
     assert target.read_text(encoding="utf-8") == "owned"
+
+
+def test_version_probe_preserves_execution_error(monkeypatch):
+    monkeypatch.setattr(
+        "ohbs_image._onboarding.subprocess.run",
+        lambda *args, **kwargs: argparse.Namespace(
+            returncode=1, stdout="", stderr="PermissionError: temp directory denied\ntrace"))
+    assert _version_probe(["ansible-playbook", "--version"]) == (
+        "", "PermissionError: temp directory denied")
+
+
+def test_toolchain_reports_broken_ansible_as_execution_error(monkeypatch):
+    real_which = __import__("shutil").which
+    monkeypatch.setattr(
+        "ohbs_image._onboarding.shutil.which",
+        lambda name: "/usr/bin/ansible-playbook" if name == "ansible-playbook"
+        else real_which(name))
+    monkeypatch.setattr(
+        "ohbs_image._onboarding._version_probe",
+        lambda command: ("", "PermissionError: ~/.ansible/tmp")
+        if "ansible-playbook" in command[0] else ("", ""))
+    check = next(item for item in _toolchain_checks() if item.id == "ansible")
+    assert check.summary == "Ansible is installed but its version check failed"
+    assert "PermissionError" in check.detail
+    assert "permissions" in check.fix
 
 
 def test_configure_edit_uses_editor_when_set(tmp_path, monkeypatch):

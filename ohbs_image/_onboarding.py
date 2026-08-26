@@ -57,13 +57,24 @@ class DoctorCheck:
     group: str = "cloud"
 
 
-def _version(command: list[str]) -> str:
+def _version_probe(command: list[str]) -> tuple[str, str]:
+    """Return ``(version_line, error)`` without confusing execution failure
+    with a missing binary."""
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=10)
-    except (OSError, subprocess.TimeoutExpired):
-        return ""
+    except subprocess.TimeoutExpired:
+        return "", f"{Path(command[0]).name} version check timed out"
+    except OSError as exc:
+        return "", _redact(f"{type(exc).__name__}: {exc}")
     text = (result.stdout or result.stderr).strip().splitlines()
-    return text[0] if text else Path(command[0]).name
+    first_line = _redact(text[0]) if text else ""
+    if result.returncode != 0:
+        return "", first_line or f"exited with status {result.returncode}"
+    return first_line or Path(command[0]).name, ""
+
+
+def _version(command: list[str]) -> str:
+    return _version_probe(command)[0]
 
 
 def _numeric_version(text: str) -> tuple[int, ...]:
@@ -102,22 +113,40 @@ def _toolchain_checks() -> list[DoctorCheck]:
         group="toolchain"))
 
     packer = shutil.which("packer")
-    packer_version = _version([packer, "version"]) if packer else ""
+    packer_version, packer_error = _version_probe([packer, "version"]) if packer else ("", "")
     packer_ok = bool(packer and _numeric_version(packer_version) >= (1, 12, 0))
+    if not packer:
+        packer_summary = "Packer is not installed"
+        packer_fix = "Install Packer 1.12+ from https://developer.hashicorp.com/packer/install"
+    elif packer_error:
+        packer_summary = "Packer is installed but its version check failed"
+        packer_fix = "Run 'packer version' directly and fix its execution or filesystem permissions"
+    else:
+        packer_summary = packer_version
+        packer_fix = ("Install Packer 1.12+ from https://developer.hashicorp.com/packer/install"
+                      if not packer_ok else "")
     checks.append(DoctorCheck(
         "packer", "pass" if packer_ok else "fail",
-        packer_version if packer else "Packer is not installed",
-        packer or "", "Install Packer 1.12+ from https://developer.hashicorp.com/packer/install"
-        if not packer_ok else "", group="toolchain"))
+        packer_summary, packer_error or packer or "", packer_fix, group="toolchain"))
 
     ansible = shutil.which("ansible-playbook")
-    ansible_version = _version([ansible, "--version"]) if ansible else ""
+    ansible_version, ansible_error = (_version_probe([ansible, "--version"])
+                                      if ansible else ("", ""))
     ansible_ok = bool(ansible and _numeric_version(ansible_version) >= (2, 15, 0))
+    if not ansible:
+        ansible_summary = "ansible-playbook is not installed"
+        ansible_fix = "Install ansible-core>=2.15 (required for Windows builds)"
+    elif ansible_error:
+        ansible_summary = "Ansible is installed but its version check failed"
+        ansible_fix = ("Run 'ansible-playbook --version' directly and fix its temporary-directory "
+                       "or filesystem permissions")
+    else:
+        ansible_summary = ansible_version
+        ansible_fix = ("Install ansible-core>=2.15 (required for Windows builds)"
+                       if not ansible_ok else "")
     checks.append(DoctorCheck(
         "ansible", "pass" if ansible_ok else "warn",
-        ansible_version if ansible else "ansible-playbook is not installed",
-        ansible or "", "Install ansible-core>=2.15 (required for Windows builds)"
-        if not ansible_ok else "", group="toolchain"))
+        ansible_summary, ansible_error or ansible or "", ansible_fix, group="toolchain"))
 
     # 24/25 — Packer plugin versions (best-effort; Packer auto-installs at build).
     plugin_versions = _packer_plugin_versions(packer)
