@@ -29,7 +29,7 @@
 
 ohbs-image 的架构决定了大部分修复**自动覆盖全部 Linux profile**：
 
-- **Engine**：`ohbs_engine.py` 在 10 个 Linux role 中 md5 完全一致（`3e07e0ca`）→ f_selinux
+- **Engine**：`ohbs_engine.py` 在 9 个 Linux role 中 md5 完全一致（`3e07e0ca`）→ f_selinux
   permissive 逻辑、crypto drop-in（v0.13.6 `umac-128@openssh.com` + `sshd -t` 回滚）、nft
   遍历等全部共享。
 - **HCL 模板**：`HCL_LINUX_TEMPLATE` + `SMOKE_LINUX_BLOCK` 单一模板服务所有 Linux profile
@@ -59,7 +59,7 @@ ohbs-image 的架构决定了大部分修复**自动覆盖全部 Linux profile**
 的一部分，旧版各平台历史上构建正常 → **不阻塞，建议后续把 TOS4 的 run.yml 改进回同步**
 （与 engine 的 md5 同步机制一致）。
 
-**结论**：由于 engine 与 HCL 模板全共享，v0.14.14-22 的修复对全部 8 个 Linux profile 自动
+**结论**：由于 engine 与 HCL 模板全共享，v0.14.14-22 的修复对全部 9 个 Linux profile 自动
 生效，逐 role 检查未发现需要单独修复的规则级问题。唯一需要留意的是各镜像的 SELinux 初始
 状态（若为 disabled，guard 的 autorelabel/remount 修复即为兜底）。
 

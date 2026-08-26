@@ -51,16 +51,16 @@ in the changelog.
 | `config migrate` | `0` migrated or already current · `1` could not read the file |
 | `report diff` | `0` compared · `1` lineage or run ID missing |
 | `list` | always `0` |
-| `verify` / `verify-image` / `verify-release` | `0` verified · `1` verification failed |
+| `verify provenance` / `verify image` / `verify release` | `0` verified · `1` verification failed |
 | `audit` | `0` score gate passed · `1` below gate or tool failure |
-| `cleanup-images` / `cleanup-runs` | `0` done · `1` failure (both dry-run by default) |
+| `cleanup images` / `cleanup runs` | `0` done · `1` failure (both dry-run by default) |
 
 ### Release commands
 
 | Command | Notes |
 |---------|-------|
 | `promote` / `rollback` | `0` recorded · `1` evidence or input invalid |
-| `verify-release` | `0` evidence complete · `1` evidence missing or mismatched |
+| `verify release` | `0` evidence complete · `1` evidence missing or mismatched |
 
 ## Policy
 

@@ -41,7 +41,7 @@ Beyond the build itself, ohbs-image covers the full **build → test → distrib
 - **Instance-level smoke test** before the snapshot — a broken image never ships
 - **Image lineage** (`ohbs-image images`) — source → image IDs, score, version history
 - **WeCom notifications** — pair with cron/systemd timer for scheduled rebuilds
-- **SLSA-style signed provenance** (`ohbs-image verify`) — tamper-evident build records
+- **SLSA-style signed provenance** (`ohbs-image verify provenance`) — tamper-evident build records
 - **OIDC / STS credentials** — zero long-lived AK/SK in CI; `assume_role` for group accounts
 
 ---
@@ -67,6 +67,32 @@ Beyond the build itself, ohbs-image covers the full **build → test → distrib
 ---
 
 ## Quick Start
+
+### Zero-to-first-image in one command (recommended)
+
+```bash
+export TENCENTCLOUD_SECRET_ID=AKIDxxxx
+export TENCENTCLOUD_SECRET_KEY=xxxx
+
+ohbs-image quickstart --region ap-guangzhou --profile ubuntu2204
+# 1. discovers the newest Ubuntu 22.04 public image + an in-stock instance type
+# 2. provisions temporary VPC/subnet/security-group (tagged ephemeral=true)
+# 3. writes ohbs-image.toml, then runs doctor + plan
+# 4. prints the exact build command — or pass --yes to chain build directly
+
+ohbs-image build --config ohbs-image.toml   # produce the hardened image
+```
+
+`quickstart` reuse the networking you already have by passing all three of
+`--vpc`, `--subnet`, `--security-group` (never carves a subnet inside someone
+else's VPC).  Temporary resources are recorded in `ohbs-image.toml.quickstart.json`
+and torn down with `ohbs-image quickstart --cleanup`.  Preview everything
+read-only first with `ohbs-image quickstart --region … --dry-run`.
+
+Prefer the manual path below when you want to learn the configuration model
+first, or when your networking is shared and you need explicit choices.
+
+### Manual path (learn the config model)
 
 ```bash
 # 1. Install
@@ -182,7 +208,7 @@ the image lifecycle — pick by what you are trying to *do*:
 | Harden a source image into a **golden image** (apply remediations, re-audit, sign) | `build` | render + packer build → image + provenance + HTML delivery report |
 | Check a source image against the benchmark **without changing anything** | `scan` | same engine, audit-only; score gate (default 85%); SARIF/XCCDF/HTML export |
 | Independently verify with a **third-party tool** (OpenSCAP / InSpec / HardeningKitty) | `audit` | external audit tool, same `--min-score` gate, same SARIF/XCCDF export |
-| Confirm a *produced* image still passes after a **clean boot** | `verify-image` | boots a probe from the image and re-audits it |
+| Confirm a *produced* image still passes after a **clean boot** | `verify image` | boots a probe from the image and re-audits it |
 | Check an already-running instance against the baseline | `drift` | config drift on a live host vs the image baseline |
 
 `build` and `scan` run the identical bundled engine — `scan` is simply
@@ -210,6 +236,9 @@ documented in the full reference below.
 ```bash
 ohbs-image                                    # show help (exits 2)
 ohbs-image try [-o DIR] [--profile P] [--level 1|2]  # zero-cost offline demo: gates + sample HTML report
+ohbs-image quickstart --region R --profile P  # provision temp resources + config + doctor + plan
+ohbs-image quickstart --dry-run               # read-only: print the plan, create nothing
+ohbs-image quickstart --cleanup               # delete resources recorded by a previous quickstart
 ohbs-image init                               # generate ohbs-image.toml
 ohbs-image configure                          # interactive/non-interactive minimal config generator
 ohbs-image discover images --region ap-guangzhou --profile ubuntu2404
@@ -253,16 +282,22 @@ ohbs-image list                               # enumerate available profiles wit
 ohbs-image images [--latest] [-n N]           # list recorded builds (lineage)
 ohbs-image promote --image img-xxx --environment staging --approved-by alice
 ohbs-image rollback --image img-xxx --environment staging --reason "deployment issue"
-ohbs-image verify-release --image img-xxx   # verify portable release-manifest evidence hashes
 ohbs-image pending                            # change detection: is a rebuild required? (exit 0/1)
-ohbs-image cleanup-images [--older-than 30]   # retire old images by lineage age
-ohbs-image cleanup-images --apply             # actually delete (default = dry run)
-ohbs-image cleanup-runs --older-than 24       # find tagged orphaned build/probe CVMs (dry run)
-ohbs-image cleanup-runs --older-than 24 --apply # actually terminate the tagged CVMs (hours must be > 0)
-ohbs-image cleanup-runs --include-legacy --apply # explicitly include pre-manifest probes after review
-ohbs-image verify --provenance <file>         # verify a SLSA provenance signature
-ohbs-image verify --image <img-id>            # ... or locate provenance by image ID
-ohbs-image verify-image --image <img-id>      # clean-boot verification of a produced image
+ohbs-image verify provenance --provenance <file>  # verify a SLSA provenance signature
+ohbs-image verify provenance --image <img-id>     # ... or locate provenance by image ID
+ohbs-image verify image --image <img-id>          # clean-boot verification of a produced image
+ohbs-image verify release --image img-xxx         # verify portable release-manifest evidence hashes
+ohbs-image cleanup images [--older-than 30]       # retire old images by lineage age (dry run)
+ohbs-image cleanup images --apply                 # actually delete (default = dry run)
+ohbs-image cleanup runs --older-than 24           # find tagged orphaned build/probe CVMs (dry run)
+ohbs-image cleanup runs --older-than 24 --apply   # actually terminate the tagged CVMs (hours must be > 0)
+ohbs-image cleanup runs --include-legacy --apply  # explicitly include pre-manifest probes after review
+# --- deprecated flat aliases (removal planned in 0.20.0) ---
+ohbs-image verify --provenance <file>         # [deprecated] use `ohbs-image verify provenance`
+ohbs-image verify-image --image <img-id>      # [deprecated] use `ohbs-image verify image`
+ohbs-image verify-release --image img-xxx     # [deprecated] use `ohbs-image verify release`
+ohbs-image cleanup-images [--older-than 30]   # [deprecated] use `ohbs-image cleanup images`
+ohbs-image cleanup-runs --older-than 24       # [deprecated] use `ohbs-image cleanup runs`
 ohbs-image drift --host <ip> [--image <id>]   # config drift on a running instance vs image baseline
 ohbs-image drift --host <ip> --save-baseline  # save the current host scan as a drift baseline
 ohbs-image check-source                       # vendor image refresh detection (rebuild needed?)
@@ -284,7 +319,7 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | `--log-file <path>` | build | Write full build log to file |
 | `--result-file <path>` | build | Write one atomic JSON result contract for CI/CD |
 | `--skip-if-unchanged` | build | Skip when inputs (source image, rules, benchmark, level) are unchanged |
-| `--min-score <pct>` | scan, audit, verify-image | Gate threshold (default `85`; below it → exit 1) |
+| `--min-score <pct>` | scan, audit, verify image | Gate threshold (default `85`; below it → exit 1) |
 | `--sarif <path>` | scan, audit | Write findings as SARIF 2.1.0 |
 | `--xccdf <path>` | scan, audit | Write findings as XCCDF 1.2 (enterprise GRC ingestion) |
 | `--html <path>` | scan | Write a self-contained HTML compliance report (single page, no external assets) |
@@ -293,12 +328,12 @@ ohbs-image clean                              # remove .ohbs-image-build/
 | `--datastream <path>` | audit | oscap SCAP datastream on the target (e.g. `/usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml`) |
 | `--baseline <name>` | audit | inspec baseline (default `dev-sec/linux-baseline`) |
 | `--parse <csv>` | audit --tool kitty | HardeningKitty audit CSV export to parse |
-| `--older-than <days>` | cleanup-images | Retire builds older than N days (default `30`) |
-| `--older-than <hours>` | cleanup-runs | Retire tagged ephemeral CVMs older than N hours (default `24`) |
-| `--include-legacy` | cleanup-runs | Include old probes without a run manifest (off by default) |
-| `--keep-latest <n>` | cleanup-images | Always keep the newest N builds (default `1`) |
-| `--unused-since <days>` | cleanup-images | Only delete images NOT shared with other accounts; the in-use guard expires N days after the lineage record — older shared images are presumed unused and retired anyway (`0` = off) |
-| `--apply` | cleanup-images | Actually delete (default is a dry run) |
+| `--older-than <days>` | cleanup images | Retire builds older than N days (default `30`) |
+| `--older-than <hours>` | cleanup runs | Retire tagged ephemeral CVMs older than N hours (default `24`) |
+| `--include-legacy` | cleanup runs | Include old probes without a run manifest (off by default) |
+| `--keep-latest <n>` | cleanup images | Always keep the newest N builds (default `1`) |
+| `--unused-since <days>` | cleanup images | Only delete images NOT shared with other accounts; the in-use guard expires N days after the lineage record — older shared images are presumed unused and retired anyway (`0` = off) |
+| `--apply` | cleanup images | Actually delete (default is a dry run) |
 
 ---
 
@@ -592,7 +627,7 @@ Windows builds use the Packer `ansible` provisioner (controller-side) over WinRM
 
 ### Design
 
-**Bundled roles.** All 12 ohbs-os engine roles ship inside `ohbs_image/roles/`. At build time the tool copies the selected role into the workspace. No Galaxy, no network dependency, no version drift.
+**Bundled roles.** All 13 ohbs-os engine roles ship inside `ohbs_image/roles/`. At build time the tool copies the selected role into the workspace. No Galaxy, no network dependency, no version drift.
 
 **ansible-local (Linux).** Playbooks and roles execute inside the build instance — the Packer controller does not need SSH access into the cloud VPC.
 
@@ -781,7 +816,7 @@ distribute pipeline):
 - **Lineage (distribute metadata)** — every build appends a record
   (`~/.ohbs-image/lineage.jsonl`): source image → output image IDs, level,
   region, score, version, timestamp, and a `mode` field (`build` / `scan` /
-  `test`). Scan and test images are recorded so `cleanup-images` can retire
+  `test`). Scan and test images are recorded so `cleanup images` can retire
   them, but they are not hardened builds — `--skip-if-unchanged` and
   `pending` ignore them (only `mode: build` records count; records written
   before the field existed count as `build`).  The full per-rule audit JSON is
@@ -791,11 +826,11 @@ distribute pipeline):
   ```bash
   ohbs-image images            # recent builds, newest first
   ohbs-image images --latest   # the most recent record
-  ohbs-image cleanup-images --older-than 30   # dry-run: what would be retired
-  ohbs-image cleanup-images --older-than 30 --apply   # actually delete
+  ohbs-image cleanup images --older-than 30   # dry-run: what would be retired
+  ohbs-image cleanup images --older-than 30 --apply   # actually delete
   ```
 
-  `cleanup-images` retires golden images older than N days (default 30),
+  `cleanup images` retires golden images older than N days (default 30),
   always keeping the newest build (`--keep-latest`, default 1). It uses the
   lineage records to find the image IDs, verifies them via
   `cvm:DescribeImages`, deletes via `cvm:DeleteImages` (stdlib TC3-signed —
@@ -839,9 +874,9 @@ distribute pipeline):
   Verify any signed provenance (audit / compliance):
 
   ```bash
-  ohbs-image verify --provenance ~/.ohbs-image/provenance/xxx.provenance.json
-  ohbs-image verify --image img-ekny61ig        # auto-locate by image ID
-  ohbs-image verify --provenance ~/.ohbs-image/provenance/xxx.provenance.json \
+  ohbs-image verify provenance --provenance ~/.ohbs-image/provenance/xxx.provenance.json
+  ohbs-image verify provenance --image img-ekny61ig        # auto-locate by image ID
+  ohbs-image verify provenance --provenance ~/.ohbs-image/provenance/xxx.provenance.json \
     --trusted-key-fingerprint ABCDEF0123456789ABCDEF0123456789ABCDEF01
   ```
 
@@ -875,7 +910,7 @@ distribute pipeline):
   Every build and clean-boot probe also writes a versioned run manifest under
   `runs/<run_id>.json`. It records the active lease, phase, and known temporary
   resources. Long-running Packer builds refresh that lease every five minutes.
-  `cleanup-runs` skips unexpired active leases; it only treats age as a fallback
+  `cleanup runs` skips unexpired active leases; it only treats age as a fallback
   for expired or pre-manifest resources.
 
   `[build.packer]` remains a privileged provider-extension escape hatch. Its
@@ -896,7 +931,7 @@ distribute pipeline):
   explicit external pipeline actions.
 
   Before a downstream pipeline consumes an image, run
-  `ohbs-image verify-release --image img-xxx` against the downloaded evidence
+  `ohbs-image verify release --image img-xxx` against the downloaded evidence
   state. It verifies that each referenced audit, provenance, and HTML report
   remains under the state root and matches its recorded SHA-256.
 
@@ -941,9 +976,9 @@ accepted the associated cloud cost and change-control policy.
   ohbs-image pending                      # exit 0 = no rebuild needed, 1 = rebuild
   ```
 
-- **Clean-boot verification (`verify-image`)** — AWS Image Builder runs its
+- **Clean-boot verification (`verify image`)** — AWS Image Builder runs its
   test phase on the *output* image, not the build instance. `ohbs-image
-  verify-image --image img-xxx` boots a probe instance from the produced
+  verify image --image img-xxx` boots a probe instance from the produced
   image, runs the bundled engine in scan mode on the FRESH boot (catching
   SELinux relabel stalls, first-boot services, cloud-init reconfiguration),
   gates on the score, and always terminates the probe. The probe uses a
@@ -957,7 +992,7 @@ accepted the associated cloud cost and change-control policy.
   either path automatically after every successful build.
 
   ```bash
-  ohbs-image verify-image --image img-ekny61ig --min-score 85
+  ohbs-image verify image --image img-ekny61ig --min-score 85
   ```
 
 - **Independent audit (`audit`)** — the score is no longer only self-
@@ -1018,7 +1053,7 @@ accepted the associated cloud cost and change-control policy.
   as a spot (竞价) instance (`instance_charge_type=SPOTPAID`, up to ~90%
   cheaper); repossess risk is acceptable for a short-lived build machine.
 
-- **Safe cleanup** — `cleanup-images --unused-since N` only deletes images
+- **Safe cleanup** — `cleanup images --unused-since N` only deletes images
   that are NOT shared with other accounts (via
   `DescribeImageSharePermission`), so an image still referenced downstream
   is not retired while it is fresh. The guard expires N days after the
@@ -1060,7 +1095,7 @@ accepted the associated cloud cost and change-control policy.
 - [x] Automatic image cleanup (retire old images by lineage age)
 - [x] Independent audit tool (`ohbs-image audit` — oscap / inspec / kitty)
 - [x] Benchmark-pinned rule IDs in engine output + SARIF (CIS-CAT cross-reference)
-- [x] Clean-boot verification (`ohbs-image verify-image` / `[meta].verify_boot`)
+- [x] Clean-boot verification (`ohbs-image verify image` / `[meta].verify_boot`)
 - [x] Per-control overrides (`[ohbs].overrides` in `ohbs-image.toml`)
 - [x] CVE scan gate + SBOM emission (`[meta].cve_scan` / `[meta].sbom`)
 - [x] Change detection (`ohbs-image pending` / `build --skip-if-unchanged`)
@@ -1072,7 +1107,7 @@ accepted the associated cloud cost and change-control policy.
 - [x] User test components (`[meta].test_components`, Image Builder style)
 - [x] Deploy trigger webhook (`[notify].deploy_webhook`, EventBridge style)
 - [x] Spot-instance build VM (`[build].spot`, up to ~90% cheaper)
-- [x] Safe cleanup (`cleanup-images --unused-since`, shared images kept within the guard window)
+- [x] Safe cleanup (`cleanup images --unused-since`, shared images kept within the guard window)
 - [x] Sharing guard (`[image].share_org_units` is rejected with a warning — the API accepts account IDs only; use `share_accounts`)
 - [x] Rule-set versioning (`ohbs-image list --versions`)
 - [x] Vendor image refresh detection (`ohbs-image check-source`)

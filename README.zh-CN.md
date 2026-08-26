@@ -160,7 +160,7 @@ ohbs-image clean
 | 把源镜像加固成**黄金镜像**（应用修复、复审、签名） | `build` | 渲染 + packer build → 镜像 + provenance + HTML 交付报告 |
 | 只对照基准**检查**源镜像、不做任何修改 | `scan` | 同一引擎、仅审计；分数闸门（默认 85%）；支持 SARIF/XCCDF/HTML 导出 |
 | 用**第三方工具**独立验证（OpenSCAP / InSpec / HardeningKitty） | `audit` | 外部审计工具，同样的 `--min-score` 闸门与 SARIF/XCCDF 导出 |
-| 确认*产出镜像*在**干净启动**后仍达标 | `verify-image` | 用镜像启动探针实例并重新审计 |
+| 确认*产出镜像*在**干净启动**后仍达标 | `verify image` | 用镜像启动探针实例并重新审计 |
 | 对照基线检查**已运行的实例** | `drift` | 实时主机配置漂移 vs 镜像基线 |
 
 `build` 与 `scan` 运行完全相同的捆绑引擎 —— `scan` 只是关掉了修复的
@@ -229,17 +229,22 @@ ohbs-image scan          # 只需要分数时做只审计检查
 | `ohbs-image images [--latest] [-n N]` | 列出历史构建（血缘） |
 | `ohbs-image promote --image <id> --environment <env> --approved-by <user>` | 在发布清单中记录晋升到某环境（只更新可审计的发布状态，应用部署与云共享仍是外部显式动作） |
 | `ohbs-image rollback --image <id> --environment <env> --reason "..."` | 在发布清单中记录回滚（同样只更新发布状态） |
-| `ohbs-image verify-release --image <id>` | 校验发布清单引用的审计 / 来源 / HTML 报告证据哈希仍与状态根目录一致 |
+| `ohbs-image verify release --image <id>` | 校验发布清单引用的审计 / 来源 / HTML 报告证据哈希仍与状态根目录一致 |
 | `ohbs-image pending` | 变更检测：是否需要重建（退出码 0/1） |
-| `ohbs-image cleanup-images [--older-than 30]` | 按血缘年龄退役旧镜像 |
-| `ohbs-image cleanup-images --apply` | 实际删除（默认仅演练） |
-| `ohbs-image cleanup-images --unused-since 60` | 只删除未共享（无下游引用）的镜像；共享镜像的血缘记录满 N 天后视为闲置，照样退役（0 = 关闭此保护） |
-| `ohbs-image cleanup-runs --older-than 24` | 找出打标但已成孤儿 / 超龄的构建与探针 CVM（默认演练） |
-| `ohbs-image cleanup-runs --older-than 24 --apply` | 实际终止打标的临时 CVM（小时数必须 > 0） |
-| `ohbs-image cleanup-runs --include-legacy --apply` | 显式纳入无运行清单的旧探针（默认关闭） |
-| `ohbs-image verify --provenance <file>` | 校验 SLSA 来源签名 |
-| `ohbs-image verify --image <img-id>` | 按镜像 ID 定位来源记录 |
-| `ohbs-image verify-image --image <img-id>` | 对产出镜像做干净启动验收 |
+| `ohbs-image cleanup images [--older-than 30]` | 按血缘年龄退役旧镜像 |
+| `ohbs-image cleanup images --apply` | 实际删除（默认仅演练） |
+| `ohbs-image cleanup images --unused-since 60` | 只删除未共享（无下游引用）的镜像；共享镜像的血缘记录满 N 天后视为闲置，照样退役（0 = 关闭此保护） |
+| `ohbs-image cleanup runs --older-than 24` | 找出打标但已成孤儿 / 超龄的构建与探针 CVM（默认演练） |
+| `ohbs-image cleanup runs --older-than 24 --apply` | 实际终止打标的临时 CVM（小时数必须 > 0） |
+| `ohbs-image cleanup runs --include-legacy --apply` | 显式纳入无运行清单的旧探针（默认关闭） |
+| `ohbs-image verify provenance --provenance <file>` | 校验 SLSA 来源签名 |
+| `ohbs-image verify provenance --image <img-id>` | 按镜像 ID 定位来源记录 |
+| `ohbs-image verify image --image <img-id>` | 对产出镜像做干净启动验收 |
+| `ohbs-image verify --provenance <file>` | [已弃用] 请使用 `ohbs-image verify provenance`（计划 0.20.0 移除） |
+| `ohbs-image verify-image --image <img-id>` | [已弃用] 请使用 `ohbs-image verify image`（计划 0.20.0 移除） |
+| `ohbs-image verify-release --image <id>` | [已弃用] 请使用 `ohbs-image verify release`（计划 0.20.0 移除） |
+| `ohbs-image cleanup-images [--older-than 30]` | [已弃用] 请使用 `ohbs-image cleanup images`（计划 0.20.0 移除） |
+| `ohbs-image cleanup-runs --older-than 24` | [已弃用] 请使用 `ohbs-image cleanup runs`（计划 0.20.0 移除） |
 | `ohbs-image drift --host <ip> [--image <id>]` | 实例配置漂移检测（对比镜像基线） |
 | `ohbs-image drift --host <ip> --save-baseline` | 保存当前主机扫描为漂移基线 |
 | `ohbs-image check-source` | 源镜像刷新检测（是否需要重建） |
@@ -262,7 +267,7 @@ ohbs-image scan          # 只需要分数时做只审计检查
 | `--log-file <path>` | — | build | 将完整构建日志写入文件 |
 | `--result-file <path>` | — | build | 为 CI/CD 写出一份原子 JSON 结果契约 |
 | `--skip-if-unchanged` | — | build | 源镜像/规则/基准/等级未变化时跳过 |
-| `--min-score <pct>` | `85` | scan / audit / verify-image | 分数闸门（低于则退出 1） |
+| `--min-score <pct>` | `85` | scan / audit / verify image | 分数闸门（低于则退出 1） |
 | `--sarif <path>` | — | scan / audit | 输出 SARIF 2.1.0 |
 | `--xccdf <path>` | — | scan / audit | 输出 XCCDF 1.2（企业 GRC 接入） |
 | `--html <path>` | — | scan | 输出自包含的 HTML 合规报告（单页、无外部资源） |
@@ -271,12 +276,12 @@ ohbs-image scan          # 只需要分数时做只审计检查
 | `--datastream <path>` | — | audit | 目标上的 oscap SCAP 数据流（如 `/usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml`） |
 | `--baseline <name>` | `dev-sec/linux-baseline` | audit | inspec 基线 |
 | `--parse <csv>` | — | audit --tool kitty | 待解析的 HardeningKitty 审计 CSV |
-| `--older-than <days>` | `30` | cleanup-images | 退役 N 天前的构建 |
-| `--older-than <hours>` | `24` | cleanup-runs | 退役打标临时 CVM（N 小时前） |
-| `--include-legacy` | — | cleanup-runs | 包含无运行清单的旧探针（默认关闭） |
-| `--keep-latest <n>` | `1` | cleanup-images | 保留最新 N 个构建 |
-| `--unused-since <days>` | — | cleanup-images | 只删除未共享的镜像；共享镜像的血缘记录满 N 天后视为闲置照样退役（`0` = 关闭保护） |
-| `--apply` | — | cleanup-images | 实际删除（默认仅演练） |
+| `--older-than <days>` | `30` | cleanup images | 退役 N 天前的构建 |
+| `--older-than <hours>` | `24` | cleanup runs | 退役打标临时 CVM（N 小时前） |
+| `--include-legacy` | — | cleanup runs | 包含无运行清单的旧探针（默认关闭） |
+| `--keep-latest <n>` | `1` | cleanup images | 保留最新 N 个构建 |
+| `--unused-since <days>` | — | cleanup images | 只删除未共享的镜像；共享镜像的血缘记录满 N 天后视为闲置照样退役（`0` = 关闭保护） |
+| `--apply` | — | cleanup images | 实际删除（默认仅演练） |
 
 ### 首次成功流程与团队状态
 
@@ -571,7 +576,7 @@ ohbs-image build --log-file build.log
 - [x] 自动镜像清理（按血缘年龄退役）
 - [x] 独立审计工具（`ohbs-image audit` — oscap / inspec / kitty）
 - [x] 基准锚定的规则 ID（引擎输出 + SARIF，可与 CIS-CAT 交叉核对）
-- [x] 干净启动验收（`ohbs-image verify-image` / `[meta].verify_boot`）
+- [x] 干净启动验收（`ohbs-image verify image` / `[meta].verify_boot`）
 - [x] 单条规则参数覆写（`[ohbs].overrides`）
 - [x] CVE 扫描闸门 + SBOM 输出（`[meta].cve_scan` / `[meta].sbom`）
 - [x] 变更检测（`ohbs-image pending` / `build --skip-if-unchanged`）
@@ -583,7 +588,7 @@ ohbs-image build --log-file build.log
 - [x] 用户自定义测试组件（`[meta].test_components`）
 - [x] 构建成功触发下游（`[notify].deploy_webhook`）
 - [x] 竞价实例构建机（`[build].spot`，最高省 ~90%）
-- [x] 安全清理（`cleanup-images --unused-since`，保护期内的共享镜像保留）
+- [x] 安全清理（`cleanup images --unused-since`，保护期内的共享镜像保留）
 - [x] 共享防护（`[image].share_org_units` 会被告警并跳过 —— API 仅接受账号 ID，请使用 `share_accounts`）
 - [x] 规则集版本化（`ohbs-image list --versions`）
 - [x] 源镜像刷新检测（`ohbs-image check-source`）

@@ -55,7 +55,7 @@ __all__ = [
     '_new_run_id', '_read_release_manifest', '_read_run_manifest', '_release_manifest_path', '_release_transition', '_run_manifest_is_active', '_run_manifest_path', '_validate_env_var_name', '_validate_shell_arg', '_validate_value_present', '_verify_release_manifest', '_write_build_html_report', '_write_build_result', '_write_provenance', '_write_release_manifest', '_write_run_manifest', '_write_sarif', '_write_xccdf',
     '_yaml_list', 'banner', 'build_parser', 'cmd_audit', 'cmd_build', 'cmd_check_source',
     'cmd_clean', 'cmd_cleanup_images', 'cmd_cleanup_runs', 'cmd_drift', 'cmd_images', 'cmd_init', 'cmd_list',
-    'cmd_configure', 'cmd_discover', 'cmd_catalog_list', 'cmd_catalog_verify', 'cmd_doctor', 'cmd_engine_list', 'cmd_engine_verify', 'cmd_engine_version', 'cmd_plan', 'cmd_state_init', 'cmd_state_path', 'cmd_state_prune', 'cmd_state_status', 'cmd_state_sync', 'cmd_pending', 'cmd_preflight', 'cmd_promote', 'cmd_rollback', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate', 'cmd_verify_release',
+    'cmd_configure', 'cmd_discover', 'cmd_catalog_list', 'cmd_catalog_verify', 'cmd_doctor', 'cmd_engine_list', 'cmd_engine_verify', 'cmd_engine_version', 'cmd_plan', 'cmd_state_init', 'cmd_state_path', 'cmd_state_prune', 'cmd_state_status', 'cmd_state_sync', 'cmd_pending', 'cmd_preflight', 'cmd_promote', 'cmd_quickstart', 'cmd_rollback', 'cmd_save_baseline', 'cmd_scan', 'cmd_test', 'cmd_validate', 'cmd_verify_release',
     'cmd_verify', 'cmd_verify_image', 'fail', 'info', 'load_config', 'logger',
     'main', 'ok', 'render_all', 'render_finalize', 'render_install', 'render_pkrvars',
     'render_site', 'render_site_audit', 'resolve', 'run_packer', 'run_preflight', 'warn',
@@ -192,6 +192,7 @@ from ._profiles import (
     _tlinux_profile,
     _ubuntu_profile,
 )
+from ._quickstart import cmd_quickstart
 from ._render import (
     _apply_rule_overrides,
     _assert_no_markers,

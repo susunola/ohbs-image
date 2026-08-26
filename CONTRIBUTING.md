@@ -67,8 +67,8 @@ This is **not** a CI-required step — it's a manual/optional check to run
 when you suspect an environment-specific issue, or before a larger release.
 By default (no `--target-mode`, or `--target-mode toolchain`) it only
 validates that the checkout itself installs and tests cleanly on a real
-machine — it does **not** run a real `ohbs-image build`/`verify-image`/
-`cleanup-images` against a profile.
+machine — it does **not** run a real `ohbs-image build`/`verify image`/
+`cleanup images` against a profile.
 
 To additionally trigger a REAL `ohbs-image build` against one or more
 profile+level combinations (e.g. "RHEL 8, CIS Level 1"), pass

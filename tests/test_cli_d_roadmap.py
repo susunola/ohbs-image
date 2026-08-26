@@ -15,6 +15,8 @@ Covered here:
 - D-118 plan --save as evidence
 - D-119 plan --diff-last
 - D-120 plan never calls write APIs
+- verify/cleanup subcommand-group convergence (flat legacy names stay
+  registered as deprecated aliases, removal window 0.20.0)
 """
 from __future__ import annotations
 
@@ -28,7 +30,18 @@ import pytest
 
 import ohbs_image
 from ohbs_image import build_parser
-from ohbs_image._cli import COMMAND_GROUPS, _deprecation_prog
+from ohbs_image._cli import (
+    COMMAND_GROUPS,
+    _deprecated_alias,
+    _deprecation_prog,
+)
+from ohbs_image._commands import (
+    cmd_cleanup_images,
+    cmd_cleanup_runs,
+    cmd_verify,
+    cmd_verify_image,
+    cmd_verify_release,
+)
 from ohbs_image._logging import _setup_logging
 from ohbs_image._onboarding import (
     _ask,
@@ -359,6 +372,123 @@ class TestPlanNeverMutates:
         assert rc == 0
         doc = json.loads(capsys.readouterr().out)
         assert doc["mutates_cloud"] is False
+
+
+# ---------------------------------------------- verify/cleanup convergence
+class TestVerifyCleanupGroups:
+    """`verify` and `cleanup` are subcommand groups. The flat legacy names
+    remain registered as deprecated aliases (removal window 0.20.0), and the
+    bare `verify` (no subcommand) is the group default — still parsing its
+    legacy flags, but printing a deprecation notice before dispatch."""
+
+    def test_verify_group_subcommands_parse_and_route(self):
+        parser = build_parser()
+        ns = parser.parse_args(["verify", "provenance", "--provenance", "p.json"])
+        assert ns.command == "verify"
+        assert ns.verify_command == "provenance"
+        assert ns.provenance == "p.json"
+        # subparser defaults must override the group default — the bare
+        # `verify` alias wrapper must NOT swallow the real handlers
+        assert ns.func is cmd_verify
+
+        ns = parser.parse_args(["verify", "image", "--image", "img-1", "--min-score", "90"])
+        assert ns.verify_command == "image"
+        assert ns.image == "img-1"
+        assert ns.min_score == 90
+        assert ns.func is cmd_verify_image
+
+        ns = parser.parse_args(["verify", "release", "--image", "img-1"])
+        assert ns.verify_command == "release"
+        assert ns.image == "img-1"
+        assert ns.func is cmd_verify_release
+
+    def test_bare_verify_is_group_default_and_wrapped(self):
+        parser = build_parser()
+        ns = parser.parse_args(["verify", "--provenance", "p.json"])
+        assert ns.command == "verify"
+        assert ns.verify_command is None          # no subcommand chosen
+        assert ns.provenance == "p.json"          # legacy flag still parses
+        assert ns.func is not cmd_verify          # wrapped: warns + dispatches
+
+    def test_cleanup_group_subcommands_parse_and_route(self):
+        parser = build_parser()
+        ns = parser.parse_args(["cleanup", "images", "--older-than", "10", "--apply"])
+        assert ns.command == "cleanup"
+        assert ns.cleanup_command == "images"
+        assert ns.older_than == 10
+        assert ns.apply is True
+        assert ns.func is cmd_cleanup_images
+
+        ns = parser.parse_args(["cleanup", "runs", "--older-than", "48", "--include-legacy"])
+        assert ns.cleanup_command == "runs"
+        assert ns.older_than == 48
+        assert ns.include_legacy is True
+        assert ns.func is cmd_cleanup_runs
+
+    def test_deprecated_flat_aliases_parse_and_route_through_wrapper(self):
+        parser = build_parser()
+        ns = parser.parse_args(["verify-image", "--image", "img-1"])
+        assert ns.command == "verify-image"
+        assert ns.image == "img-1"
+        assert ns.func is not cmd_verify_image    # wrapped
+
+        ns = parser.parse_args(["verify-release", "--image", "img-1"])
+        assert ns.command == "verify-release"
+        assert ns.func is not cmd_verify_release  # wrapped
+
+        ns = parser.parse_args(["cleanup-images", "--older-than", "10"])
+        assert ns.command == "cleanup-images"
+        assert ns.older_than == 10
+        assert ns.func is not cmd_cleanup_images  # wrapped
+
+        ns = parser.parse_args(["cleanup-runs", "--older-than", "24"])
+        assert ns.command == "cleanup-runs"
+        assert ns.older_than == 24
+        assert ns.func is not cmd_cleanup_runs    # wrapped
+
+    def test_help_renders_groups_and_deprecated_markers(self):
+        text = build_parser().format_help()
+        for name in ("verify", "verify-image", "verify-release",
+                     "cleanup", "cleanup-images", "cleanup-runs"):
+            assert f"    {name}" in text, f"{name} missing from grouped help"
+        assert "[deprecated] use 'ohbs-image verify image'" in text
+        assert "[deprecated] use 'ohbs-image verify release'" in text
+        assert "[deprecated] use 'ohbs-image cleanup images'" in text
+        assert "[deprecated] use 'ohbs-image cleanup runs'" in text
+
+
+class TestDeprecatedAliasWrapper:
+    """_deprecated_alias() is the shared wrapper for the converged verify/
+    cleanup flat names: it warns on stderr with the replacement and the
+    0.20.0 removal window, then dispatches to the real handler."""
+
+    def test_warns_on_stderr_with_replacement_and_window(self, capsys):
+        calls = []
+
+        def fake(args):
+            calls.append(args)
+            return 42
+
+        wrapped = _deprecated_alias("verify-image", "verify image", fake)
+        assert wrapped(argparse.Namespace(marker=True)) == 42
+        assert len(calls) == 1 and calls[0].marker is True   # dispatch intact
+        captured = capsys.readouterr()
+        assert captured.out == ""                            # never on stdout
+        assert "verify-image" in captured.err
+        assert "deprecated" in captured.err
+        assert "ohbs-image verify image" in captured.err
+        assert "0.20.0" in captured.err
+
+    def test_bare_verify_and_cleanup_aliases_share_the_wrapper(self, capsys):
+        parser = build_parser()
+        for argv in (["verify", "--provenance", "x.json"],
+                     ["verify-image", "--image", "img-1"],
+                     ["verify-release", "--image", "img-1"],
+                     ["cleanup-images"],
+                     ["cleanup-runs", "--older-than", "24"]):
+            ns = parser.parse_args(argv)
+            assert callable(ns.func)
+            assert ns.func.__name__ == "_wrapped", argv
 
 
 # ---------------------------------------------------------------- py3.14 help validation

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 import ohbs_image
 
@@ -44,20 +44,25 @@ from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
+from ._quickstart import cmd_quickstart
 from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
 from ._state import cmd_state_init, cmd_state_path, cmd_state_prune, cmd_state_status, cmd_state_sync
 from ._try import cmd_try
 
 # Roadmap D-91 — commands grouped by lifecycle in --help output.
+# Roadmap (verify/cleanup convergence) — `verify` and `cleanup` are now
+# subcommand groups; the flat legacy names stay registered as deprecated
+# aliases (see _deprecated_alias below) and remain grouped here so --help
+# renders them under the same lifecycle headings.
 COMMAND_GROUPS: dict[str, list[str]] = {
     "build lifecycle": [
-        "init", "configure", "doctor", "discover", "plan", "preflight",
+        "quickstart", "init", "configure", "doctor", "discover", "plan", "preflight",
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
         "state", "config", "report", "catalog", "engine", "list", "images", "clean",
-        "cleanup-images", "cleanup-runs", "pending", "audit", "drift",
-        "check-source", "verify", "verify-image",
+        "verify", "cleanup", "pending", "audit", "drift", "check-source",
+        "verify-image", "cleanup-images", "cleanup-runs",
     ],
     "release": ["promote", "rollback", "verify-release"],
 }
@@ -186,6 +191,33 @@ def build_parser() -> argparse.ArgumentParser:
     p_configure.add_argument("--edit", action="store_true",
                              help="Open the generated config in $VISUAL/$EDITOR")
     p_configure.set_defaults(func=cmd_configure)
+
+    p_qs = sub.add_parser(
+        "quickstart",
+        help="Provision temp build resources, write config, hand off to build")
+    p_qs.add_argument("--profile", choices=sorted(PROFILES), default="tencentos3")
+    p_qs.add_argument("--region", required=True)
+    p_qs.add_argument("--zone", default="",
+                      help="Zone (default: first available in the region)")
+    p_qs.add_argument("--level", type=int, choices=[1, 2], default=1)
+    p_qs.add_argument("--target", default="ohbs-image.toml",
+                      help="Config to write (default ./ohbs-image.toml)")
+    p_qs.add_argument("--force", action="store_true",
+                      help="Overwrite an existing config")
+    p_qs.add_argument("--vpc", default="",
+                      help="Reuse an existing VPC (requires --subnet and "
+                           "--security-group too)")
+    p_qs.add_argument("--subnet", default="")
+    p_qs.add_argument("--security-group", default="")
+    p_qs.add_argument("--instance-type", default="",
+                      help="Override the auto-selected instance type")
+    p_qs.add_argument("--dry-run", action="store_true",
+                      help="Read-only: print the plan, create nothing")
+    p_qs.add_argument("--yes", action="store_true",
+                      help="Chain build after doctor+plan")
+    p_qs.add_argument("--cleanup", action="store_true",
+                      help="Delete resources recorded by a previous quickstart")
+    p_qs.set_defaults(func=cmd_quickstart)
 
     p_plan = sub.add_parser("plan", parents=[common],
                             help="Preview resources, gates, duration and outputs without changes")
@@ -397,20 +429,69 @@ def build_parser() -> argparse.ArgumentParser:
         release.add_argument("--reason", default="", help="Optional change or rollback reason")
         release.set_defaults(func=handler)
 
-    p_verify_release = sub.add_parser("verify-release", parents=[common],
-                                      help="Verify an approved image's release-manifest evidence")
-    p_verify_release.add_argument("--image", required=True, help="Approved image ID (e.g. img-xxxx)")
-    p_verify_release.set_defaults(func=cmd_verify_release)
+    p_verify = sub.add_parser(
+        "verify", parents=[common],
+        help="Verify provenance signatures, images or release manifests")
+    # The flat `verify` form (no subcommand) remains the group's default and
+    # is deprecated: the legacy flags live on the group parser so
+    # `ohbs-image verify --provenance x` still works, while
+    # `ohbs-image verify provenance` is the forward path.
+    p_verify.add_argument("--provenance", default=None,
+                          help="Path to a .provenance.json file")
+    p_verify.add_argument("--image", default=None,
+                          help="Image ID to look up its provenance (e.g. img-xxx)")
+    p_verify.add_argument("--trusted-key-fingerprint", action="append", default=[],
+                          help="Require signer fingerprint (40 hex chars); repeat for an allowlist")
+    p_verify.set_defaults(func=_deprecated_alias(
+        "verify", "verify provenance", cmd_verify))
+    verify_sub = p_verify.add_subparsers(dest="verify_command")
+    p_vrf_prov = verify_sub.add_parser(
+        "provenance", parents=[common],
+        help="Verify a SLSA provenance signature")
+    p_vrf_prov.add_argument("--provenance", default=None,
+                            help="Path to a .provenance.json file")
+    p_vrf_prov.add_argument("--image", default=None,
+                            help="Image ID to look up its provenance (e.g. img-xxx)")
+    p_vrf_prov.add_argument("--trusted-key-fingerprint", action="append", default=[],
+                            help="Require signer fingerprint (40 hex chars); repeat for an allowlist")
+    p_vrf_prov.set_defaults(func=cmd_verify)
 
-    p_vrf = sub.add_parser("verify", parents=[common],
-                           help="Verify a SLSA provenance signature")
-    p_vrf.add_argument("--provenance", default=None,
-                       help="Path to a .provenance.json file")
-    p_vrf.add_argument("--image", default=None,
-                       help="Image ID to look up its provenance (e.g. img-xxx)")
-    p_vrf.add_argument("--trusted-key-fingerprint", action="append", default=[],
-                       help="Require signer fingerprint (40 hex chars); repeat for an allowlist")
-    p_vrf.set_defaults(func=cmd_verify)
+    p_vrf_img = verify_sub.add_parser(
+        "image", parents=[common],
+        help="Clean-boot verification: boot a probe from a produced image, "
+             "re-audit on fresh boot via SSH/WinRM, terminate")
+    p_vrf_img.add_argument("--image", required=True,
+                           help="Image ID to verify (e.g. img-xxxx)")
+    p_vrf_img.add_argument("--min-score", type=float, default=85.0,
+                           help="Gate threshold in percent (default 85)")
+    p_vrf_img.set_defaults(func=cmd_verify_image)
+
+    p_vrf_rel = verify_sub.add_parser(
+        "release", parents=[common],
+        help="Verify an approved image's release-manifest evidence")
+    p_vrf_rel.add_argument("--image", required=True,
+                           help="Approved image ID (e.g. img-xxxx)")
+    p_vrf_rel.set_defaults(func=cmd_verify_release)
+
+    # Deprecated flat aliases of the verify group (scheduled for removal in
+    # 0.20.0): keep parsing identically, but warn and point at the group form.
+    p_vrf_img_alias = sub.add_parser(
+        "verify-image", parents=[common],
+        help="[deprecated] use 'ohbs-image verify image'")
+    p_vrf_img_alias.add_argument("--image", required=True,
+                                 help="Image ID to verify (e.g. img-xxxx)")
+    p_vrf_img_alias.add_argument("--min-score", type=float, default=85.0,
+                                 help="Gate threshold in percent (default 85)")
+    p_vrf_img_alias.set_defaults(func=_deprecated_alias(
+        "verify-image", "verify image", cmd_verify_image))
+
+    p_vrf_rel_alias = sub.add_parser(
+        "verify-release", parents=[common],
+        help="[deprecated] use 'ohbs-image verify release'")
+    p_vrf_rel_alias.add_argument("--image", required=True,
+                                 help="Approved image ID (e.g. img-xxxx)")
+    p_vrf_rel_alias.set_defaults(func=_deprecated_alias(
+        "verify-release", "verify release", cmd_verify_release))
 
     p_lst = sub.add_parser("list", help="Enumerate available profiles with metadata")
     p_lst.add_argument("--versions", action="store_true",
@@ -463,16 +544,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_aud.add_argument("--xccdf", default=None, help="Write findings as XCCDF 1.2 to PATH")
     p_aud.set_defaults(func=cmd_audit)
 
-    p_vrf_img = sub.add_parser(
-        "verify-image", parents=[common],
-        help="Clean-boot verification: boot a probe from a produced image, "
-             "re-audit on fresh boot via SSH/WinRM, terminate")
-    p_vrf_img.add_argument("--image", required=True,
-                           help="Image ID to verify (e.g. img-xxxx)")
-    p_vrf_img.add_argument("--min-score", type=float, default=85.0,
-                           help="Gate threshold in percent (default 85)")
-    p_vrf_img.set_defaults(func=cmd_verify_image)
-
     p_drift = sub.add_parser(
         "drift", parents=[common],
         help="Detect configuration drift on a running instance vs the image baseline")
@@ -515,8 +586,12 @@ def build_parser() -> argparse.ArgumentParser:
                        help="CIS level for the sample report (default 1)")
     p_try.set_defaults(func=cmd_try)
 
-    p_clnimg = sub.add_parser(
-        "cleanup-images",
+    p_cleanup = sub.add_parser(
+        "cleanup",
+        help="Retire old golden images or orphaned probe CVMs")
+    cleanup_sub = p_cleanup.add_subparsers(dest="cleanup_command")
+    p_clnimg = cleanup_sub.add_parser(
+        "images",
         help="Retire old golden images by lineage age (dry-run by default)")
     p_clnimg.add_argument("--older-than", type=int, default=30,
                           help="Delete builds older than N days (default 30)")
@@ -529,14 +604,43 @@ def build_parser() -> argparse.ArgumentParser:
                           help="Actually delete images (default is a dry run)")
     p_clnimg.set_defaults(func=cmd_cleanup_images)
 
-    p_clnruns = sub.add_parser("cleanup-runs", parents=[common],
-                               help="Retire tagged orphaned build/probe CVMs (dry-run by default)")
+    p_clnruns = cleanup_sub.add_parser(
+        "runs", parents=[common],
+        help="Retire tagged orphaned build/probe CVMs (dry-run by default)")
     p_clnruns.add_argument("--older-than", type=int, default=24,
                            help="Terminate tagged ephemeral CVMs older than N hours (default 24)")
     p_clnruns.add_argument("--include-legacy", action="store_true",
                            help="Also select pre-manifest probe instances (requires explicit opt-in)")
     p_clnruns.add_argument("--apply", action="store_true", help="Actually terminate instances")
     p_clnruns.set_defaults(func=cmd_cleanup_runs)
+
+    # Deprecated flat aliases of the cleanup group (scheduled for removal in
+    # 0.20.0): keep parsing identically, but warn and point at the group form.
+    p_clnimg_alias = sub.add_parser(
+        "cleanup-images",
+        help="[deprecated] use 'ohbs-image cleanup images'")
+    p_clnimg_alias.add_argument("--older-than", type=int, default=30,
+                                help="Delete builds older than N days (default 30)")
+    p_clnimg_alias.add_argument("--keep-latest", type=int, default=1,
+                                help="Keep the newest N builds (default 1)")
+    p_clnimg_alias.add_argument("--unused-since", type=int, default=0,
+                                help="Only delete images NOT shared with other "
+                                     "accounts (in-use guard); 0 = off")
+    p_clnimg_alias.add_argument("--apply", action="store_true",
+                                help="Actually delete images (default is a dry run)")
+    p_clnimg_alias.set_defaults(func=_deprecated_alias(
+        "cleanup-images", "cleanup images", cmd_cleanup_images))
+
+    p_clnruns_alias = sub.add_parser("cleanup-runs", parents=[common],
+                                     help="[deprecated] use 'ohbs-image cleanup runs'")
+    p_clnruns_alias.add_argument("--older-than", type=int, default=24,
+                                 help="Terminate tagged ephemeral CVMs older than N hours (default 24)")
+    p_clnruns_alias.add_argument("--include-legacy", action="store_true",
+                                 help="Also select pre-manifest probe instances (requires explicit opt-in)")
+    p_clnruns_alias.add_argument("--apply", action="store_true",
+                                 help="Actually terminate instances")
+    p_clnruns_alias.set_defaults(func=_deprecated_alias(
+        "cleanup-runs", "cleanup runs", cmd_cleanup_runs))
 
     return parser
 
@@ -570,6 +674,23 @@ def main(argv: list[str] | None = None) -> int:
         fail(f"internal error: {type(exc).__name__}: {exc} "
              "(rerun with -v for the full traceback)")
         return 70
+
+
+def _deprecated_alias(alias: str, replacement: str,
+                      func: Callable[[argparse.Namespace], int]
+                      ) -> Callable[[argparse.Namespace], int]:
+    """Wrap a legacy flat command as a deprecated alias.
+
+    verify/cleanup convergence — the flat forms (`verify-image`,
+    `verify-release`, `cleanup-images`, `cleanup-runs`, and the flat `verify`
+    default) still work, but print a removal-window notice to stderr before
+    dispatching to the real handler. Scheduled for removal in 0.20.0.
+    """
+    def _wrapped(args: argparse.Namespace) -> int:
+        print(f"warning: '{alias}' is deprecated, use 'ohbs-image {replacement}' "
+              "(scheduled for removal in 0.20.0)", file=sys.stderr)
+        return func(args)
+    return _wrapped
 
 
 def _deprecation_prog(argv: list[str] | None) -> None:
