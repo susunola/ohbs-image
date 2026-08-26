@@ -74,7 +74,7 @@ from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._metrics import cmd_report_metrics, cmd_report_trends
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
-from ._policy import cmd_policy_check, cmd_policy_verify
+from ._policy import cmd_policy_check, cmd_policy_explain, cmd_policy_verify
 from ._policy_registry import (
     cmd_policy_list,
     cmd_policy_publish,
@@ -698,6 +698,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_policy_check.add_argument("--environment", required=True)
     p_policy_check.add_argument("--output", choices=["text", "json"], default="text")
     p_policy_check.set_defaults(func=cmd_policy_check)
+    p_policy_explain = policy_sub.add_parser(
+        "explain", help="Explain effective control sources and exception applicability"
+    )
+    p_policy_explain.add_argument("bundle")
+    p_policy_explain.add_argument("--environment", default="production")
+    p_policy_explain.add_argument("--artifact-id", default="")
+    p_policy_explain.add_argument("--output", choices=["text", "json"], default="text")
+    p_policy_explain.set_defaults(func=cmd_policy_explain)
     p_policy_publish = policy_sub.add_parser("publish", help="Publish an immutable policy version")
     p_policy_publish.add_argument("bundle")
     p_policy_publish.add_argument("--actor", required=True)
