@@ -277,6 +277,8 @@ ohbs-image channel list [--bucket PROFILE] [--output json]
 ohbs-image policy verify organization-policy.json
 ohbs-image policy check IMAGE_ID --bundle organization-policy.json --environment production
 ohbs-image channel promote PROFILE stable IMAGE_ID --policy organization-policy.json  # enforced gate
+ohbs-image distribution plan IMAGE_ID --region ap-shanghai --region ap-beijing  # no cloud writes
+ohbs-image distribution record IMAGE_ID --region ap-shanghai --replica-id img-copy
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
 ohbs-image engine version                  # ohbs-image + per-family engine versions
