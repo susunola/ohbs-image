@@ -96,6 +96,7 @@ from ._registry import (
     cmd_registry_verify,
 )
 from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
+from ._rule_quality import cmd_catalog_lint
 from ._run_events import cmd_run_events
 from ._runs import cmd_run_list, cmd_run_show
 from ._service import cmd_serve
@@ -885,6 +886,16 @@ def build_parser() -> argparse.ArgumentParser:
                                 "(default: report as warnings)")
     p_cverify.add_argument("--output", choices=["text", "json"], default="text")
     p_cverify.set_defaults(func=cmd_catalog_verify)
+    p_clint = catalog_sub.add_parser(
+        "lint", help="Score CIS rule quality and detect semantic conflicts"
+    )
+    p_clint.add_argument("--strict", action="store_true",
+                         help="Fail on Automated/manual semantic conflicts")
+    p_clint.add_argument("--profile", choices=sorted(PROFILES), default="")
+    p_clint.add_argument("--output", choices=["text", "json"], default="text")
+    p_clint.add_argument("--report", default="", metavar="PATH",
+                         help="Write a self-contained HTML quality baseline")
+    p_clint.set_defaults(func=cmd_catalog_lint)
 
     p_pre = sub.add_parser("preflight", parents=[common], help="Run pre-flight checks")
     p_pre.set_defaults(func=cmd_preflight)
