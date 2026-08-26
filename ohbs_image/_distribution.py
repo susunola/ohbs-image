@@ -12,8 +12,8 @@ from typing import Any
 
 from ._logging import ConfigError, fail, ok
 from ._operations import fenced_operation, verify_fencing_token
-from ._registry import _artifact_path, _hash, _read_object
-from ._reports import _atomic_write_bytes, _state_lock
+from ._registry import _artifact_path, _hash, get_artifact, put_artifact
+from ._reports import _state_lock
 
 DISTRIBUTION_SCHEMA = "https://ohbs-image.dev/distribution-plan/v1"
 EXECUTION_SCHEMA = "https://ohbs-image.dev/distribution-execution/v1"
@@ -51,7 +51,7 @@ def share_artifact(artifact_id: str, account_id: str, *, apply: bool = False,
         raise ConfigError(f"ModifyImageSharePermission failed: {body['Error']}")
     lock = _state_lock(path)
     try:
-        latest = _read_object(path)
+        latest = get_artifact(artifact_id, root)
         if latest is None or latest.get("document_hash") != _hash(latest):
             raise ValueError("artifact changed during image sharing")
         shares = dict(latest.get("shares") or {})
@@ -59,7 +59,7 @@ def share_artifact(artifact_id: str, account_id: str, *, apply: bool = False,
             "%Y-%m-%dT%H:%M:%SZ"), "request_id": body.get("RequestId")}
         latest["shares"] = shares
         latest["document_hash"] = _hash(latest)
-        _atomic_write_bytes(path, (json.dumps(latest, ensure_ascii=False, indent=2) + "\n").encode())
+        put_artifact(latest, root)
     finally:
         lock.rmdir()
     result["request_id"] = body.get("RequestId")
@@ -68,7 +68,7 @@ def share_artifact(artifact_id: str, account_id: str, *, apply: bool = False,
 
 def _load_artifact(artifact_id: str, root: Path | None = None) -> tuple[Path, dict[str, Any]]:
     path = _artifact_path(artifact_id, root)
-    doc = _read_object(path)
+    doc = get_artifact(artifact_id, root)
     if doc is None or doc.get("document_hash") != _hash(doc):
         raise ValueError(f"artifact {artifact_id} not found or failed integrity verification")
     if doc.get("status") != "active":
@@ -137,7 +137,7 @@ def record_replica(artifact_id: str, region: str, replica_id: str, *,
     path, _artifact = _load_artifact(artifact_id, root)
     lock = _state_lock(path)
     try:
-        artifact = _read_object(path)
+        artifact = get_artifact(artifact_id, root)
         if artifact is None or artifact.get("document_hash") != _hash(artifact):
             raise ValueError(f"artifact {artifact_id} changed or failed integrity verification")
         replicas = artifact.get("replicas")
@@ -155,8 +155,7 @@ def record_replica(artifact_id: str, region: str, replica_id: str, *,
             verify_fencing_token(_fencing_scope, _fencing_token, root)
         artifact["replicas"] = replicas
         artifact["document_hash"] = _hash(artifact)
-        _atomic_write_bytes(path,
-                            (json.dumps(artifact, ensure_ascii=False, indent=2) + "\n").encode())
+        put_artifact(artifact, root)
         return artifact
     finally:
         lock.rmdir()
@@ -167,7 +166,7 @@ def _set_replica(artifact_id: str, region: str, replica: dict[str, Any],
     path, _artifact = _load_artifact(artifact_id, root)
     lock = _state_lock(path)
     try:
-        artifact = _read_object(path)
+        artifact = get_artifact(artifact_id, root)
         if artifact is None or artifact.get("document_hash") != _hash(artifact):
             raise ValueError(f"artifact {artifact_id} changed or failed integrity verification")
         replicas = artifact.get("replicas")
@@ -175,7 +174,7 @@ def _set_replica(artifact_id: str, region: str, replica: dict[str, Any],
         replicas[region] = replica
         artifact["replicas"] = replicas
         artifact["document_hash"] = _hash(artifact)
-        _atomic_write_bytes(path, (json.dumps(artifact, ensure_ascii=False, indent=2) + "\n").encode())
+        put_artifact(artifact, root)
         return artifact
     finally:
         lock.rmdir()

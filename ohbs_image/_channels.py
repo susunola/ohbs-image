@@ -9,7 +9,7 @@ from typing import Any
 
 from ._logging import fail, ok
 from ._operations import fenced_operation, verify_fencing_token
-from ._registry import _artifact_path, _hash, _read_object, _root
+from ._registry import _hash, _read_object, _root, get_artifact
 from ._reports import _atomic_write_bytes, _state_lock
 
 CHANNEL_SCHEMA = "https://ohbs-image.dev/channel/v1"
@@ -36,7 +36,7 @@ def resolve_channel(bucket: str, channel: str,
     if pointer.get("schema") != CHANNEL_SCHEMA or pointer.get("document_hash") != _hash(pointer):
         raise ValueError(f"channel {bucket}/{channel} failed integrity verification")
     artifact_id = str(pointer.get("artifact_id") or "")
-    artifact = _read_object(_artifact_path(artifact_id, root))
+    artifact = get_artifact(artifact_id, root)
     if artifact is None:
         raise ValueError(f"artifact {artifact_id} not found")
     if artifact.get("document_hash") != _hash(artifact):
@@ -70,7 +70,7 @@ def promote_channel(bucket: str, channel: str, artifact_id: str, *,
             claim["result"] = result
             return result
     path = _channel_path(bucket, channel, root)
-    artifact = _read_object(_artifact_path(artifact_id, root))
+    artifact = get_artifact(artifact_id, root)
     if artifact is None:
         raise ValueError(f"artifact {artifact_id} not found")
     if artifact.get("document_hash") != _hash(artifact):

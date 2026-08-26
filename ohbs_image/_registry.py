@@ -11,6 +11,7 @@ from typing import Any
 from ._config import _lineage_path
 from ._logging import fail, ok, warn
 from ._reports import _atomic_write_bytes, _state_lock
+from ._state_db import StateDatabase
 
 REGISTRY_SCHEMA = "https://ohbs-image.dev/artifact-registry/v1"
 ARTIFACT_SCHEMA = "https://ohbs-image.dev/artifact/v1"
@@ -39,6 +40,23 @@ def _artifact_path(image_id: str, root: Path | None = None) -> Path:
     if not _SAFE_ID.fullmatch(image_id):
         raise ValueError(f"invalid image ID {image_id!r}")
     return _root(root) / "artifacts" / f"{image_id}.json"
+
+
+def _database(root: Path | None = None) -> StateDatabase:
+    return StateDatabase(_root(root).parent / "state.db")
+
+
+def get_artifact(image_id: str, root: Path | None = None) -> dict[str, Any] | None:
+    if not _SAFE_ID.fullmatch(image_id):
+        raise ValueError(f"invalid image ID {image_id!r}")
+    database = _database(root)
+    document = database.get_artifact(image_id)
+    if document is not None:
+        return document
+    document = _read_object(_artifact_path(image_id, root))
+    if document is not None and document.get("document_hash") == _hash(document):
+        database.upsert_artifact(document)
+    return document
 
 
 def artifact_from_release(release: dict[str, Any], source: Path) -> dict[str, Any]:
@@ -72,6 +90,28 @@ def artifact_from_release(release: dict[str, Any], source: Path) -> dict[str, An
     return doc
 
 
+def put_artifact(document: dict[str, Any], root: Path | None = None) -> Path:
+    """Validate and persist an artifact; SQLite is canonical, JSON is an export mirror."""
+    artifact_id = str(document.get("artifact_id") or "")
+    if document.get("schema") != ARTIFACT_SCHEMA:
+        raise ValueError("artifact schema mismatch")
+    if not _SAFE_ID.fullmatch(artifact_id):
+        raise ValueError("artifact needs a safe artifact_id")
+    for field in ("bucket", "version", "status"):
+        if not str(document.get(field) or ""):
+            raise ValueError(f"artifact field {field} is required")
+    if document.get("status") not in {"active", "quarantined", "revoked"}:
+        raise ValueError("artifact status is invalid")
+    if document.get("document_hash") != _hash(document):
+        raise ValueError("artifact document hash mismatch")
+    destination = _artifact_path(artifact_id, root)
+    _database(root).upsert_artifact(document)
+    destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    _atomic_write_bytes(destination,
+                        (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode())
+    return destination
+
+
 def register_release(path: Path, root: Path | None = None) -> Path:
     release = _read_object(path)
     if release is None:
@@ -102,19 +142,24 @@ def register_release(path: Path, root: Path | None = None) -> Path:
                     known.add(str(item["artifact_id"]))
             doc["parents"] = inherited
             doc["document_hash"] = _hash(doc)
-        _atomic_write_bytes(destination,
-                            (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode())
+        put_artifact(doc, root)
     finally:
         lock.rmdir()
     return destination
 
 
 def collect_artifacts(root: Path | None = None) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
+    database = _database(root)
+    _, rows = database.search_artifacts(limit=1000)
+    if rows:
+        return rows
+    rows = []
     for path in sorted((_root(root) / "artifacts").glob("*.json")):
         doc = _read_object(path)
         if doc is not None:
             rows.append(doc)
+            if doc.get("document_hash") == _hash(doc):
+                database.upsert_artifact(doc)
     return sorted(rows, key=lambda row: str(row.get("created_at") or ""), reverse=True)
 
 
@@ -157,6 +202,21 @@ def verify_registry(root: Path | None = None) -> list[str]:
         if identity in seen:
             failures.append(f"{artifact_id}: duplicate bucket/version {identity[0]}/{identity[1]}")
         seen.add(identity)
+    database = _database(root)
+    for path in sorted((_root(root) / "artifacts").glob("*.json")):
+        mirror = _read_object(path)
+        if mirror is None:
+            failures.append(f"{path.stem}: invalid JSON mirror")
+            continue
+        artifact_id = str(mirror.get("artifact_id") or path.stem)
+        if mirror.get("document_hash") != _hash(mirror):
+            message = f"{artifact_id}: document hash mismatch"
+            if message not in failures:
+                failures.append(message)
+            continue
+        canonical = database.get_artifact(artifact_id)
+        if canonical is not None and canonical.get("document_hash") != mirror.get("document_hash"):
+            failures.append(f"{artifact_id}: database/mirror divergence")
     from ._ancestry import verify_ancestry
     failures.extend(verify_ancestry(root))
     return failures
@@ -172,7 +232,7 @@ def change_artifact_status(artifact_id: str, status: str, *, actor: str,
     path = _artifact_path(artifact_id, root)
     lock = _state_lock(path)
     try:
-        doc = _read_object(path)
+        doc = get_artifact(artifact_id, root)
         if doc is None:
             raise ValueError(f"artifact {artifact_id} not found")
         if doc.get("document_hash") != _hash(doc):
@@ -192,8 +252,7 @@ def change_artifact_status(artifact_id: str, status: str, *, actor: str,
                         "reason": reason.strip()})
         doc["status_history"] = history
         doc["document_hash"] = _hash(doc)
-        _atomic_write_bytes(path,
-                            (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode())
+        put_artifact(doc, root)
     finally:
         lock.rmdir()
 
@@ -256,7 +315,7 @@ def cmd_registry_list(args: argparse.Namespace) -> int:
 
 def cmd_registry_show(args: argparse.Namespace) -> int:
     try:
-        doc = _read_object(_artifact_path(args.artifact_id))
+        doc = get_artifact(args.artifact_id)
     except ValueError as exc:
         fail(str(exc))
         return 2
@@ -269,6 +328,21 @@ def cmd_registry_show(args: argparse.Namespace) -> int:
         for key in ("artifact_id", "bucket", "version", "status", "profile",
                     "region", "score", "attestation_signed", "created_at"):
             print(f"{key}: {doc.get(key)}")
+    return 0
+
+
+def cmd_registry_search(args: argparse.Namespace) -> int:
+    count, rows = _database().search_artifacts(
+        bucket=args.bucket, status=args.status, version=args.version,
+        query=args.query, label=args.label, limit=args.limit, offset=args.offset)
+    if args.output == "json":
+        print(json.dumps({"schema": REGISTRY_SCHEMA, "count": count,
+                          "limit": args.limit, "offset": args.offset,
+                          "artifacts": rows}, ensure_ascii=False, indent=2))
+        return 0
+    for row in rows:
+        print(f"{str(row.get('created_at') or '?'):20s}  {str(row.get('status')):8s}  "
+              f"{str(row.get('bucket')):14s}  {row.get('artifact_id')}")
     return 0
 
 

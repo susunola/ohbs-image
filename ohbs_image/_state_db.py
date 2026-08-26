@@ -15,7 +15,7 @@ from ._config import _state_dir
 from ._logging import fail, ok, warn
 
 STATE_DB_SCHEMA = "https://ohbs-image.dev/state-database/v1"
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 
 def _stamp(value: datetime | None = None) -> str:
@@ -61,10 +61,91 @@ class StateDatabase:
                 );
                 CREATE INDEX IF NOT EXISTS idx_rebuild_eligible
                     ON rebuild_requests(status, next_attempt_at, lease_expires_at);
+                CREATE TABLE IF NOT EXISTS artifacts (
+                    artifact_id TEXT PRIMARY KEY, bucket TEXT NOT NULL,
+                    version TEXT NOT NULL, status TEXT NOT NULL,
+                    created_at TEXT NOT NULL, document TEXT NOT NULL,
+                    document_hash TEXT NOT NULL, updated_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_artifacts_bucket
+                    ON artifacts(bucket);
+                CREATE INDEX IF NOT EXISTS idx_artifacts_status
+                    ON artifacts(status);
+                CREATE INDEX IF NOT EXISTS idx_artifacts_version
+                    ON artifacts(version);
+                CREATE INDEX IF NOT EXISTS idx_artifacts_created
+                    ON artifacts(created_at DESC);
             """)
             connection.execute(
                 "INSERT OR REPLACE INTO metadata(key,value) VALUES('schema_version',?)",
                 (str(_SCHEMA_VERSION),))
+
+    def upsert_artifact(self, document: dict[str, Any]) -> None:
+        """Atomically store the canonical artifact document."""
+        artifact_id = str(document.get("artifact_id") or "")
+        document_hash = str(document.get("document_hash") or "")
+        if not artifact_id or not document_hash:
+            raise ValueError("artifact_id and document_hash are required")
+        self.initialize()
+        serialized = json.dumps(document, ensure_ascii=False, sort_keys=True,
+                                separators=(",", ":"))
+        with self.transaction() as connection:
+            connection.execute("""
+                INSERT INTO artifacts
+                  (artifact_id,bucket,version,status,created_at,document,document_hash,updated_at)
+                VALUES(?,?,?,?,?,?,?,?)
+                ON CONFLICT(artifact_id) DO UPDATE SET
+                  bucket=excluded.bucket, version=excluded.version,
+                  status=excluded.status, created_at=excluded.created_at,
+                  document=excluded.document, document_hash=excluded.document_hash,
+                  updated_at=excluded.updated_at
+            """, (artifact_id, str(document.get("bucket") or "unknown"),
+                  str(document.get("version") or artifact_id),
+                  str(document.get("status") or "active"),
+                  str(document.get("created_at") or ""), serialized,
+                  document_hash, _stamp()))
+
+    def get_artifact(self, artifact_id: str) -> dict[str, Any] | None:
+        self.initialize()
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT document FROM artifacts WHERE artifact_id=?", (artifact_id,)).fetchone()
+        if row is None:
+            return None
+        value = json.loads(str(row["document"]))
+        return value if isinstance(value, dict) else None
+
+    def search_artifacts(self, *, bucket: str = "", status: str = "",
+                         version: str = "", query: str = "", label: str = "",
+                         limit: int = 100, offset: int = 0) -> tuple[int, list[dict[str, Any]]]:
+        self.initialize()
+        clauses: list[str] = []
+        parameters: list[Any] = []
+        for column, value in (("bucket", bucket), ("status", status), ("version", version)):
+            if value:
+                clauses.append(f"{column}=?")
+                parameters.append(value)
+        if query:
+            clauses.append("(artifact_id LIKE ? OR bucket LIKE ? OR version LIKE ? OR document LIKE ?)")
+            pattern = f"%{query}%"
+            parameters.extend([pattern] * 4)
+        if label:
+            key, separator, value = label.partition("=")
+            if not separator or not key or not value:
+                raise ValueError("label must use key=value syntax")
+            # JSON is canonical and compact, so this matches an exact label pair.
+            clauses.append("document LIKE ?")
+            parameters.append(f'%"{key}":"{value}"%')
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        with self.connect() as connection:
+            count = int(connection.execute(
+                f"SELECT COUNT(*) FROM artifacts{where}", parameters).fetchone()[0])
+            rows = connection.execute(
+                f"SELECT document FROM artifacts{where} "
+                "ORDER BY created_at DESC, artifact_id LIMIT ? OFFSET ?",
+                [*parameters, max(1, min(limit, 1000)), max(0, offset)]).fetchall()
+        documents = [json.loads(str(row["document"])) for row in rows]
+        return count, [row for row in documents if isinstance(row, dict)]
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:

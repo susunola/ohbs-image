@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ._logging import fail, ok
-from ._registry import _artifact_path, _hash, _read_object, _root
+from ._registry import _hash, _read_object, _root, get_artifact
 from ._reports import _atomic_write_bytes
 
 POLICY_SCHEMA = "https://ohbs-image.dev/policy-bundle/v1"
@@ -249,7 +249,7 @@ def check_artifact(policy_path: Path, artifact_id: str, environment: str,
     if failures:
         raise ValueError("invalid policy: " + "; ".join(failures))
     signer = _enforce_policy_trust(policy_path.resolve(), doc)
-    artifact = _read_object(_artifact_path(artifact_id, root))
+    artifact = get_artifact(artifact_id, root)
     if artifact is None or artifact.get("document_hash") != _hash(artifact):
         raise ValueError(f"artifact {artifact_id} not found or failed integrity verification")
     decision = evaluate_policy(doc, artifact, environment)

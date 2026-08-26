@@ -15,8 +15,10 @@ from ._registry import (
     _read_object,
     change_artifact_status,
     collect_artifacts,
+    get_artifact,
+    put_artifact,
 )
-from ._reports import _atomic_write_bytes, _state_lock
+from ._reports import _state_lock
 
 ANCESTRY_SCHEMA = "https://ohbs-image.dev/ancestry-impact/v1"
 
@@ -93,12 +95,12 @@ def link_parent(child_id: str, parent_id: str, *, relation: str = "derived_from"
     child_path = _artifact_path(child_id, root)
     if child_id == parent_id:
         raise ValueError("artifact cannot be its own parent")
-    parent = _read_object(_artifact_path(parent_id, root))
+    parent = get_artifact(parent_id, root)
     if parent is None and not allow_external:
         raise ValueError(f"parent artifact {parent_id} not found; use --external for vendor images")
     lock = _state_lock(child_path)
     try:
-        child = _read_object(child_path)
+        child = get_artifact(child_id, root)
         if child is None or child.get("document_hash") != _hash(child):
             raise ValueError(f"child artifact {child_id} not found or failed integrity verification")
         parents = child.get("parents")
@@ -109,8 +111,7 @@ def link_parent(child_id: str, parent_id: str, *, relation: str = "derived_from"
                      "external": parent is None})
         child["parents"] = rows
         child["document_hash"] = _hash(child)
-        _atomic_write_bytes(child_path,
-                            (json.dumps(child, ensure_ascii=False, indent=2) + "\n").encode())
+        put_artifact(child, root)
     finally:
         lock.rmdir()
     failures = verify_ancestry(root)
@@ -123,8 +124,7 @@ def link_parent(child_id: str, parent_id: str, *, relation: str = "derived_from"
                                 if not (isinstance(item, dict)
                                         and item.get("artifact_id") == parent_id)]
             child["document_hash"] = _hash(child)
-            _atomic_write_bytes(child_path,
-                                (json.dumps(child, ensure_ascii=False, indent=2) + "\n").encode())
+            put_artifact(child, root)
         finally:
             lock.rmdir()
         raise ValueError("; ".join(failures))
