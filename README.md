@@ -277,6 +277,7 @@ ohbs-image ancestry revoke IMAGE_ID --reason TEXT      # dry run; add --apply to
 ohbs-image ancestry link CHILD PARENT [--external]     # add a derived-from edge
 ohbs-image ancestry verify [--output json]             # cycles and malformed edges
 ohbs-image channel promote PROFILE stable IMAGE_ID [--expected-generation N]  # atomic CAS pointer move
+ohbs-image channel promote PROFILE stable IMAGE_ID --operation-id deploy-42   # idempotent worker retry + fencing
 ohbs-image channel resolve PROFILE stable [--output json]  # verify pointer + artifact integrity
 ohbs-image channel list [--bucket PROFILE] [--output json]
 ohbs-image policy verify organization-policy.json
@@ -285,7 +286,7 @@ ohbs-image consumer resolve PROFILE stable --policy organization-policy.json --e
 ohbs-image consumer resolve PROFILE stable --policy organization-policy.json --output terraform
 ohbs-image channel promote PROFILE stable IMAGE_ID --policy organization-policy.json  # enforced gate
 ohbs-image distribution plan IMAGE_ID --region ap-shanghai --region ap-beijing  # no cloud writes
-ohbs-image distribution record IMAGE_ID --region ap-shanghai --replica-id img-copy
+ohbs-image distribution record IMAGE_ID --region ap-shanghai --replica-id img-copy --operation-id copy-job-7
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
 ohbs-image engine version                  # ohbs-image + per-family engine versions

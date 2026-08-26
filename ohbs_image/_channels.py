@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ._logging import fail, ok
+from ._operations import fenced_operation, verify_fencing_token
 from ._registry import _artifact_path, _hash, _read_object, _root
 from ._reports import _atomic_write_bytes, _state_lock
 
@@ -49,8 +50,25 @@ def resolve_channel(bucket: str, channel: str,
 
 def promote_channel(bucket: str, channel: str, artifact_id: str, *,
                     expected_generation: int | None = None,
+                    operation_id: str | None = None,
                     actor: str = "unknown", reason: str = "",
-                    root: Path | None = None) -> dict[str, Any]:
+                    root: Path | None = None, _fencing_scope: str | None = None,
+                    _fencing_token: int | None = None,
+                    _operation_id: str | None = None) -> dict[str, Any]:
+    if operation_id is not None:
+        scope = f"channel:{bucket}/{channel}"
+        with fenced_operation(scope, operation_id, root=root) as claim:
+            if claim["replay"]:
+                result = claim.get("result")
+                if not isinstance(result, dict):
+                    raise ValueError(f"operation {operation_id} has no replayable result")
+                return result
+            result = promote_channel(
+                bucket, channel, artifact_id, expected_generation=expected_generation,
+                actor=actor, reason=reason, root=root, _fencing_scope=scope,
+                _fencing_token=int(claim["token"]), _operation_id=operation_id)
+            claim["result"] = result
+            return result
     path = _channel_path(bucket, channel, root)
     artifact = _read_object(_artifact_path(artifact_id, root))
     if artifact is None:
@@ -82,6 +100,10 @@ def promote_channel(bucket: str, channel: str, artifact_id: str, *,
             "promoted_by": actor,
             "reason": reason,
         }
+        if _fencing_scope is not None and _fencing_token is not None:
+            verify_fencing_token(_fencing_scope, _fencing_token, root)
+            doc["operation_id"] = _operation_id
+            doc["fencing_token"] = _fencing_token
         doc["document_hash"] = _hash(doc)
         _atomic_write_bytes(path, (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode())
         return doc
@@ -136,6 +158,7 @@ def cmd_channel_promote(args: argparse.Namespace) -> int:
     try:
         doc = promote_channel(args.bucket, args.channel, args.artifact_id,
                               expected_generation=args.expected_generation,
+                              operation_id=args.operation_id,
                               actor=args.actor, reason=args.reason)
     except (OSError, ValueError) as exc:
         fail(str(exc))

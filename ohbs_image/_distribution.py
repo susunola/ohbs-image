@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ._logging import fail, ok
+from ._operations import fenced_operation, verify_fencing_token
 from ._registry import _artifact_path, _hash, _read_object
 from ._reports import _atomic_write_bytes, _state_lock
 
@@ -62,7 +63,22 @@ def distribution_plan(artifact_id: str, regions: list[str],
 
 
 def record_replica(artifact_id: str, region: str, replica_id: str, *,
-                   root: Path | None = None) -> dict[str, Any]:
+                   operation_id: str | None = None,
+                   root: Path | None = None, _fencing_scope: str | None = None,
+                   _fencing_token: int | None = None) -> dict[str, Any]:
+    if operation_id is not None:
+        scope = f"replica:{artifact_id}/{region}"
+        with fenced_operation(scope, operation_id, root=root) as claim:
+            if claim["replay"]:
+                result = claim.get("result")
+                if not isinstance(result, dict):
+                    raise ValueError(f"operation {operation_id} has no replayable result")
+                return result
+            result = record_replica(
+                artifact_id, region, replica_id, root=root, _fencing_scope=scope,
+                _fencing_token=int(claim["token"]))
+            claim["result"] = result
+            return result
     if not _REGION.fullmatch(region):
         raise ValueError(f"invalid region {region!r}")
     if not replica_id.strip():
@@ -84,6 +100,8 @@ def record_replica(artifact_id: str, region: str, replica_id: str, *,
             "replica_id": replica_id, "status": "ready",
             "recorded_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
+        if _fencing_scope is not None and _fencing_token is not None:
+            verify_fencing_token(_fencing_scope, _fencing_token, root)
         artifact["replicas"] = replicas
         artifact["document_hash"] = _hash(artifact)
         _atomic_write_bytes(path,
@@ -109,7 +127,8 @@ def cmd_distribution_plan(args: argparse.Namespace) -> int:
 
 def cmd_distribution_record(args: argparse.Namespace) -> int:
     try:
-        record_replica(args.artifact_id, args.region, args.replica_id)
+        record_replica(args.artifact_id, args.region, args.replica_id,
+                       operation_id=args.operation_id)
     except (OSError, ValueError) as exc:
         fail(str(exc))
         return 2

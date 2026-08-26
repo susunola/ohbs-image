@@ -517,6 +517,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_channel_promote.add_argument("channel")
     p_channel_promote.add_argument("artifact_id")
     p_channel_promote.add_argument("--expected-generation", type=int)
+    p_channel_promote.add_argument("--operation-id", help="Idempotency key for safe worker retries")
     p_channel_promote.add_argument("--actor", default=os.environ.get("GITHUB_ACTOR") or os.environ.get("USER") or "unknown")
     p_channel_promote.add_argument("--reason", default="")
     p_channel_promote.add_argument("--policy", help="Policy bundle to enforce before promotion")
@@ -570,6 +571,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_dist_record.add_argument("artifact_id")
     p_dist_record.add_argument("--region", required=True)
     p_dist_record.add_argument("--replica-id", required=True)
+    p_dist_record.add_argument("--operation-id", help="Idempotency key for safe worker retries")
     p_dist_record.set_defaults(func=cmd_distribution_record)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
