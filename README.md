@@ -262,6 +262,7 @@ ohbs-image report cost [--hourly-price USD]  # aggregate build spend from lineag
 ohbs-image run list [--profile P] [--status S] # unified runs across lineage, plans and manifests
 ohbs-image run show RUN_ID                    # all evidence associated with one run
 ohbs-image run events RUN_ID [--output json]  # immutable, hash-chained state timeline
+ohbs-image run resume RUN_ID [--build --yes]  # continue from the last safe launch checkpoint
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
 ohbs-image engine version                  # ohbs-image + per-family engine versions

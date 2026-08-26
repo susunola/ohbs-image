@@ -7,6 +7,11 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added
+- **Resumable launch runs** — configuration-bound safe checkpoints let
+  `run resume` continue under the original run ID without repeating passed
+  stages; billed cloud builds still require explicit `--build --yes` approval.
+
 ### Security
 - **Quickstart networking is source-restricted by default** — provisioning
   temporary networking now requires an explicit `--ingress-cidr`, normalizes
