@@ -64,6 +64,7 @@ from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set
 from ._policy import cmd_policy_check, cmd_policy_verify
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._quickstart import cmd_quickstart
+from ._rebuild_events import cmd_event_process
 from ._reconcile import cmd_state_reconcile
 from ._registry import (
     cmd_registry_list,
@@ -97,7 +98,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -599,6 +600,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_dist_reconcile.add_argument("--timeout-minutes", type=int, default=60)
     p_dist_reconcile.add_argument("--output", choices=["text", "json"], default="text")
     p_dist_reconcile.set_defaults(func=cmd_distribution_reconcile)
+
+    p_event = sub.add_parser("event", help="Plan and process rebuild-triggering events")
+    event_sub = p_event.add_subparsers(dest="event_command")
+    p_event_process = event_sub.add_parser(
+        "process", help="Plan impact or queue quarantined artifacts for rebuild")
+    p_event_process.add_argument("event")
+    p_event_process.add_argument("--apply", action="store_true",
+                                 help="Quarantine affected artifacts and queue rebuilds")
+    p_event_process.add_argument("--actor", default="event-controller")
+    p_event_process.add_argument("--output", choices=["text", "json"], default="text")
+    p_event_process.set_defaults(func=cmd_event_process)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")
