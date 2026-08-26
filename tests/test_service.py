@@ -96,6 +96,28 @@ def test_console_includes_visual_run_and_lineage_analysis(tmp_path):
     assert b".simulation-grid" in style
     assert b"Candidate policy studio" in page
     assert b"Request publication" in page
+    assert b"Success rate" in page
+    assert b"Evidence center" in script
+    assert b"trace-track" in script
+
+
+def test_dashboard_and_evidence_summary_respect_viewer_scope(tmp_path):
+    service = _service(tmp_path)
+    status, _, body = service.dispatch(
+        "GET", "/api/v1/artifacts/img-1/evidence-summary", "Bearer view-token")
+    summary = json.loads(body)
+    assert status == 200 and summary["artifact_id"] == "img-1"
+    assert summary["failed"] >= 1
+    status, _, _ = service.dispatch(
+        "GET", "/api/v1/artifacts/img-1/evidence-summary", "Bearer wrong-bucket")
+    assert status == 403
+    status, _, body = service.dispatch("GET", "/api/v1/dashboard?days=30",
+                                       "Bearer view-token")
+    result = json.loads(body)
+    assert status == 200 and result["snapshot"]["window_days"] == 30
+    status, _, body = service.dispatch("GET", "/api/v1/dashboard?days=0",
+                                       "Bearer view-token")
+    assert status == 400 and "between 1 and 365" in body.decode()
 
 
 def test_policy_simulation_is_scoped_and_does_not_record_decisions(tmp_path):
