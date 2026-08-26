@@ -48,7 +48,14 @@ from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._quickstart import cmd_quickstart
 from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
 from ._runs import cmd_run_list, cmd_run_show
-from ._state import cmd_state_init, cmd_state_path, cmd_state_prune, cmd_state_status, cmd_state_sync
+from ._state import (
+    cmd_state_init,
+    cmd_state_path,
+    cmd_state_prune,
+    cmd_state_status,
+    cmd_state_sync,
+    cmd_state_verify,
+)
 from ._try import cmd_try
 
 # Roadmap D-91 — commands grouped by lifecycle in --help output.
@@ -275,6 +282,12 @@ def build_parser() -> argparse.ArgumentParser:
         "status", help="Summarize evidence counts and disk usage")
     p_st_status.add_argument("--output", choices=["text", "json"], default="text")
     p_st_status.set_defaults(func=cmd_state_status)
+    p_st_verify = state_sub.add_parser(
+        "verify", help="Check evidence integrity, references, hashes and run leases")
+    p_st_verify.add_argument("--output", choices=["text", "json"], default="text")
+    p_st_verify.add_argument("--strict", action="store_true",
+                             help="Treat warnings as verification failures")
+    p_st_verify.set_defaults(func=cmd_state_verify)
     p_st_init = state_sub.add_parser(
         "init", help="Create the evidence directory layout (idempotent)")
     p_st_init.set_defaults(func=cmd_state_init)

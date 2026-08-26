@@ -270,6 +270,7 @@ ohbs-image doctor [--output text|json|sarif] [--only GROUP] [--offline] [--repor
 ohbs-image plan [--output json]                # read-only build/resource/gate preview
 ohbs-image state path                          # print the evidence directory
 ohbs-image state status [--output json]        # evidence counts + disk usage
+ohbs-image state verify [--strict] [--output json] # integrity, references, hashes and leases
 ohbs-image state init                          # create the evidence layout (idempotent)
 ohbs-image state prune --keep 30 [--dry-run]   # retain recent lineage, drop old per-run evidence
 ohbs-image state prune --older-than 90 [--dry-run]
@@ -369,7 +370,8 @@ CVM, placement, maximum duration, release gates, distribution and cost caveat.
 `state` manages the evidence directory (`OHBS_IMAGE_STATE_DIR` or
 `~/.ohbs-image`): `state path` prints it, `state status` reports evidence
 counts and disk usage, `state init` creates the layout idempotently (safe in
-CI), and `state prune` retains recent lineage while dropping superseded
+CI), `state verify` checks JSON structure, RUN_ID links, release evidence
+hashes and active leases, and `state prune` retains recent lineage while dropping superseded
 per-run evidence (runs/plans/provenance — the permanent release approval
 trail in `releases/` is never pruned). Use `--dry-run` to preview.
 
