@@ -10,6 +10,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from ._channels import promote_channel, resolve_channel
+from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
 from ._config import _lineage_path
 from ._logging import fail, info
 from ._metrics import collect_metrics, prometheus_metrics
@@ -72,8 +73,14 @@ class ControlPlane:
                  body: bytes = b"", headers: dict[str, str] | None = None
                  ) -> tuple[int, str, bytes]:
         try:
-            principal = self.principal(authorization)
             parsed = urlparse(raw_path)
+            if method == "GET" and parsed.path in {"/", "/console"}:
+                return 200, "text/html; charset=utf-8", CONSOLE_HTML
+            if method == "GET" and parsed.path == "/console.css":
+                return 200, "text/css; charset=utf-8", CONSOLE_CSS
+            if method == "GET" and parsed.path == "/console.js":
+                return 200, "text/javascript; charset=utf-8", CONSOLE_JS
+            principal = self.principal(authorization)
             parts = [part for part in parsed.path.split("/") if part]
             if parts[:2] != ["api", "v1"]:
                 return 404, "application/json", b'{"error":"not found"}'
@@ -139,6 +146,10 @@ def serve_control_plane(host: str, port: int, root: Path, rbac_path: Path) -> No
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(response)))
+            self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(response)
 
