@@ -109,11 +109,17 @@ ohbs-image configure
 
 # 3. Build
 ohbs-image doctor      # actionable local/config/cloud diagnosis
+ohbs-image doctor --offline --support-bundle ./ohbs-support.zip  # redacted support archive
 ohbs-image plan        # read-only resource, gate, duration, and cost preview
 ohbs-image validate    # dry-run: render templates + packer validate
 ohbs-image build       # produce the hardened custom image
 ohbs-image clean       # remove build artifacts
 ```
+
+The support bundle is created with mode `0600`, refuses to overwrite an
+existing file, and contains only allow-listed redacted diagnostics, system
+metadata, and SHA-256 member hashes. See
+[Troubleshooting and support bundles](docs/troubleshooting-support.md).
 
 > **No Tencent Cloud account yet? Try before you build — free.**
 > `ohbs-image try` runs the same engine + catalog gates CI runs, then renders

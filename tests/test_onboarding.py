@@ -1,11 +1,24 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import stat
+import zipfile
 from pathlib import Path
 
+import pytest
+
 from ohbs_image import build_parser
-from ohbs_image._onboarding import _toolchain_checks, _version_probe, cmd_configure, cmd_doctor, cmd_plan
+from ohbs_image._onboarding import (
+    DoctorCheck,
+    _toolchain_checks,
+    _version_probe,
+    _write_support_bundle,
+    cmd_configure,
+    cmd_doctor,
+    cmd_plan,
+)
 from ohbs_image._state import CosStateBackend, LocalStateBackend
 
 
@@ -139,6 +152,32 @@ def test_doctor_missing_config_json(tmp_path, capsys):
     assert any(c["id"] == "config" and c["status"] == "fail" for c in doc["checks"])
 
 
+def test_support_bundle_is_allow_listed_redacted_hashed_and_private(tmp_path):
+    secret = "secret_key=ABCDEFGHIJKLMNOPQRST"
+    target = tmp_path / "support.zip"
+    _write_support_bundle(
+        str(target), [DoctorCheck("cloud", "fail", "denied", secret, group="cloud")], 12, 1,
+    )
+    assert stat.S_IMODE(target.stat().st_mode) == 0o600
+    with zipfile.ZipFile(target) as archive:
+        assert set(archive.namelist()) == {"README.txt", "doctor.json", "system.json", "manifest.json"}
+        combined = b"".join(archive.read(name) for name in archive.namelist())
+        assert b"ABCDEFGHIJKLMNOPQRST" not in combined
+        manifest = json.loads(archive.read("manifest.json"))
+        for member in manifest["members"]:
+            data = archive.read(member["path"])
+            assert hashlib.sha256(data).hexdigest() == member["sha256"]
+            assert len(data) == member["bytes"]
+
+
+def test_support_bundle_refuses_overwrite(tmp_path):
+    target = tmp_path / "support.zip"
+    target.write_bytes(b"user-owned")
+    with pytest.raises(FileExistsError, match="refusing to overwrite"):
+        _write_support_bundle(str(target), [], 0, 0)
+    assert target.read_bytes() == b"user-owned"
+
+
 def test_doctor_cloud_contract_and_relationships(tmp_path, monkeypatch, capsys):
     target = tmp_path / "ohbs-image.toml"
     assert cmd_configure(_configure_args(target)) == 0
@@ -204,6 +243,7 @@ def test_cos_backend_uses_explicit_temp_config(tmp_path, monkeypatch):
 def test_parser_exposes_first_wave_commands():
     parser = build_parser()
     assert parser.parse_args(["doctor", "--no-cloud"]).command == "doctor"
+    assert parser.parse_args(["doctor", "--offline", "--support-bundle", "support.zip"]).support_bundle == "support.zip"
     assert parser.parse_args(["plan"]).command == "plan"
     state = parser.parse_args(["state", "sync", "push", "--backend", "cos",
                                "--location", "cos://bucket/state"])

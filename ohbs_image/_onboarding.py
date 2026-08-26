@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import email.utils
+import hashlib
 import json
 import os
 import platform
@@ -9,8 +10,10 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
+import zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -19,7 +22,7 @@ import ohbs_image
 
 from ._config import ResolvedConfig, _lineage_path, _state_dir, load_config, load_config_layered, resolve
 from ._discover import discover_resources
-from ._logging import ConfigError, banner, fail, info, ok, warn
+from ._logging import VERSION, ConfigError, banner, fail, info, ok, warn
 from ._profiles import PROFILES
 from ._reports import _new_run_id
 
@@ -788,6 +791,79 @@ def _write_report(path: str, checks: list[DoctorCheck], duration_ms: int, out_fo
     report_path.write_text(_redact(text) + ("\n" if isinstance(payload, dict) else ""), encoding="utf-8")
 
 
+def _support_bundle_files(
+    checks: list[DoctorCheck], duration_ms: int, exit_code: int,
+) -> dict[str, bytes]:
+    """Build the allow-listed, redacted contents of a shareable support bundle."""
+    doctor = {
+        "schema": "https://ohbs-image.dev/doctor/v1",
+        "ready": exit_code == EXIT_READY,
+        "diagnostics": {"duration_ms": duration_ms, "redacted": True, "exit_code": exit_code},
+        "checks": [asdict(check) for check in checks],
+    }
+    system = {
+        "schema": "https://ohbs-image.dev/support-system/v1",
+        "ohbs_image_version": VERSION,
+        "python": platform.python_version(),
+        "implementation": platform.python_implementation(),
+        "platform": platform.system(),
+        "platform_release": platform.release(),
+        "machine": platform.machine(),
+        "redacted": True,
+    }
+    payloads = {
+        "doctor.json": json.dumps(doctor, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        "system.json": json.dumps(system, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        "README.txt": (
+            "ohbs-image redacted support bundle\n"
+            "\n"
+            "This archive is generated from an explicit allow-list. It does not include\n"
+            "configuration files, environment variables, cloud responses, state data,\n"
+            "logs, home-directory paths, or credentials. Review before sharing.\n"
+        ),
+    }
+    return {name: _redact(value).encode("utf-8") for name, value in payloads.items()}
+
+
+def _write_support_bundle(
+    path: str, checks: list[DoctorCheck], duration_ms: int, exit_code: int,
+) -> Path:
+    """Atomically create a mode-0600 ZIP with hashes for every diagnostic member."""
+    target = Path(path).expanduser()
+    if target.exists() or target.is_symlink():
+        raise FileExistsError(f"refusing to overwrite support bundle: {target}")
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    members = _support_bundle_files(checks, duration_ms, exit_code)
+    manifest = {
+        "schema": "https://ohbs-image.dev/support-bundle/v1",
+        "redacted": True,
+        "members": [
+            {"path": name, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+            for name, data in sorted(members.items())
+        ],
+    }
+    members["manifest.json"] = (
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    temporary = ""
+    try:
+        with tempfile.NamedTemporaryFile(prefix=f".{target.name}.", suffix=".tmp",
+                                         dir=target.parent, delete=False) as handle:
+            temporary = handle.name
+        with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name, data in sorted(members.items()):
+                entry = zipfile.ZipInfo(name)
+                entry.compress_type = zipfile.ZIP_DEFLATED
+                entry.external_attr = 0o600 << 16
+                archive.writestr(entry, data)
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, target)
+    finally:
+        if temporary:
+            Path(temporary).unlink(missing_ok=True)
+    return target
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     """Run doctor diagnostics.
 
@@ -799,6 +875,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     only = getattr(args, "only", "all")
     offline = bool(getattr(args, "offline", False))
     report_path = getattr(args, "report_path", None)
+    support_bundle = getattr(args, "support_bundle", None)
     out_format = getattr(args, "output", "text")
     started = time.perf_counter()
     checks = collect_doctor_checks(args.config, cloud=not (args.no_cloud or offline),
@@ -832,6 +909,15 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     if report_path:
         _write_report(report_path, checks, duration_ms, out_format)
         ok(f"Report saved: {report_path}")
+    if support_bundle:
+        try:
+            bundle_path = _write_support_bundle(
+                support_bundle, checks, duration_ms, exit_code,
+            )
+        except OSError as exc:
+            fail(str(exc))
+            return EXIT_CONFIG
+        ok(f"Redacted support bundle saved: {bundle_path}")
     return exit_code
 
 
