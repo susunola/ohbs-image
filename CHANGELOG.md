@@ -8,6 +8,11 @@ can be traced across rebuilds.
 ## [Unreleased]
 
 ### Added
+- **Control-plane query API v1** — the authenticated service now exposes
+  paginated Artifact and Run queries, Run detail, Bucket-scoped descendants
+  and impact analysis, rebuild-request queues, and public health endpoints;
+  errors use a stable machine-readable envelope and the OpenAPI contract now
+  declares Bearer authentication and pagination parameters.
 - **Authenticated Web Console** — `ohbs-image serve` now hosts a responsive,
   read-only operations console for authorized artifacts and Prometheus metrics;
   Bearer tokens stay in page memory, Bucket scoping remains server-side, and

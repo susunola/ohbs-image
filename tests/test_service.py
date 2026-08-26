@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from ohbs_image._ancestry import link_parent
 from ohbs_image._cli import build_parser
 from ohbs_image._registry import register_release
 from ohbs_image._service import ControlPlane
@@ -26,6 +27,12 @@ def test_service_requires_valid_bearer_token(tmp_path):
     service = _service(tmp_path)
     status, _kind, body = service.dispatch("GET", "/api/v1/artifacts", "")
     assert status == 403 and "bearer" in body.decode()
+
+
+def test_health_is_public(tmp_path):
+    service = _service(tmp_path)
+    status, _kind, body = service.dispatch("GET", "/healthz", "")
+    assert status == 200 and json.loads(body)["status"] == "ok"
 
 
 def test_console_assets_are_public_but_contain_no_credentials(tmp_path):
@@ -55,6 +62,59 @@ def test_viewer_lists_only_authorized_bucket(tmp_path):
     assert json.loads(body)["artifacts"][0]["bucket"] == "rhel10"
     status, _, _ = service.dispatch("GET", "/api/v1/artifacts/img-1", "Bearer wrong-bucket")
     assert status == 403
+
+
+def test_artifact_list_filters_and_paginates(tmp_path):
+    service = _service(tmp_path)
+    status, _, body = service.dispatch(
+        "GET", "/api/v1/artifacts?status=active&limit=1&offset=0", "Bearer view-token")
+    result = json.loads(body)
+    assert status == 200 and result["count"] == 1
+    assert result["limit"] == 1 and result["artifacts"][0]["artifact_id"] == "img-1"
+    status, _, body = service.dispatch(
+        "GET", "/api/v1/artifacts?limit=0", "Bearer view-token")
+    assert status == 400 and json.loads(body)["error"]["code"] == "invalid_request"
+
+
+def test_runs_list_show_and_scope(tmp_path):
+    service = _service(tmp_path)
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    (runs / "run-1.json").write_text(json.dumps({
+        "run_id": "run-1", "profile": "rhel10", "status": "ok"}), encoding="utf-8")
+    (runs / "run-other.json").write_text(json.dumps({
+        "run_id": "run-other", "profile": "ubuntu2404", "status": "ok"}), encoding="utf-8")
+    status, _, body = service.dispatch("GET", "/api/v1/runs", "Bearer view-token")
+    result = json.loads(body)
+    assert status == 200 and result["count"] == 1
+    assert result["runs"][0]["run_id"] == "run-1"
+    status, _, body = service.dispatch("GET", "/api/v1/runs/run-1", "Bearer view-token")
+    assert status == 200 and json.loads(body)["run"]["run_id"] == "run-1"
+    status, _, _ = service.dispatch("GET", "/api/v1/runs/run-other", "Bearer view-token")
+    assert status == 403
+
+
+def test_impact_and_rebuild_requests_are_bucket_scoped(tmp_path):
+    service = _service(tmp_path)
+    release = tmp_path / "releases" / "img-2.json"
+    release.write_text(json.dumps({"image_id": "img-2", "run_id": "run-2",
+        "profile": "rhel10", "region": "ap-guangzhou", "state": "approved"}),
+        encoding="utf-8")
+    register_release(release, tmp_path / "registry")
+    link_parent("img-2", "img-1", root=tmp_path / "registry")
+    status, _, body = service.dispatch(
+        "GET", "/api/v1/artifacts/img-1/impact", "Bearer view-token")
+    assert status == 200 and json.loads(body)["descendant_count"] == 1
+    requests = tmp_path / "registry" / "rebuild_requests"
+    requests.mkdir()
+    (requests / "one.json").write_text(json.dumps({
+        "request_id": "evt-1:img-1", "artifact_id": "img-1", "status": "queued",
+        "created_at": "2026-08-26T00:00:00Z"}), encoding="utf-8")
+    status, _, body = service.dispatch(
+        "GET", "/api/v1/rebuild-requests?status=queued", "Bearer view-token")
+    result = json.loads(body)
+    assert status == 200 and result["count"] == 1
+    assert result["rebuild_requests"][0]["artifact_id"] == "img-1"
 
 
 def test_promoter_needs_idempotency_key_and_writes_audit(tmp_path):

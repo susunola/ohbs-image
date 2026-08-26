@@ -27,6 +27,8 @@ CONSOLE_HTML = """<!doctype html>
       <article><span>ACTIVE</span><strong id="active">—</strong><small>Available to consume</small></article>
       <article><span>QUARANTINED</span><strong id="quarantined">—</strong><small>Held for review</small></article>
       <article><span>REVOKED</span><strong id="revoked">—</strong><small>Permanently blocked</small></article>
+      <article><span>RUNS</span><strong id="runs">—</strong><small>Within identity scope</small></article>
+      <article><span>REBUILD QUEUE</span><strong id="rebuilds">—</strong><small>Queued requests</small></article>
     </section>
     <section class="panel">
       <div class="panel-head"><div><p class="eyebrow">REGISTRY</p><h2>Artifact inventory</h2></div><div class="tools"><label for="bucket">Bucket</label><input id="bucket" placeholder="All authorized buckets"><button id="refresh" type="button">Refresh</button></div></div>
@@ -74,16 +76,16 @@ CONSOLE_JS = """(() => {
     if (!rows.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 5; td.className = 'empty'; td.textContent = 'No artifacts are visible in the current scope'; tr.appendChild(td); body.appendChild(tr); }
     byId('total').textContent = String(rows.length); Object.keys(counts).forEach((key) => { byId(key).textContent = String(counts[key]); });
   }
-  async function request(path, text) { const response = await fetch(path, {headers: {'Authorization': 'Bearer ' + token}}); if (!response.ok) { let message = 'HTTP ' + response.status; try { message = (await response.json()).error || message; } catch (_) {} throw new Error(message); } return text ? response.text() : response.json(); }
+  async function request(path, text) { const response = await fetch(path, {headers: {'Authorization': 'Bearer ' + token}}); if (!response.ok) { let message = 'HTTP ' + response.status; try { const problem = (await response.json()).error; message = typeof problem === 'string' ? problem : problem.message || message; } catch (_) {} throw new Error(message); } return text ? response.text() : response.json(); }
   async function load() {
     if (!token) { setNotice('Enter a Bearer token first.', true); return; }
     const bucket = byId('bucket').value.trim(); const query = bucket ? '?bucket=' + encodeURIComponent(bucket) : '';
     setNotice('Reading the control plane…', false);
-    try { const [registry, metrics] = await Promise.all([request('/api/v1/artifacts' + query, false), request('/api/v1/metrics', true)]); render(registry.artifacts || []); byId('metrics').textContent = metrics; setConnected(true); setNotice('Data is scoped to the current identity and its authorized Buckets.', false); }
+    try { const [registry, runs, rebuilds, metrics] = await Promise.all([request('/api/v1/artifacts' + query, false), request('/api/v1/runs?limit=1', false), request('/api/v1/rebuild-requests?status=queued&limit=1', false), request('/api/v1/metrics', true)]); render(registry.artifacts || []); byId('runs').textContent = String(runs.count || 0); byId('rebuilds').textContent = String(rebuilds.count || 0); byId('metrics').textContent = metrics; setConnected(true); setNotice('Data is scoped to the current identity and its authorized Buckets.', false); }
     catch (error) { setConnected(false); setNotice(error.message, true); }
   }
   session.addEventListener('submit', (event) => { event.preventDefault(); token = byId('token').value; byId('token').value = ''; load(); });
   byId('refresh').addEventListener('click', load);
-  byId('disconnect').addEventListener('click', () => { token = ''; setConnected(false); render([]); byId('metrics').textContent = 'Prometheus metrics load after connection'; setNotice('Session cleared.', false); });
+  byId('disconnect').addEventListener('click', () => { token = ''; setConnected(false); render([]); byId('runs').textContent = '—'; byId('rebuilds').textContent = '—'; byId('metrics').textContent = 'Prometheus metrics load after connection'; setNotice('Session cleared.', false); });
 })();
 """.encode()
