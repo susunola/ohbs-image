@@ -74,7 +74,8 @@ Beyond the build itself, ohbs-image covers the full **build → test → distrib
 export TENCENTCLOUD_SECRET_ID=AKIDxxxx
 export TENCENTCLOUD_SECRET_KEY=xxxx
 
-ohbs-image quickstart --region ap-guangzhou --profile ubuntu2204
+ohbs-image quickstart --region ap-guangzhou --profile ubuntu2204 \
+  --ingress-cidr 203.0.113.10/32
 # 1. discovers the newest Ubuntu 22.04 public image + an in-stock instance type
 # 2. provisions temporary VPC/subnet/security-group (tagged ephemeral=true)
 # 3. writes ohbs-image.toml, then runs doctor + plan
@@ -83,11 +84,14 @@ ohbs-image quickstart --region ap-guangzhou --profile ubuntu2204
 ohbs-image build --config ohbs-image.toml   # produce the hardened image
 ```
 
-`quickstart` reuse the networking you already have by passing all three of
+When it creates temporary networking, `quickstart` requires `--ingress-cidr`
+and opens SSH/WinRM only to that IPv4 network; use the build runner's public
+address with `/32`. It never permits `0.0.0.0/0`. `quickstart` reuses the
+networking you already have by passing all three of
 `--vpc`, `--subnet`, `--security-group` (never carves a subnet inside someone
 else's VPC).  Temporary resources are recorded in `ohbs-image.toml.quickstart.json`
 and torn down with `ohbs-image quickstart --cleanup`.  Preview everything
-read-only first with `ohbs-image quickstart --region … --dry-run`.
+read-only first with `ohbs-image quickstart --region … --ingress-cidr … --dry-run`.
 
 Prefer the manual path below when you want to learn the configuration model
 first, or when your networking is shared and you need explicit choices.
@@ -236,7 +240,7 @@ documented in the full reference below.
 ```bash
 ohbs-image                                    # show help (exits 2)
 ohbs-image try [-o DIR] [--profile P] [--level 1|2]  # zero-cost offline demo: gates + sample HTML report
-ohbs-image quickstart --region R --profile P  # provision temp resources + config + doctor + plan
+ohbs-image quickstart --region R --profile P --ingress-cidr IP/32  # temp resources + config + doctor + plan
 ohbs-image quickstart --dry-run               # read-only: print the plan, create nothing
 ohbs-image quickstart --cleanup               # delete resources recorded by a previous quickstart
 ohbs-image init                               # generate ohbs-image.toml
