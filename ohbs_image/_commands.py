@@ -255,7 +255,12 @@ def cmd_build(args: argparse.Namespace) -> int:
     if prep is None:
         return 1
     r, workdir = prep
-    r.run_id = ohbs_image._new_run_id()
+    requested_run_id = vars(args).get("run_id", "")
+    if requested_run_id and (not isinstance(requested_run_id, str)
+                             or not re.fullmatch(r"[0-9a-f-]{36}", requested_run_id)):
+        fail("invalid internal run ID")
+        return 2
+    r.run_id = requested_run_id or ohbs_image._new_run_id()
 
     # A subset audit is useful for diagnosis, but does not establish the
     # compliance of a golden image.  Make approval an explicit operator act.

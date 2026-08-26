@@ -243,6 +243,7 @@ ohbs-image try [-o DIR] [--profile P] [--level 1|2]  # zero-cost offline demo: g
 ohbs-image quickstart --region R --profile P --ingress-cidr IP/32  # temp resources + config + doctor + plan
 ohbs-image quickstart --dry-run               # read-only: print the plan, create nothing
 ohbs-image quickstart --cleanup               # delete resources recorded by a previous quickstart
+ohbs-image launch [--build --yes]             # doctor → plan → preflight → explicitly approved build
 ohbs-image init                               # generate ohbs-image.toml
 ohbs-image configure                          # interactive/non-interactive minimal config generator
 ohbs-image discover images --region ap-guangzhou --profile ubuntu2404
