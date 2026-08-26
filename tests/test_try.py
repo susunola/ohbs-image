@@ -75,6 +75,9 @@ class TestCmdTry:
         assert "<!doctype html" in page
         assert "Ensure ssh MaxAuthTries" in page
         assert "demo-tencentos3" in page  # demo-{profile} title + cover meta
+        assert "Demo data — not audit evidence" in page
+        assert "DEMO ONLY" in page
+        assert "do not use for compliance" in page
 
     def test_repeat_run_is_identical(self, tmp_path, monkeypatch):
         # Determinism is a feature: re-running must produce identical audit
