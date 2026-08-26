@@ -56,6 +56,12 @@ from ._distribution import (
     cmd_distribution_reconcile,
     cmd_distribution_record,
 )
+from ._distribution_controller import (
+    cmd_distribution_enqueue,
+    cmd_distribution_reconcile_all,
+    cmd_distribution_slo,
+    cmd_distribution_worker,
+)
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
@@ -655,6 +661,35 @@ def build_parser() -> argparse.ArgumentParser:
     p_dist_reconcile.add_argument("--timeout-minutes", type=int, default=60)
     p_dist_reconcile.add_argument("--output", choices=["text", "json"], default="text")
     p_dist_reconcile.set_defaults(func=cmd_distribution_reconcile)
+    p_dist_enqueue = distribution_sub.add_parser("enqueue", help="Queue a regional copy or share")
+    p_dist_enqueue.add_argument("artifact_id")
+    p_dist_enqueue.add_argument("--region", required=True)
+    p_dist_enqueue.add_argument("--account", default="self")
+    p_dist_enqueue.add_argument("--mode", choices=["sync", "share"], default="sync")
+    p_dist_enqueue.add_argument("--database", default="")
+    p_dist_enqueue.set_defaults(func=cmd_distribution_enqueue)
+    p_dist_worker = distribution_sub.add_parser("worker", help="Run the quota-aware distribution worker")
+    p_dist_worker.add_argument("--database", default="")
+    p_dist_worker.add_argument("--apply", action="store_true")
+    p_dist_worker.add_argument("--once", action="store_true")
+    p_dist_worker.add_argument("--worker-id", default="")
+    p_dist_worker.add_argument("--global-limit", type=int, default=8)
+    p_dist_worker.add_argument("--account-limit", type=int, default=4)
+    p_dist_worker.add_argument("--region-limit", type=int, default=2)
+    p_dist_worker.add_argument("--max-attempts", type=int, default=3)
+    p_dist_worker.add_argument("--poll-seconds", type=float, default=10)
+    p_dist_worker.set_defaults(func=cmd_distribution_worker)
+    p_dist_slo = distribution_sub.add_parser("slo", help="Report distribution propagation SLO")
+    p_dist_slo.add_argument("--database", default="")
+    p_dist_slo.add_argument("--target-minutes", type=int, default=30)
+    p_dist_slo.set_defaults(func=cmd_distribution_slo)
+    p_dist_reconcile_all = distribution_sub.add_parser(
+        "reconcile-all", help="Periodically reconcile every pending replica")
+    p_dist_reconcile_all.add_argument("--apply", action="store_true")
+    p_dist_reconcile_all.add_argument("--once", action="store_true")
+    p_dist_reconcile_all.add_argument("--interval-seconds", type=float, default=60)
+    p_dist_reconcile_all.add_argument("--timeout-minutes", type=int, default=60)
+    p_dist_reconcile_all.set_defaults(func=cmd_distribution_reconcile_all)
 
     p_event = sub.add_parser("event", help="Plan and process rebuild-triggering events")
     event_sub = p_event.add_subparsers(dest="event_command")
