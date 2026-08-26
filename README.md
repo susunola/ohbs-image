@@ -267,6 +267,9 @@ ohbs-image run checkpoints RUN_ID [--output json]  # fine-grained build phase ch
 ohbs-image report slo [--days 30] [--output json]  # run success, retry and latency SLOs
 ohbs-image report metrics --format prometheus       # Prometheus exposition format
 ohbs-image report metrics --format otlp-json        # OTLP/JSON metrics document
+
+Versioned domain contracts live in `schemas/v1/`; the control-plane HTTP contract is
+`api/openapi.yaml`. Compatibility rules are documented in `schemas/COMPATIBILITY.md`.
 ohbs-image registry rebuild [--output json]        # index approved release evidence
 ohbs-image registry list [--bucket PROFILE] [--output json]
 ohbs-image registry show IMAGE_ID [--output json]

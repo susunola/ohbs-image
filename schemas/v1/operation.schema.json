@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohbs-image.dev/schemas/v1/operation.schema.json",
+  "title": "Fenced Operation v1", "type": "object",
+  "required": ["schema", "scope", "operation_id", "fencing_token", "status", "started_at", "document_hash"],
+  "properties": {
+    "schema": {"const": "https://ohbs-image.dev/operation/v1"}, "scope": {"type": "string"},
+    "operation_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "fencing_token": {"type": "integer", "minimum": 1},
+    "status": {"enum": ["in_progress", "completed"]}, "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"}, "result": {},
+    "document_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }, "additionalProperties": true
+}

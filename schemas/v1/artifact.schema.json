@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohbs-image.dev/schemas/v1/artifact.schema.json",
+  "title": "Golden Image Artifact v1",
+  "type": "object",
+  "required": ["schema", "artifact_id", "bucket", "version", "platform", "region", "status", "document_hash"],
+  "properties": {
+    "schema": {"const": "https://ohbs-image.dev/artifact/v1"},
+    "artifact_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "bucket": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "minLength": 1},
+    "platform": {"type": "string", "minLength": 1},
+    "region": {"type": "string"},
+    "status": {"enum": ["active", "quarantined", "revoked"]},
+    "parents": {"type": "array", "items": {"$ref": "#/$defs/parent"}},
+    "replicas": {"type": "object", "additionalProperties": {"$ref": "#/$defs/replica"}},
+    "document_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "$defs": {
+    "parent": {"type": "object", "required": ["artifact_id", "relation"], "properties": {
+      "artifact_id": {"type": "string"}, "relation": {"type": "string"}, "external": {"type": "boolean"}}},
+    "replica": {"type": "object", "required": ["status"], "properties": {
+      "replica_id": {"type": ["string", "null"]}, "status": {"enum": ["pending", "ready", "failed"]},
+      "provider": {"type": "string"}, "failure_category": {"type": "string"}}}
+  },
+  "additionalProperties": true
+}
