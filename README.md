@@ -283,7 +283,7 @@ ohbs-image ancestry link CHILD PARENT [--external]     # add a derived-from edge
 ohbs-image ancestry verify [--output json]             # cycles and malformed edges
 ohbs-image event process rebuild-event.json            # dry-run impact + rebuild plan
 ohbs-image event process rebuild-event.json --apply    # quarantine + rollback + queued requests
-ohbs-image serve --rbac rbac.json                      # authenticated loopback HTTP API
+ohbs-image serve --rbac rbac.json                      # API + Web Console at http://127.0.0.1:8080/
 ohbs-image channel promote PROFILE stable IMAGE_ID [--expected-generation N]  # atomic CAS pointer move
 ohbs-image channel promote PROFILE stable IMAGE_ID --operation-id deploy-42   # idempotent worker retry + fencing
 ohbs-image channel resolve PROFILE stable [--output json]  # verify pointer + artifact integrity

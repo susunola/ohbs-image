@@ -27,6 +27,19 @@ def test_service_requires_valid_bearer_token(tmp_path):
     assert status == 403 and "bearer" in body.decode()
 
 
+def test_console_assets_are_public_but_contain_no_credentials(tmp_path):
+    service = _service(tmp_path)
+    status, kind, page = service.dispatch("GET", "/console", "")
+    assert status == 200 and kind.startswith("text/html")
+    assert b"ohbs-image Control Plane" in page
+    assert b"view-token" not in page and b"promote-token" not in page
+    status, kind, script = service.dispatch("GET", "/console.js", "")
+    assert status == 200 and kind.startswith("text/javascript")
+    assert b"localStorage" not in script and b"innerHTML" not in script
+    status, kind, style = service.dispatch("GET", "/console.css", "")
+    assert status == 200 and kind.startswith("text/css") and b"prefers-reduced-motion" in style
+
+
 def test_viewer_lists_only_authorized_bucket(tmp_path):
     service = _service(tmp_path)
     status, _kind, body = service.dispatch(
