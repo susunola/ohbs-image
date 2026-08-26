@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from ohbs_image._cli import build_parser
 from ohbs_image._registry import register_release
 from ohbs_image._service import ControlPlane
 
@@ -38,6 +39,12 @@ def test_console_assets_are_public_but_contain_no_credentials(tmp_path):
     assert b"localStorage" not in script and b"innerHTML" not in script
     status, kind, style = service.dispatch("GET", "/console.css", "")
     assert status == 200 and kind.startswith("text/css") and b"prefers-reduced-motion" in style
+
+
+def test_service_default_port_is_8181():
+    args = build_parser().parse_args(["serve", "--rbac", "rbac.json"])
+    assert args.host == "127.0.0.1"
+    assert args.port == 8181
 
 
 def test_viewer_lists_only_authorized_bucket(tmp_path):
