@@ -146,7 +146,7 @@
     ],
     "platforms": [],
     "assessment": "Automated",
-    "family": "manual",
+    "family": "partition",
     "params": {
       "mount": "/var"
     },
@@ -197,7 +197,7 @@
     ],
     "platforms": [],
     "assessment": "Automated",
-    "family": "manual",
+    "family": "partition",
     "params": {
       "mount": "/var/tmp"
     },
@@ -265,7 +265,7 @@
     ],
     "platforms": [],
     "assessment": "Automated",
-    "family": "manual",
+    "family": "partition",
     "params": {
       "mount": "/var/log"
     },
@@ -333,7 +333,7 @@
     ],
     "platforms": [],
     "assessment": "Automated",
-    "family": "manual",
+    "family": "partition",
     "params": {
       "mount": "/var/log/audit"
     },
@@ -350,7 +350,7 @@
     ],
     "platforms": [],
     "assessment": "Automated",
-    "family": "manual",
+    "family": "partition",
     "params": {
       "mount": "/home"
     },
@@ -581,7 +581,7 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
+    "family": "gpg_keys",
     "params": {},
     "risk": "none",
     "page": 99
@@ -629,7 +629,7 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
+    "family": "pkg_repos",
     "params": {},
     "risk": "none",
     "page": 106
@@ -643,9 +643,9 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
+    "family": "updates_applied",
     "params": {},
-    "risk": "none",
+    "risk": "safe",
     "page": 108
   },
   {
@@ -698,8 +698,9 @@
     "assessment": "Automated",
     "family": "bootloader_password",
     "params": {},
-    "risk": "none",
-    "page": 117
+    "risk": "safe",
+    "page": 117,
+    "note": "auto-remediated: ohbs-image sets a per-image random GRUB superuser password at build time (hash in grub config, plaintext root-only in /root/ohbs-image-grub-password)"
   },
   {
     "id": "1.5.2",
@@ -1038,9 +1039,9 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
+    "family": "updates_applied",
     "params": {},
-    "risk": "none",
+    "risk": "safe",
     "page": 163
   },
   {
@@ -1076,7 +1077,8 @@
     "risk": "disruptive",
     "page": 167,
     "reboot_required": true,
-    "note": "crypto policy kept DEFAULT: FUTURE/FIPS would break sshd key exchange; verify site policy"
+    "note": "fixer sets FUTURE via update-crypto-policies (disruptive; takes effect after reboot)",
+    "defer": "firstboot"
   },
   {
     "id": "2.1.1",
@@ -1546,7 +1548,7 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
+    "family": "listening_ports",
     "params": {},
     "risk": "none",
     "page": 217
@@ -2119,10 +2121,13 @@
       1
     ],
     "platforms": [],
-    "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "assessment": "Automated",
+    "family": "firewalld_cfg",
+    "params": {
+      "check": "default_zone",
+      "zone": "public"
+    },
+    "risk": "safe",
     "page": 285
   },
   {
@@ -2133,10 +2138,12 @@
       1
     ],
     "platforms": [],
-    "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "assessment": "Automated",
+    "family": "firewalld_cfg",
+    "params": {
+      "check": "interfaces_assigned"
+    },
+    "risk": "safe",
     "page": 287
   },
   {
@@ -2148,9 +2155,11 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "firewalld_rules",
+    "params": {
+      "kind": "services"
+    },
+    "risk": "safe",
     "page": 289
   },
   {
@@ -2162,9 +2171,14 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "nft_rules",
+    "params": {
+      "kind": "flushed",
+      "units": [
+        "nftables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 295
   },
   {
@@ -2176,9 +2190,14 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "nft_rules",
+    "params": {
+      "kind": "table",
+      "units": [
+        "nftables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 297
   },
   {
@@ -2190,9 +2209,14 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "nft_rules",
+    "params": {
+      "kind": "base_chains",
+      "units": [
+        "nftables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 299
   },
   {
@@ -2204,9 +2228,14 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "nft_rules",
+    "params": {
+      "kind": "loopback",
+      "units": [
+        "nftables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 301
   },
   {
@@ -2218,9 +2247,14 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "nft_rules",
+    "params": {
+      "kind": "established",
+      "units": [
+        "nftables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 303
   },
   {
@@ -2232,9 +2266,14 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "nft_rules",
+    "params": {
+      "kind": "default_deny",
+      "units": [
+        "nftables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 305
   },
   {
@@ -2246,12 +2285,11 @@
     ],
     "platforms": [],
     "assessment": "Automated",
-    "family": "svc_enabled",
+    "family": "fw_stack_in_use",
     "params": {
       "units": [
         "nftables.service"
-      ],
-      "packages": []
+      ]
     },
     "risk": "safe",
     "page": 307,
@@ -2266,9 +2304,14 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "nft_rules",
+    "params": {
+      "kind": "permanent",
+      "units": [
+        "nftables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 308
   },
   {
@@ -2280,10 +2323,11 @@
     ],
     "platforms": [],
     "assessment": "Automated",
-    "family": "pkg_present",
+    "family": "fw_stack_in_use",
     "params": {
-      "packages": [
-        "iptables"
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
       ]
     },
     "risk": "safe",
@@ -2298,10 +2342,11 @@
     ],
     "platforms": [],
     "assessment": "Automated",
-    "family": "manual",
+    "family": "fw_stack_in_use",
     "params": {
-      "packages": [
-        "nftables"
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
       ]
     },
     "risk": "none",
@@ -2317,12 +2362,12 @@
     ],
     "platforms": [],
     "assessment": "Automated",
-    "family": "manual",
+    "family": "fw_stack_in_use",
     "params": {
       "units": [
-        "firewalld.service"
-      ],
-      "packages": []
+        "iptables.service",
+        "ip6tables.service"
+      ]
     },
     "risk": "none",
     "page": 316,
@@ -2337,9 +2382,15 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "iptables_rules",
+    "params": {
+      "kind": "default_deny",
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 319
   },
   {
@@ -2351,9 +2402,15 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "iptables_rules",
+    "params": {
+      "kind": "loopback",
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 321
   },
   {
@@ -2365,9 +2422,15 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "iptables_rules",
+    "params": {
+      "kind": "established",
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 323
   },
   {
@@ -2379,9 +2442,15 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "iptables_rules",
+    "params": {
+      "kind": "open_ports",
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
+      ]
+    },
+    "risk": "safe",
     "page": 325
   },
   {
@@ -2393,9 +2462,16 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "iptables_rules",
+    "params": {
+      "kind": "default_deny",
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
+      ],
+      "ipv6": true
+    },
+    "risk": "safe",
     "page": 328
   },
   {
@@ -2407,9 +2483,16 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "iptables_rules",
+    "params": {
+      "kind": "loopback",
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
+      ],
+      "ipv6": true
+    },
+    "risk": "safe",
     "page": 330
   },
   {
@@ -2421,9 +2504,16 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "iptables_rules",
+    "params": {
+      "kind": "established",
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
+      ],
+      "ipv6": true
+    },
+    "risk": "safe",
     "page": 332
   },
   {
@@ -2435,9 +2525,16 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "iptables_rules",
+    "params": {
+      "kind": "open_ports",
+      "units": [
+        "iptables.service",
+        "ip6tables.service"
+      ],
+      "ipv6": true
+    },
+    "risk": "safe",
     "page": 334
   },
   {
@@ -3386,7 +3483,7 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
+    "family": "rsyslog_actions",
     "params": {},
     "risk": "none",
     "page": 471
@@ -3415,10 +3512,10 @@
       1
     ],
     "platforms": [],
-    "assessment": "Manual",
-    "family": "manual",
+    "assessment": "Automated",
+    "family": "rsyslog_no_receive",
     "params": {},
-    "risk": "none",
+    "risk": "safe",
     "page": 475
   },
   {
@@ -4159,7 +4256,8 @@
       "op": "absent_tag"
     },
     "risk": "safe",
-    "page": 554
+    "page": 554,
+    "defer": "firstboot"
   },
   {
     "id": "5.3.5",
@@ -4500,7 +4598,7 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
+    "family": "pkg_verify",
     "params": {},
     "risk": "none",
     "page": 603
@@ -4776,9 +4874,11 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "suid_baseline",
+    "params": {
+      "baseline": "/etc/ohbs-image/suid-baseline.list"
+    },
+    "risk": "safe",
     "page": 634
   },
   {
@@ -4790,9 +4890,11 @@
     ],
     "platforms": [],
     "assessment": "Manual",
-    "family": "manual",
-    "params": {},
-    "risk": "none",
+    "family": "suid_baseline",
+    "params": {
+      "baseline": "/etc/ohbs-image/suid-baseline.list"
+    },
+    "risk": "safe",
     "page": 636
   },
   {
