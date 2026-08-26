@@ -192,7 +192,7 @@ class ControlPlane:
             if method == "GET" and route == ["rebuild-requests"]:
                 self._authorize(principal, "viewer")
                 query = parse_qs(parsed.query)
-                rows: list[dict[str, Any]] = []
+                rebuild_rows: list[dict[str, Any]] = []
                 for path in sorted((self.root / "registry" / "rebuild_requests").glob("*.json")):
                     request = _read_object(path)
                     if request is None:
@@ -200,13 +200,16 @@ class ControlPlane:
                     artifact = _read_object(_artifact_path(
                         str(request.get("artifact_id") or ""), self.root / "registry"))
                     if artifact is not None and self._visible(principal, artifact.get("bucket")):
-                        rows.append(request)
+                        rebuild_rows.append(request)
                 if query.get("status"):
-                    rows = [row for row in rows if row.get("status") == query["status"][0]]
-                rows.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
+                    rebuild_rows = [row for row in rebuild_rows
+                                    if row.get("status") == query["status"][0]]
+                rebuild_rows.sort(
+                    key=lambda row: str(row.get("created_at") or ""), reverse=True)
                 limit, offset = self._page(query)
-                return self._json(200, {"count": len(rows), "limit": limit,
-                    "offset": offset, "rebuild_requests": rows[offset:offset + limit]})
+                return self._json(200, {"count": len(rebuild_rows), "limit": limit,
+                    "offset": offset,
+                    "rebuild_requests": rebuild_rows[offset:offset + limit]})
             if len(route) == 3 and route[0] == "channels":
                 bucket, channel = route[1], route[2]
                 if method == "GET":
