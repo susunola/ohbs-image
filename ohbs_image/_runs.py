@@ -8,6 +8,7 @@ from typing import Any
 
 from ._config import _lineage_path
 from ._logging import fail
+from ._run_events import read_run_events
 
 RUN_LIST_SCHEMA = "https://ohbs-image.dev/run-list/v1"
 RUN_SHOW_SCHEMA = "https://ohbs-image.dev/run-show/v1"
@@ -85,6 +86,15 @@ def collect_runs(root: Path | None = None) -> list[dict[str, Any]]:
             item.setdefault("acceptance", []).append(doc)
             _attach(item, state, path, "acceptance")
 
+    for path in sorted((state / "events").glob("*.jsonl")):
+        run_id = path.name.removesuffix(".jsonl")
+        item = _entry(index, run_id)
+        if item is not None:
+            events = read_run_events(run_id, state)
+            if events:
+                item["events"] = events
+            _attach(item, state, path, "events")
+
     for run_id, item in index.items():
         for directory, kind in (("provenance", "provenance"), ("reports", "report")):
             for path in sorted((state / directory).glob(f"*.{run_id}.*")):
@@ -94,6 +104,9 @@ def collect_runs(root: Path | None = None) -> list[dict[str, Any]]:
         plan_doc = item.get("plan", {})
         item["status"] = (lineage_doc.get("status") or manifest_doc.get("status")
                           or ("planned" if plan_doc else "unknown"))
+        events_doc = item.get("events", [])
+        item["state"] = (manifest_doc.get("state")
+                         or (events_doc[-1].get("to") if events_doc else ""))
         item["mode"] = lineage_doc.get("mode") or manifest_doc.get("mode") or ""
         item["profile"] = (lineage_doc.get("profile") or manifest_doc.get("profile")
                            or plan_doc.get("profile") or "")
@@ -113,7 +126,7 @@ def cmd_run_list(args: argparse.Namespace) -> int:
     if args.limit > 0:
         rows = rows[:args.limit]
     summaries = [{key: row.get(key) for key in (
-        "run_id", "created_at", "status", "mode", "profile", "evidence_count")}
+        "run_id", "created_at", "status", "state", "mode", "profile", "evidence_count")}
         for row in rows]
     if args.output == "json":
         print(json.dumps({"schema": RUN_LIST_SCHEMA, "count": len(summaries),
@@ -124,7 +137,7 @@ def cmd_run_list(args: argparse.Namespace) -> int:
         return 0
     for row in summaries:
         print(f"{str(row['created_at'] or '?'):20s}  {str(row['status']):8s}  "
-              f"{str(row['mode'] or '-'):5s}  {str(row['profile'] or '-'):12s}  "
+              f"{str(row['state'] or '-'):17s}  {str(row['profile'] or '-'):12s}  "
               f"evidence={row['evidence_count']:2d}  {row['run_id']}")
     return 0
 
@@ -138,7 +151,7 @@ def cmd_run_show(args: argparse.Namespace) -> int:
     if args.output == "json":
         print(json.dumps(doc, ensure_ascii=False, indent=2))
         return 0
-    for key in ("run_id", "created_at", "status", "mode", "profile", "evidence_count"):
+    for key in ("run_id", "created_at", "status", "state", "mode", "profile", "evidence_count"):
         print(f"{key}: {item.get(key)}")
     for evidence in item["evidence"]:
         print(f"  {evidence['kind']:10s} {evidence['path']}")

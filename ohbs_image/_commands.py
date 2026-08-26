@@ -713,6 +713,7 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
     key_id = ""
     key_path = ""
     probe_password = ""
+    verification_ok = False
     try:
         ohbs_image._write_run_manifest(r, status="active", phase="probe-setup")
         try:
@@ -782,6 +783,7 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
                 info(f"Fresh-boot scan score: {score:g}% (no gate)")
             info(f"Fresh-boot failing rules: {fails}")
             ok("clean-boot verification PASSED")
+            verification_ok = True
             return 0
         if score is not None:
             info(f"Fresh-boot scan score: {score:g}% (gate >= {min_score:g}%)")
@@ -789,6 +791,7 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
         gate_ok = score is not None and score >= min_score
         if gate_ok:
             ok("clean-boot verification PASSED")
+            verification_ok = True
             return 0
         shown = f"{score:g}%" if score is not None else "unknown"
         fail(f"clean-boot verification FAILED: score {shown} < {min_score:g}%")
@@ -798,7 +801,8 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
             ohbs_image._probe_terminate(r, instance_id)
         if key_id or key_path:
             ohbs_image._probe_teardown_keypair(r, key_id, key_path)
-        ohbs_image._write_run_manifest(r, status="completed", phase="probe-cleanup")
+        ohbs_image._write_run_manifest(
+            r, status="completed" if verification_ok else "failed", phase="probe-cleanup")
 
 def _drift_resolve_baseline(args: argparse.Namespace, r: ResolvedConfig,
                             host: str, ssh_port: int, ssh_user: str) -> dict[str, Any] | None:

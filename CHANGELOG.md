@@ -375,6 +375,11 @@ can be traced across rebuilds.
   the sibling rules in the ubuntu catalogs.
 
 ### Added
+- **Hash-chained run event log** — every manifest transition appends an
+  immutable event under `events/RUN_ID.jsonl` with sequence, actor, phase,
+  previous hash and event hash. `run events` renders the timeline, while
+  `state verify` detects mutation, deletion, reordering, illegal transitions
+  and disagreement between the manifest snapshot and final event.
 - **Offline state integrity gate** — `state verify` detects corrupt JSON,
   duplicate or mismatched RUN_IDs, missing or modified release evidence,
   expired active leases and orphaned artifacts. `--strict` promotes warnings
