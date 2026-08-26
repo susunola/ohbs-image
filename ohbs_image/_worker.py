@@ -15,6 +15,7 @@ from ._config import _lineage_path
 from ._logging import fail, info, ok, warn
 from ._registry import _hash, _read_object
 from ._reports import _atomic_write_bytes, _state_lock
+from ._state_db import StateDatabase
 
 WORKER_RESULT_SCHEMA = "https://ohbs-image.dev/rebuild-worker-result/v1"
 _TERMINAL = {"succeeded", "dead_letter"}
@@ -161,6 +162,40 @@ def process_one(queue: Path, handler: Callable[[dict[str, Any]], dict[str, Any]]
                               retry_delay_seconds=retry_delay_seconds)
 
 
+def process_one_db(database: StateDatabase,
+                   handler: Callable[[dict[str, Any]], dict[str, Any]], *,
+                   worker_id: str, max_attempts: int = 3, lease_seconds: int = 900,
+                   retry_delay_seconds: int = 60) -> dict[str, Any] | None:
+    request = database.claim(worker_id, lease_seconds=lease_seconds)
+    if request is None:
+        return None
+    current = _now()
+    document = dict(request)
+    events = list(document.get("worker_history") or [])
+    try:
+        result = handler(request)
+        failures = _valid_result(result)
+        if failures:
+            raise ValueError("; ".join(failures))
+        document.update(status="succeeded", result=result, completed_at=_stamp(current), error="")
+        events.append({"status": "succeeded", "at": _stamp(current),
+                       "worker_id": worker_id, "attempt": document["attempt"]})
+    except Exception as exc:
+        attempt = int(document.get("attempt", 1))
+        status = "dead_letter" if attempt >= max_attempts else "retry_wait"
+        document.update(status=status, error=str(exc) or "worker handler failed",
+                        failed_at=_stamp(current))
+        if status == "retry_wait":
+            document["next_attempt_at"] = _stamp(
+                current + timedelta(seconds=retry_delay_seconds * (2 ** (attempt - 1))))
+        events.append({"status": status, "at": _stamp(current), "worker_id": worker_id,
+                       "attempt": attempt, "error": document["error"]})
+    document["worker_history"] = events
+    document.pop("lease_expires_at", None)
+    database.finish(request, document)
+    return document
+
+
 def _command_handler(command: str, timeout: int) -> Callable[[dict[str, Any]], dict[str, Any]]:
     argv = shlex.split(command)
     if not argv:
@@ -183,7 +218,12 @@ def _command_handler(command: str, timeout: int) -> Callable[[dict[str, Any]], d
 
 def cmd_worker_run(args: argparse.Namespace) -> int:
     queue = _lineage_path().parent / "registry" / "rebuild_requests"
+    database = StateDatabase(Path(args.state_db)) if getattr(args, "state_db", "") else None
     if not args.apply:
+        if database is not None:
+            database.initialize()
+            info(f"Dry run: transactional queue ready at {database.path}; add --apply")
+            return 0
         eligible = sum(1 for path in queue.glob("*.json")
                        if (request := _read_object(path)) is not None
                        and _eligible(request, _now()))
@@ -193,10 +233,16 @@ def cmd_worker_run(args: argparse.Namespace) -> int:
     try:
         handler = _command_handler(args.handler, args.timeout)
         while True:
-            result = process_one(queue, handler, worker_id=worker_id,
-                                 max_attempts=args.max_attempts,
-                                 lease_seconds=args.lease_seconds,
-                                 retry_delay_seconds=args.retry_delay_seconds)
+            if database is None:
+                result = process_one(queue, handler, worker_id=worker_id,
+                                     max_attempts=args.max_attempts,
+                                     lease_seconds=args.lease_seconds,
+                                     retry_delay_seconds=args.retry_delay_seconds)
+            else:
+                result = process_one_db(database, handler, worker_id=worker_id,
+                                        max_attempts=args.max_attempts,
+                                        lease_seconds=args.lease_seconds,
+                                        retry_delay_seconds=args.retry_delay_seconds)
             if result is None:
                 if args.once:
                     info("No eligible rebuild requests")

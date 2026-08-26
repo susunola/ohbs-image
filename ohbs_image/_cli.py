@@ -86,6 +86,13 @@ from ._state import (
     cmd_state_sync,
     cmd_state_verify,
 )
+from ._state_db import (
+    cmd_state_db_backup,
+    cmd_state_db_export,
+    cmd_state_db_init,
+    cmd_state_db_migrate,
+    cmd_state_db_verify,
+)
 from ._try import cmd_try
 from ._worker import cmd_worker_run
 
@@ -338,6 +345,29 @@ def build_parser() -> argparse.ArgumentParser:
                                 help="Mark expired local runs failed; never deletes cloud resources")
     p_st_reconcile.add_argument("--output", choices=["text", "json"], default="text")
     p_st_reconcile.set_defaults(func=cmd_state_reconcile)
+    p_st_db = state_sub.add_parser("db", help="Manage the transactional SQLite state backend")
+    db_sub = p_st_db.add_subparsers(dest="state_db_command")
+    for name, help_text, func in (
+        ("init", "Initialize a durable WAL database", cmd_state_db_init),
+        ("verify", "Verify database and object hashes", cmd_state_db_verify),
+    ):
+        db_parser = db_sub.add_parser(name, help=help_text)
+        db_parser.add_argument("--database", default="")
+        db_parser.set_defaults(func=func)
+    p_db_migrate = db_sub.add_parser("migrate", help="Import legacy file state transactionally")
+    p_db_migrate.add_argument("--database", default="")
+    p_db_migrate.add_argument("--source", default="")
+    p_db_migrate.add_argument("--apply", action="store_true")
+    p_db_migrate.set_defaults(func=cmd_state_db_migrate)
+    p_db_export = db_sub.add_parser("export", help="Export a reversible file-state snapshot")
+    p_db_export.add_argument("destination")
+    p_db_export.add_argument("--database", default="")
+    p_db_export.add_argument("--force", action="store_true")
+    p_db_export.set_defaults(func=cmd_state_db_export)
+    p_db_backup = db_sub.add_parser("backup", help="Create an online consistent database backup")
+    p_db_backup.add_argument("destination")
+    p_db_backup.add_argument("--database", default="")
+    p_db_backup.set_defaults(func=cmd_state_db_backup)
 
     p_run = sub.add_parser("run", help="Inspect unified run state and evidence")
     run_sub = p_run.add_subparsers(dest="run_command")
@@ -628,6 +658,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_worker_run.add_argument("--retry-delay-seconds", type=int, default=60)
     p_worker_run.add_argument("--poll-seconds", type=float, default=5.0)
     p_worker_run.add_argument("--timeout", type=int, default=7200)
+    p_worker_run.add_argument("--state-db", default="",
+                              help="Use the transactional SQLite queue backend")
     p_worker_run.set_defaults(func=cmd_worker_run)
 
     p_serve = sub.add_parser("serve", help="Run the authenticated HTTP control plane")
