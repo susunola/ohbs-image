@@ -80,6 +80,7 @@ from ._policy_registry import (
     cmd_policy_revoke,
 )
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
+from ._proof import cmd_proof_record, cmd_proof_report, cmd_proof_verify
 from ._providers import cmd_provider_list, cmd_provider_verify
 from ._quickstart import cmd_quickstart
 from ._rebuild_events import cmd_event_process
@@ -128,7 +129,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "provider", "extension", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "provider", "extension", "proof", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -260,6 +261,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_extension_verify.add_argument("kind", choices=sorted(ENTRY_POINT_GROUPS))
     p_extension_verify.add_argument("name")
     p_extension_verify.set_defaults(func=cmd_extension_verify)
+
+    p_proof = sub.add_parser("proof", help="Collect and verify long-running production evidence")
+    proof_sub = p_proof.add_subparsers(dest="proof_command")
+    p_proof_record = proof_sub.add_parser("record", help="Append one daily hash-chained snapshot")
+    p_proof_record.add_argument("--ledger", default="")
+    p_proof_record.add_argument("--size", type=int, default=1000)
+    p_proof_record.set_defaults(func=cmd_proof_record)
+    p_proof_verify = proof_sub.add_parser("verify", help="Verify the proof ledger hash chain")
+    p_proof_verify.add_argument("--ledger", default="")
+    p_proof_verify.set_defaults(func=cmd_proof_verify)
+    p_proof_report = proof_sub.add_parser("report", help="Evaluate 30/90-day proof claims")
+    p_proof_report.add_argument("--ledger", default="")
+    p_proof_report.add_argument("--days", type=int, choices=[30, 90], default=30)
+    p_proof_report.add_argument("--html", default="")
+    p_proof_report.set_defaults(func=cmd_proof_report)
 
     p_benchmark = sub.add_parser("benchmark", help="Run reproducible local performance benchmarks")
     benchmark_sub = p_benchmark.add_subparsers(dest="benchmark_command")
