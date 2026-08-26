@@ -216,6 +216,58 @@ def _command_handler(command: str, timeout: int) -> Callable[[dict[str, Any]], d
     return run
 
 
+def _pipeline_handler(path: Path, timeout: int) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """Create the built-in four-stage rebuild pipeline from a declarative JSON file."""
+    config = _read_object(path)
+    if config is None:
+        raise ValueError(f"invalid rebuild pipeline {path}")
+    stages = config.get("stages")
+    if not isinstance(stages, dict):
+        raise ValueError("rebuild pipeline requires a stages object")
+    commands: dict[str, list[str]] = {}
+    for stage in _REQUIRED_STAGES:
+        item = stages.get(stage)
+        command = item.get("command") if isinstance(item, dict) else None
+        if not isinstance(command, list) or not command or not all(
+                isinstance(value, str) and value for value in command):
+            raise ValueError(f"rebuild pipeline stage {stage} requires a command array")
+        commands[stage] = command
+    cwd = Path(str(config.get("cwd") or ".")).expanduser().resolve()
+
+    def run(request: dict[str, Any]) -> dict[str, Any]:
+        variables = {"artifact_id": str(request.get("artifact_id") or ""),
+                     "request_id": str(request.get("request_id") or ""),
+                     "event_id": str(request.get("event_id") or "")}
+        stage_results: dict[str, dict[str, Any]] = {}
+        output_artifact = variables["artifact_id"]
+        for stage in _REQUIRED_STAGES:
+            argv = [value.format_map(variables) for value in commands[stage]]
+            started = _stamp()
+            completed = subprocess.run(
+                argv, input=json.dumps(request), text=True, capture_output=True,
+                timeout=timeout, check=False, cwd=cwd)
+            if completed.returncode != 0:
+                raise RuntimeError(
+                    f"pipeline stage {stage} exited {completed.returncode}: "
+                    f"{completed.stderr[-2000:].strip()}")
+            stdout = completed.stdout.strip()
+            if stdout:
+                try:
+                    value = json.loads(stdout)
+                except json.JSONDecodeError:
+                    value = None
+                if isinstance(value, dict) and value.get("artifact_id"):
+                    output_artifact = str(value["artifact_id"])
+                    variables["artifact_id"] = output_artifact
+            stage_results[stage] = {"status": "succeeded", "started_at": started,
+                                    "completed_at": _stamp(),
+                                    "stdout_tail": stdout[-2000:]}
+        return {"schema": WORKER_RESULT_SCHEMA, "request_id": variables["request_id"],
+                "artifact_id": output_artifact, "stages": stage_results}
+
+    return run
+
+
 def cmd_worker_run(args: argparse.Namespace) -> int:
     queue = _lineage_path().parent / "registry" / "rebuild_requests"
     database = StateDatabase(Path(args.state_db)) if getattr(args, "state_db", "") else None
@@ -231,7 +283,9 @@ def cmd_worker_run(args: argparse.Namespace) -> int:
         return 0
     worker_id = args.worker_id or f"worker-{uuid.uuid4().hex[:12]}"
     try:
-        handler = _command_handler(args.handler, args.timeout)
+        handler = (_pipeline_handler(Path(args.pipeline), args.timeout)
+                   if getattr(args, "pipeline", "")
+                   else _command_handler(args.handler, args.timeout))
         while True:
             if database is None:
                 result = process_one(queue, handler, worker_id=worker_id,
