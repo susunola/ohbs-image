@@ -21,6 +21,7 @@ from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
 from ._identity import IdentityError, verify_oidc_token
 from ._logging import fail, info
 from ._metrics import collect_metrics, prometheus_metrics
+from ._policy_registry import list_policies
 from ._registry import _database, _hash, _read_object, change_artifact_status, get_artifact, put_artifact
 from ._reports import _state_lock
 from ._runs import collect_runs
@@ -219,10 +220,26 @@ class ControlPlane:
                                  approver=str(principal.get("subject") or "unknown"))
                 self._audit(principal, "approval.approve", route[1], "allowed")
                 return self._json(200, result)
+            if method == "GET" and route == ["approvals"]:
+                self._authorize(principal, "approver")
+                query = parse_qs(parsed.query)
+                approval_rows = []
+                for path in sorted((self.root / "approvals").glob("*.json")):
+                    item = _read_object(path)
+                    if item is not None and item.get("document_hash") == _hash(item):
+                        approval_rows.append(item)
+                if query.get("status"):
+                    approval_rows = [row for row in approval_rows
+                                     if row.get("status") == query["status"][0]]
+                approval_rows.sort(
+                    key=lambda row: str(row.get("created_at") or ""), reverse=True)
+                limit, offset = self._page(query)
+                return self._json(200, {"count": len(approval_rows), "limit": limit,
+                    "offset": offset, "approvals": approval_rows[offset:offset + limit]})
             if method == "GET" and route == ["audit"]:
                 self._authorize(principal, "auditor")
                 query = parse_qs(parsed.query)
-                rows: list[dict[str, Any]] = []
+                audit_rows: list[dict[str, Any]] = []
                 audit_path = self.root / "audit" / "service.jsonl"
                 if audit_path.is_file():
                     for line in audit_path.read_text(encoding="utf-8").splitlines():
@@ -231,14 +248,15 @@ class ControlPlane:
                         except json.JSONDecodeError:
                             continue
                         if isinstance(item, dict):
-                            rows.append(item)
+                            audit_rows.append(item)
                 for field in ("subject", "action", "outcome"):
                     if query.get(field):
-                        rows = [row for row in rows if row.get(field) == query[field][0]]
+                        audit_rows = [row for row in audit_rows
+                                      if row.get(field) == query[field][0]]
                 limit, offset = self._page(query)
-                rows.reverse()
-                return self._json(200, {"count": len(rows), "limit": limit,
-                    "offset": offset, "events": rows[offset:offset + limit]})
+                audit_rows.reverse()
+                return self._json(200, {"count": len(audit_rows), "limit": limit,
+                    "offset": offset, "events": audit_rows[offset:offset + limit]})
             if method == "GET" and route == ["artifacts"]:
                 self._authorize(principal, "viewer")
                 query = parse_qs(parsed.query)
@@ -318,6 +336,32 @@ class ControlPlane:
                 if not self._visible(principal, row.get("profile")):
                     raise AuthorizationError("access to run is denied")
                 return self._json(200, {"run": row})
+            if method == "GET" and len(route) == 3 and route[0] == "runs" \
+                    and route[2] == "evidence":
+                self._authorize(principal, "viewer")
+                row = next((item for item in collect_runs(self.root)
+                            if item.get("run_id") == route[1]), None)
+                if row is None:
+                    return self._error(404, "not_found", "run not found")
+                if not self._visible(principal, row.get("profile")):
+                    raise AuthorizationError("access to run is denied")
+                query = parse_qs(parsed.query)
+                relative = query.get("path", [""])[0]
+                allowed = {str(item.get("path")) for item in row.get("evidence", [])
+                           if isinstance(item, dict)}
+                if relative not in allowed:
+                    raise AuthorizationError("evidence path is not attached to this run")
+                target = (self.root / relative).resolve()
+                if self.root.resolve() not in target.parents or not target.is_file():
+                    raise ValueError("evidence path is invalid")
+                data = target.read_bytes()
+                if len(data) > 262_144:
+                    raise ValueError("evidence exceeds the 256 KiB console preview limit")
+                try:
+                    value = json.loads(data)
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    return 200, "text/plain; charset=utf-8", data
+                return self._json(200, value)
             if method == "GET" and len(route) == 3 and route[0] == "artifacts" \
                     and route[2] == "impact":
                 doc = get_artifact(route[1], self.root / "registry")
@@ -356,6 +400,36 @@ class ControlPlane:
                 return self._json(200, {"count": len(rebuild_rows), "limit": limit,
                     "offset": offset,
                     "rebuild_requests": rebuild_rows[offset:offset + limit]})
+            if method == "GET" and route == ["policies"]:
+                self._authorize(principal, "viewer")
+                query = parse_qs(parsed.query)
+                rows = list_policies(self.root / "policy_registry")
+                if query.get("status"):
+                    rows = [row for row in rows if row.get("status") == query["status"][0]]
+                limit, offset = self._page(query)
+                return self._json(200, {"count": len(rows), "limit": limit,
+                    "offset": offset, "policies": rows[offset:offset + limit]})
+            if method == "GET" and route == ["traces"]:
+                self._authorize(principal, "viewer")
+                query = parse_qs(parsed.query)
+                trace_rows: list[dict[str, Any]] = []
+                path = self.root / "telemetry" / "traces.jsonl"
+                if path.is_file():
+                    for line in path.read_text(encoding="utf-8").splitlines():
+                        try:
+                            item = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        if isinstance(item, dict):
+                            trace_rows.append(item)
+                for field in ("trace_id", "status", "name"):
+                    if query.get(field):
+                        trace_rows = [row for row in trace_rows
+                                      if row.get(field) == query[field][0]]
+                trace_rows.reverse()
+                limit, offset = self._page(query)
+                return self._json(200, {"count": len(trace_rows), "limit": limit,
+                    "offset": offset, "spans": trace_rows[offset:offset + limit]})
             if len(route) == 3 and route[0] == "channels":
                 bucket, channel = route[1], route[2]
                 if method == "GET":
