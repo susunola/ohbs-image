@@ -1,0 +1,28 @@
+version: 2
+project_name: terraform-provider-ohbsimage
+builds:
+  - id: provider
+    main: .
+    binary: terraform-provider-ohbsimage_v{{ .Version }}
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+archives:
+  - formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SUMS"
+signs:
+  - artifacts: checksum
+    signature: "${artifact}.sig"
+    cmd: gpg
+    args: ["--batch", "--yes", "--armor", "--detach-sign", "--output", "${signature}", "${artifact}"]
+release:
+  github:
+    owner: susunola
+    name: ohbs-image
+  name_template: "Terraform Provider v{{ .Version }}"
+  draft: false
+  prerelease: auto
+changelog:
+  use: github-native

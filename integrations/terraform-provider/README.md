@@ -28,3 +28,8 @@ resource "tencentcloud_instance" "app" {
 
 Build locally with `go build ./...`. Release binaries should be signed and
 published with Terraform Registry checksums.
+
+Snapshot artifacts are available through the `Terraform provider release`
+workflow dispatch. Production releases use `terraform-provider-vX.Y.Z` tags
+and generate signed checksums plus GitHub provenance. See
+[`../../docs/ecosystem-release.md`](../../docs/ecosystem-release.md).

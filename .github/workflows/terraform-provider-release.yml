@@ -1,0 +1,76 @@
+name: Terraform provider release
+
+on:
+  push:
+    tags: ["terraform-provider-v*"]
+  workflow_dispatch:
+    inputs:
+      snapshot:
+        description: Build unsigned snapshot artifacts without publishing
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: integrations/terraform-provider
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: integrations/terraform-provider/go.mod
+          cache-dependency-path: integrations/terraform-provider/go.sum
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go build ./...
+
+  release:
+    needs: verify
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Import Terraform Registry signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.TERRAFORM_REGISTRY_GPG_PRIVATE_KEY }}
+        run: |
+          test -n "$GPG_PRIVATE_KEY"
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+          workdir: integrations/terraform-provider
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: integrations/terraform-provider/dist/*.zip
+
+  snapshot:
+    needs: verify
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'workflow_dispatch' && inputs.snapshot
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot --clean --skip=sign
+          workdir: integrations/terraform-provider
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terraform-provider-snapshot
+          path: integrations/terraform-provider/dist/*
