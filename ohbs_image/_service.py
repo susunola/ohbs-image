@@ -24,6 +24,7 @@ from ._metrics import collect_metrics, prometheus_metrics
 from ._registry import _artifact_path, _hash, _read_object, collect_artifacts
 from ._reports import _state_lock
 from ._runs import collect_runs
+from ._telemetry import TraceRecorder, parse_traceparent
 
 
 class AuthorizationError(ValueError):
@@ -160,6 +161,19 @@ class ControlPlane:
     def dispatch(self, method: str, raw_path: str, authorization: str, *,
                  body: bytes = b"", headers: dict[str, str] | None = None
                  ) -> tuple[int, str, bytes]:
+        incoming = (headers or {}).get("Traceparent", (headers or {}).get("traceparent", ""))
+        trace_id, parent_span = parse_traceparent(incoming)
+        recorder = TraceRecorder(self.root)
+        with recorder.span("http.request", attributes={"http.method": method,
+                "http.route": urlparse(raw_path).path}, trace_id=trace_id,
+                parent_span_id=parent_span) as span:
+            response = self._dispatch(method, raw_path, authorization, body=body, headers=headers)
+            span["attributes"]["http.status_code"] = response[0]
+            return response
+
+    def _dispatch(self, method: str, raw_path: str, authorization: str, *,
+                  body: bytes = b"", headers: dict[str, str] | None = None
+                  ) -> tuple[int, str, bytes]:
         try:
             parsed = urlparse(raw_path)
             if method == "GET" and parsed.path in {"/", "/console"}:

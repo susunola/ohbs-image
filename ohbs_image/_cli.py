@@ -39,6 +39,7 @@ from ._commands import (
     cmd_verify_image,
     cmd_verify_release,
 )
+from ._config import _lineage_path
 from ._config_tools import (
     cmd_config_diff,
     cmd_config_explain,
@@ -65,7 +66,7 @@ from ._distribution_controller import (
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
-from ._metrics import cmd_report_metrics
+from ._metrics import cmd_report_metrics, cmd_report_trends
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._policy import cmd_policy_check, cmd_policy_verify
 from ._policy_registry import (
@@ -105,6 +106,7 @@ from ._state_db import (
     cmd_state_db_migrate,
     cmd_state_db_verify,
 )
+from ._telemetry import TraceRecorder
 from ._try import cmd_try
 from ._worker import cmd_worker_run
 
@@ -509,7 +511,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_metrics.add_argument("--days", type=int, default=30)
     p_metrics.add_argument("--format", choices=["prometheus", "otlp-json", "json"],
                            default="prometheus")
+    p_metrics.add_argument("--record", action="store_true",
+                           help="Persist this snapshot in the local trend database")
+    p_metrics.add_argument("--push", default="", metavar="OTLP_ENDPOINT",
+                           help="Push metrics to an OTLP/HTTP JSON endpoint")
     p_metrics.set_defaults(func=cmd_report_metrics)
+    p_trends = report_sub.add_parser("trends", help="Query persisted metric history")
+    p_trends.add_argument("--limit", type=int, default=100)
+    p_trends.set_defaults(func=cmd_report_trends)
 
     p_registry = sub.add_parser("registry", help="Manage versioned golden-image artifacts")
     registry_sub = p_registry.add_subparsers(dest="registry_command")
@@ -1048,7 +1057,12 @@ def main(argv: list[str] | None = None) -> int:
     _setup_logging(verbose=getattr(args, "verbose", False),
                    quiet=getattr(args, "quiet", False))
     try:
-        return int(args.func(args))
+        command = " ".join((argv or sys.argv[1:])[:2]) or "help"
+        recorder = TraceRecorder(_lineage_path().parent)
+        with recorder.span("cli.command", attributes={"command": command}) as span:
+            result = int(args.func(args))
+            span["attributes"]["exit_code"] = result
+            return result
     except KeyboardInterrupt:
         print(file=sys.stderr)
         fail("interrupted")
