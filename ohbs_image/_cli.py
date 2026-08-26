@@ -225,6 +225,8 @@ def build_parser() -> argparse.ArgumentParser:
                           help="Skip every network/cloud check (same as --no-cloud, plus no clock sync)")
     p_doctor.add_argument("--report-path",
                           help="Write a redacted diagnostic report to this file (text/json/sarif)")
+    p_doctor.add_argument("--support-bundle",
+                          help="Create a redacted ZIP support bundle (refuses overwrite)")
     p_doctor.add_argument("--no-cloud", action="store_true",
                           help="Skip read-only Tencent Cloud API checks")
     p_doctor.set_defaults(func=cmd_doctor)

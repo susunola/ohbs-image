@@ -22,7 +22,7 @@ in the changelog.
 
 | Command | Notes |
 |---------|-------|
-| `doctor` | `0` ready · `1` one or more checks blocked · `2` configuration could not be resolved |
+| `doctor` | `0` ready · `1` one or more checks blocked · `2` configuration could not be resolved or the requested support bundle could not be safely created |
 | `plan` | `0` plan generated · `1` with `--check`, high-risk settings detected · `2` configuration error |
 | `preflight` | `0` pass · `1` fail |
 | `validate` | `0` packer validate passed · `1` fail · `2` configuration error |
