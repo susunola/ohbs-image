@@ -20,6 +20,7 @@ from ._channels import promote_channel, resolve_channel
 from ._config import _lineage_path
 from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
 from ._distribution import execute_distribution
+from ._evidence_center import summarize_evidence
 from ._identity import IdentityError, verify_oidc_token
 from ._logging import fail, info
 from ._metrics import collect_metrics, prometheus_metrics
@@ -30,7 +31,7 @@ from ._rebuild_events import EVENT_SCHEMA, process_rebuild_event
 from ._registry import _database, _hash, _read_object, change_artifact_status, get_artifact, put_artifact
 from ._reports import _state_lock
 from ._runs import collect_runs
-from ._telemetry import TraceRecorder, parse_traceparent
+from ._telemetry import TraceRecorder, TrendStore, parse_traceparent
 
 
 class AuthorizationError(ValueError):
@@ -294,6 +295,13 @@ class ControlPlane:
                     return self._error(404, "not_found", "artifact not found")
                 self._authorize(principal, "viewer", str(doc.get("bucket") or ""))
                 return self._json(200, doc)
+            if method == "GET" and len(route) == 3 and route[0] == "artifacts" \
+                    and route[2] == "evidence-summary":
+                doc = get_artifact(route[1], self.root / "registry")
+                if doc is None:
+                    return self._error(404, "not_found", "artifact not found")
+                self._authorize(principal, "viewer", str(doc.get("bucket") or ""))
+                return self._json(200, summarize_evidence(doc))
             if method == "PATCH" and len(route) == 3 and route[0] == "artifacts" \
                     and route[2] == "status":
                 self._authorize(principal, "admin")
@@ -571,6 +579,15 @@ class ControlPlane:
                 self._authorize(principal, "viewer")
                 return 200, "text/plain; version=0.0.4", prometheus_metrics(
                     collect_metrics(self.root)).encode()
+            if method == "GET" and route == ["dashboard"]:
+                self._authorize(principal, "viewer")
+                query = parse_qs(parsed.query)
+                days = int(query.get("days", ["30"])[0])
+                if not 1 <= days <= 365:
+                    raise ValueError("dashboard days must be between 1 and 365")
+                snapshot = collect_metrics(self.root, days=days)
+                trends = TrendStore(self.root / "telemetry" / "trends.db").query(limit=30)
+                return self._json(200, {"snapshot": snapshot, "trends": trends})
             return self._error(404, "not_found", "route not found")
         except AuthorizationError as exc:
             return self._error(403, "forbidden", str(exc))
