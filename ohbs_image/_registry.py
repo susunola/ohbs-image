@@ -136,6 +136,71 @@ def verify_registry(root: Path | None = None) -> list[str]:
     return failures
 
 
+def change_artifact_status(artifact_id: str, status: str, *, actor: str,
+                           reason: str, auto_rollback: bool = True,
+                           root: Path | None = None) -> dict[str, Any]:
+    if status not in {"quarantined", "revoked"}:
+        raise ValueError(f"unsupported artifact status {status!r}")
+    if not reason.strip():
+        raise ValueError("a non-empty reason is required")
+    path = _artifact_path(artifact_id, root)
+    lock = _state_lock(path)
+    try:
+        doc = _read_object(path)
+        if doc is None:
+            raise ValueError(f"artifact {artifact_id} not found")
+        if doc.get("document_hash") != _hash(doc):
+            raise ValueError(f"artifact {artifact_id} failed integrity verification")
+        previous_status = str(doc.get("status") or "")
+        if previous_status == "revoked" and status != "revoked":
+            raise ValueError(f"artifact {artifact_id} is permanently revoked")
+        doc["status"] = status
+        doc["status_changed_at"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        doc["status_changed_by"] = actor
+        doc["status_reason"] = reason.strip()
+        history = doc.get("status_history")
+        if not isinstance(history, list):
+            history = []
+        history.append({"from": previous_status, "to": status,
+                        "at": doc["status_changed_at"], "actor": actor,
+                        "reason": reason.strip()})
+        doc["status_history"] = history
+        doc["document_hash"] = _hash(doc)
+        _atomic_write_bytes(path,
+                            (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode())
+    finally:
+        lock.rmdir()
+
+    rollbacks: list[dict[str, Any]] = []
+    if auto_rollback:
+        from ._channels import rollback_channels_for_artifact
+        rollbacks = rollback_channels_for_artifact(
+            artifact_id, actor=actor, reason=reason.strip(), root=root)
+    return {"artifact": doc, "channel_rollbacks": rollbacks}
+
+
+def cmd_registry_status(args: argparse.Namespace) -> int:
+    try:
+        result = change_artifact_status(
+            args.artifact_id, args.artifact_status, actor=args.actor,
+            reason=args.reason, auto_rollback=not args.no_auto_rollback)
+    except (OSError, ValueError) as exc:
+        fail(str(exc))
+        return 1
+    if args.output == "json":
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        ok(f"Artifact {args.artifact_id} is now {args.artifact_status}")
+        for row in result["channel_rollbacks"]:
+            if row["status"] == "rolled_back":
+                ok(f"Channel {row['bucket']}/{row['channel']} rolled back to {row['to']}")
+            else:
+                warn(f"Channel {row['bucket']}/{row['channel']} rollback blocked: "
+                     f"{row['error']}")
+    return 1 if any(row["status"] == "blocked"
+                    for row in result["channel_rollbacks"]) else 0
+
+
 def cmd_registry_rebuild(args: argparse.Namespace) -> int:
     result = rebuild_registry(_lineage_path().parent)
     if args.output == "json":
