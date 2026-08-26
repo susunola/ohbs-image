@@ -1,0 +1,13 @@
+{
+  "schema": "https://ohbs-image.dev/ecosystem-compatibility/v1",
+  "core": ">=0.19,<1.0",
+  "provider_api": "1.x",
+  "extension_api": "1.x",
+  "terraform_provider": {
+    "terraform": ">=1.5",
+    "protocol": "6",
+    "platforms": ["linux_amd64", "linux_arm64", "darwin_amd64", "darwin_arm64", "windows_amd64", "windows_arm64"]
+  },
+  "policy_schema": "v1",
+  "artifact_schema": "v1"
+}
