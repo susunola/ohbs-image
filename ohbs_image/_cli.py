@@ -87,6 +87,7 @@ from ._state import (
     cmd_state_verify,
 )
 from ._try import cmd_try
+from ._worker import cmd_worker_run
 
 # Roadmap D-91 — commands grouped by lifecycle in --help output.
 # Roadmap (verify/cleanup convergence) — `verify` and `cleanup` are now
@@ -99,7 +100,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "serve", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -612,6 +613,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_event_process.add_argument("--actor", default="event-controller")
     p_event_process.add_argument("--output", choices=["text", "json"], default="text")
     p_event_process.set_defaults(func=cmd_event_process)
+
+    p_worker = sub.add_parser("worker", help="Process queued rebuild requests")
+    worker_sub = p_worker.add_subparsers(dest="worker_command")
+    p_worker_run = worker_sub.add_parser("run", help="Run the fenced rebuild worker")
+    p_worker_run.add_argument("--handler", required=True,
+                              help="Command that reads request JSON and returns result JSON")
+    p_worker_run.add_argument("--apply", action="store_true",
+                              help="Claim and execute requests (default: dry-run)")
+    p_worker_run.add_argument("--once", action="store_true")
+    p_worker_run.add_argument("--worker-id", default="")
+    p_worker_run.add_argument("--max-attempts", type=int, default=3)
+    p_worker_run.add_argument("--lease-seconds", type=int, default=900)
+    p_worker_run.add_argument("--retry-delay-seconds", type=int, default=60)
+    p_worker_run.add_argument("--poll-seconds", type=float, default=5.0)
+    p_worker_run.add_argument("--timeout", type=int, default=7200)
+    p_worker_run.set_defaults(func=cmd_worker_run)
 
     p_serve = sub.add_parser("serve", help="Run the authenticated HTTP control plane")
     p_serve.add_argument("--host", default="127.0.0.1")

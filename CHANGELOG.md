@@ -8,6 +8,10 @@ can be traced across rebuilds.
 ## [Unreleased]
 
 ### Added
+- **Leased rebuild Worker** — queued rebuild requests can now be claimed with
+  expiring leases, recovered after worker loss, retried with exponential delay,
+  and moved to a dead-letter state. A strict handler result requires successful
+  build, policy, distribution, and promotion stages before completion.
 - **Control-plane query API v1** — the authenticated service now exposes
   paginated Artifact and Run queries, Run detail, Bucket-scoped descendants
   and impact analysis, rebuild-request queues, and public health endpoints;

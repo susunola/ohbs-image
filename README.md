@@ -283,6 +283,8 @@ ohbs-image ancestry link CHILD PARENT [--external]     # add a derived-from edge
 ohbs-image ancestry verify [--output json]             # cycles and malformed edges
 ohbs-image event process rebuild-event.json            # dry-run impact + rebuild plan
 ohbs-image event process rebuild-event.json --apply    # quarantine + rollback + queued requests
+ohbs-image worker run --handler ./rebuild-handler --once        # dry-run queue inspection
+ohbs-image worker run --handler ./rebuild-handler --once --apply # lease + retry + dead-letter
 ohbs-image serve --rbac rbac.json                      # API + Web Console at http://127.0.0.1:8181/
 
 The service exposes public health checks at `/healthz` and `/api/v1/health`.
