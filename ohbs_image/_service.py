@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import socket
+import tempfile
 import time
 from collections import deque
 from datetime import UTC, datetime
@@ -22,7 +23,8 @@ from ._distribution import execute_distribution
 from ._identity import IdentityError, verify_oidc_token
 from ._logging import fail, info
 from ._metrics import collect_metrics, prometheus_metrics
-from ._policy_registry import list_policies, resolve_policy
+from ._policy_lifecycle import diff_policy, preview_exceptions
+from ._policy_registry import list_policies, publish_policy, resolve_policy
 from ._policy_simulation import simulate_policy
 from ._rebuild_events import EVENT_SCHEMA, process_rebuild_event
 from ._registry import _database, _hash, _read_object, change_artifact_status, get_artifact, put_artifact
@@ -469,6 +471,56 @@ class ControlPlane:
                 self._audit(principal, "policy.simulate",
                             str(candidate.get("policy_id") or "candidate"), "allowed")
                 return self._json(200, result)
+            if method == "POST" and route in (["policies", "diff"],
+                                               ["policies", "exceptions", "preview"]):
+                self._authorize(principal, "viewer")
+                payload = json.loads(body.decode("utf-8"))
+                candidate = payload.get("bundle") if isinstance(payload, dict) else None
+                if not isinstance(candidate, dict):
+                    raise ValueError("policy bundle must be an object")
+                baseline = None
+                try:
+                    record = resolve_policy(str(candidate.get("policy_id") or ""),
+                                            root=self.root / "policy_registry")
+                    value = record.get("bundle")
+                    baseline = value if isinstance(value, dict) else None
+                except ValueError:
+                    pass
+                if route[-1] == "diff":
+                    return self._json(200, diff_policy(candidate, baseline))
+                _count, artifacts = _database(self.root / "registry").search_artifacts(limit=1000)
+                artifacts = [artifact for artifact in artifacts
+                             if self._visible(principal, artifact.get("bucket"))]
+                environment = str(payload.get("environment") or "production")
+                return self._json(200, preview_exceptions(
+                    candidate, artifacts, environment,
+                    warning_days=int(payload.get("warning_days", 30))))
+            if method == "POST" and route == ["policies", "publish"]:
+                self._authorize(principal, "promoter")
+                payload = json.loads(body.decode("utf-8"))
+                candidate = payload.get("bundle") if isinstance(payload, dict) else None
+                if not isinstance(candidate, dict):
+                    raise ValueError("policy bundle must be an object")
+                diff_policy(candidate, None)
+                trust = candidate.get("trust")
+                if isinstance(trust, dict) and trust.get("require_signature"):
+                    raise ValueError(
+                        "signed policies must be published with the CLI detached-signature workflow")
+                operation = {"bundle": candidate, "activate": bool(payload.get("activate", True))}
+                resource = f"{candidate.get('policy_id')}@{candidate.get('version')}"
+                approval_id = (headers or {}).get("Approval-Id", "")
+                if not approval_id:
+                    raise AuthorizationError("Approval-Id is required for policy publication")
+                consume_approval(self.root, approval_id, action="policy.publish",
+                                 resource=resource, payload=operation)
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".json", encoding="utf-8") as handle:
+                    json.dump(candidate, handle, ensure_ascii=False)
+                    handle.flush()
+                    record = publish_policy(
+                        Path(handle.name), actor=str(principal.get("subject") or "unknown"),
+                        activate=operation["activate"], root=self.root / "policy_registry")
+                self._audit(principal, "policy.publish", resource, "allowed")
+                return self._json(201, record)
             if method == "GET" and route == ["traces"]:
                 self._authorize(principal, "viewer")
                 query = parse_qs(parsed.query)

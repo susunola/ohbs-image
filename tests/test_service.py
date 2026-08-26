@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 
 from ohbs_image._ancestry import link_parent
+from ohbs_image._approvals import approve, create_approval
 from ohbs_image._cli import build_parser
 from ohbs_image._policy import POLICY_SCHEMA
-from ohbs_image._policy_registry import publish_policy
+from ohbs_image._policy_registry import publish_policy, resolve_policy
 from ohbs_image._registry import ARTIFACT_SCHEMA, _hash, register_release
 from ohbs_image._service import ControlPlane
 
@@ -90,8 +91,11 @@ def test_console_includes_visual_run_and_lineage_analysis(tmp_path):
     assert status == 200
     assert b".timeline-step" in style
     assert b".lineage-node" in style
-    assert b"Simulate impact" in script
+    page = service.dispatch("GET", "/console", "")[2]
+    assert b"Simulate impact" in page
     assert b".simulation-grid" in style
+    assert b"Candidate policy studio" in page
+    assert b"Request publication" in page
 
 
 def test_policy_simulation_is_scoped_and_does_not_record_decisions(tmp_path):
@@ -116,6 +120,36 @@ def test_policy_simulation_is_scoped_and_does_not_record_decisions(tmp_path):
     status, _, body = service.dispatch(
         "POST", "/api/v1/policies/simulate", "Bearer wrong-bucket", body=payload)
     assert status == 200 and json.loads(body)["artifact_count"] == 0
+
+
+def test_policy_diff_exception_preview_and_approval_gated_publish(tmp_path):
+    service = _service(tmp_path)
+    active = {"schema": POLICY_SCHEMA, "policy_id": "production", "version": "1",
+        "defaults": {"allowed_status": ["active"], "min_score": 0},
+        "environments": {}, "exceptions": []}
+    source = tmp_path / "active.json"
+    source.write_text(json.dumps(active), encoding="utf-8")
+    publish_policy(source, actor="seed", activate=True, root=tmp_path / "policy_registry")
+    candidate = {**active, "version": "2",
+                 "defaults": {"allowed_status": ["active"], "min_score": 90}}
+    payload = {"bundle": candidate, "environment": "production"}
+    status, _, body = service.dispatch("POST", "/api/v1/policies/diff", "Bearer view-token",
+                                       body=json.dumps(payload).encode())
+    assert status == 200 and json.loads(body)["change_count"] == 2
+    status, _, body = service.dispatch(
+        "POST", "/api/v1/policies/exceptions/preview", "Bearer view-token",
+        body=json.dumps(payload).encode())
+    assert status == 200 and json.loads(body)["dry_run"] is True
+    operation = {"bundle": candidate, "activate": True}
+    approval = create_approval(tmp_path, requester="release", action="policy.publish",
+                               resource="production@2", payload=operation, required=2)
+    approve(tmp_path, approval["approval_id"], approver="security-a")
+    approve(tmp_path, approval["approval_id"], approver="security-b")
+    status, _, body = service.dispatch(
+        "POST", "/api/v1/policies/publish", "Bearer admin-token",
+        body=json.dumps(operation).encode(), headers={"Approval-Id": approval["approval_id"]})
+    assert status == 201 and json.loads(body)["status"] == "active"
+    assert resolve_policy("production", root=tmp_path / "policy_registry")["version"] == "2"
 
 
 def test_service_default_port_is_8181():
