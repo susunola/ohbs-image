@@ -636,6 +636,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--rbac", required=True, help="Bearer-token RBAC JSON configuration")
     p_serve.add_argument("--allow-remote", action="store_true",
                          help="Allow non-loopback listen (put behind TLS)")
+    p_serve.add_argument("--max-body-bytes", type=int, default=1_048_576)
+    p_serve.add_argument("--request-timeout", type=int, default=30)
+    p_serve.add_argument("--rate-limit", type=int, default=120,
+                         help="Authenticated requests per token per window; 0 disables")
+    p_serve.add_argument("--rate-window-seconds", type=int, default=60)
     p_serve.set_defaults(func=cmd_serve)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")

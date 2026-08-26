@@ -33,6 +33,34 @@ def test_health_is_public(tmp_path):
     service = _service(tmp_path)
     status, _kind, body = service.dispatch("GET", "/healthz", "")
     assert status == 200 and json.loads(body)["status"] == "ok"
+    status, _kind, body = service.dispatch("GET", "/readyz", "")
+    assert status == 200 and json.loads(body)["status"] == "ready"
+
+
+def test_rate_limit_returns_stable_problem(tmp_path):
+    service = _service(tmp_path)
+    service.rate_limit = 1
+    status, _, _ = service.dispatch("GET", "/api/v1/artifacts", "Bearer view-token")
+    assert status == 200
+    status, _, body = service.dispatch("GET", "/api/v1/artifacts", "Bearer view-token")
+    assert status == 429
+    assert json.loads(body)["error"]["code"] == "rate_limited"
+
+
+def test_rbac_hot_reload_and_token_expiry(tmp_path):
+    service = _service(tmp_path)
+    rbac = tmp_path / "rbac.json"
+    value = json.loads(rbac.read_text(encoding="utf-8"))
+    value["tokens"]["expired"] = {"subject": "old", "roles": ["viewer"],
+        "buckets": ["rhel10"], "expires_at": "2020-01-01T00:00:00Z"}
+    value["tokens"]["new-token"] = {"subject": "new", "roles": ["viewer"],
+        "buckets": ["rhel10"]}
+    rbac.write_text(json.dumps(value), encoding="utf-8")
+    service._rbac_mtime_ns = -1
+    status, _, _ = service.dispatch("GET", "/api/v1/artifacts", "Bearer new-token")
+    assert status == 200
+    status, _, body = service.dispatch("GET", "/api/v1/artifacts", "Bearer expired")
+    assert status == 403 and "expired" in body.decode()
 
 
 def test_console_assets_are_public_but_contain_no_credentials(tmp_path):

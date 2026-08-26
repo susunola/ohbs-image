@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import hmac
 import json
+import socket
+import time
+from collections import deque
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -25,28 +29,66 @@ class AuthorizationError(ValueError):
 
 
 class ControlPlane:
-    def __init__(self, root: Path, rbac_path: Path) -> None:
+    def __init__(self, root: Path, rbac_path: Path, *, rate_limit: int = 120,
+                 rate_window_seconds: int = 60) -> None:
         self.root = root
+        self.rbac_path = rbac_path
+        self.rate_limit = rate_limit
+        self.rate_window_seconds = rate_window_seconds
+        self._requests: dict[str, deque[float]] = {}
+        self._rbac_mtime_ns = -1
+        self.tokens: dict[str, dict[str, Any]] = {}
+        self._load_rbac(force=True)
+
+    def _load_rbac(self, *, force: bool = False) -> None:
         try:
-            rbac = json.loads(rbac_path.read_text(encoding="utf-8"))
+            mtime_ns = self.rbac_path.stat().st_mtime_ns
+            if not force and mtime_ns == self._rbac_mtime_ns:
+                return
+            rbac = json.loads(self.rbac_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            raise ValueError(f"invalid RBAC configuration {rbac_path}") from exc
+            raise ValueError(f"invalid RBAC configuration {self.rbac_path}") from exc
         tokens = rbac.get("tokens") if isinstance(rbac, dict) else None
         if not isinstance(tokens, dict) or not tokens:
             raise ValueError("RBAC configuration requires a non-empty tokens object")
-        self.tokens: dict[str, dict[str, Any]] = {
+        self.tokens = {
             str(token): principal for token, principal in tokens.items()
             if isinstance(principal, dict)}
+        self._rbac_mtime_ns = mtime_ns
 
     def principal(self, authorization: str) -> dict[str, Any]:
+        self._load_rbac()
         prefix = "Bearer "
         if not authorization.startswith(prefix):
             raise AuthorizationError("missing bearer token")
         supplied = authorization[len(prefix):]
         for token, principal in self.tokens.items():
             if hmac.compare_digest(supplied, token):
+                expires_at = principal.get("expires_at")
+                if expires_at:
+                    try:
+                        expires = datetime.fromisoformat(
+                            str(expires_at).replace("Z", "+00:00"))
+                    except ValueError as exc:
+                        raise AuthorizationError("token expiry is invalid") from exc
+                    if expires <= datetime.now(UTC):
+                        raise AuthorizationError("token expired")
                 return principal
         raise AuthorizationError("invalid bearer token")
+
+    def _rate_allowed(self, authorization: str) -> bool:
+        if self.rate_limit <= 0:
+            return True
+        key = hashlib.sha256(authorization.encode()).hexdigest()
+        now = time.monotonic()
+        window = self._requests.setdefault(key, deque())
+        cutoff = now - self.rate_window_seconds
+        while window and window[0] <= cutoff:
+            window.popleft()
+        if len(window) >= self.rate_limit:
+            return False
+        window.append(now)
+        return True
 
     @staticmethod
     def _authorize(principal: dict[str, Any], role: str, bucket: str | None = None) -> None:
@@ -115,6 +157,14 @@ class ControlPlane:
                 return 200, "text/javascript; charset=utf-8", CONSOLE_JS
             if method == "GET" and parsed.path in {"/healthz", "/api/v1/health"}:
                 return self._json(200, {"status": "ok", "service": "ohbs-image"})
+            if method == "GET" and parsed.path in {"/readyz", "/api/v1/ready"}:
+                self._load_rbac()
+                ready = self.root.exists() and self.root.is_dir()
+                return self._json(200 if ready else 503, {
+                    "status": "ready" if ready else "not_ready",
+                    "service": "ohbs-image"})
+            if not self._rate_allowed(authorization):
+                return self._error(429, "rate_limited", "request rate limit exceeded")
             principal = self.principal(authorization)
             parts = [part for part in parsed.path.split("/") if part]
             if parts[:2] != ["api", "v1"]:
@@ -246,16 +296,30 @@ class ControlPlane:
         return cls._json(status, {"error": {"code": code, "message": message}})
 
 
-def serve_control_plane(host: str, port: int, root: Path, rbac_path: Path) -> None:
-    control = ControlPlane(root, rbac_path)
+def serve_control_plane(host: str, port: int, root: Path, rbac_path: Path, *,
+                        max_body_bytes: int = 1_048_576, request_timeout: int = 30,
+                        rate_limit: int = 120, rate_window_seconds: int = 60) -> None:
+    control = ControlPlane(root, rbac_path, rate_limit=rate_limit,
+                           rate_window_seconds=rate_window_seconds)
 
     class Handler(BaseHTTPRequestHandler):
         def _dispatch(self) -> None:
+            started = time.monotonic()
+            self.connection.settimeout(request_timeout)
             length = int(self.headers.get("Content-Length", "0"))
+            if length > max_body_bytes:
+                status, content_type, response = control._error(
+                    413, "payload_too_large", "request body exceeds configured limit")
+                self._respond(status, content_type, response, started)
+                return
             body = self.rfile.read(length) if length else b""
             status, content_type, response = control.dispatch(
                 self.command, self.path, self.headers.get("Authorization", ""), body=body,
                 headers=dict(self.headers.items()))
+            self._respond(status, content_type, response, started)
+
+        def _respond(self, status: int, content_type: str, response: bytes,
+                     started: float) -> None:
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(response)))
@@ -265,6 +329,12 @@ def serve_control_plane(host: str, port: int, root: Path, rbac_path: Path) -> No
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(response)
+            access = {"timestamp": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                      "method": self.command, "path": self.path.split("?", 1)[0],
+                      "status": status,
+                      "duration_ms": round((time.monotonic() - started) * 1000, 3),
+                      "remote": self.client_address[0]}
+            info(json.dumps(access, separators=(",", ":")))
 
         def do_GET(self) -> None:  # noqa: N802
             self._dispatch()
@@ -275,7 +345,9 @@ def serve_control_plane(host: str, port: int, root: Path, rbac_path: Path) -> No
         def log_message(self, format: str, *args: object) -> None:
             return
 
-    ThreadingHTTPServer((host, port), Handler).serve_forever()
+    server = ThreadingHTTPServer((host, port), Handler)
+    server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.serve_forever()
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
@@ -285,7 +357,11 @@ def cmd_serve(args: argparse.Namespace) -> int:
     root = _lineage_path().parent
     try:
         info(f"Control plane listening on http://{args.host}:{args.port}/api/v1")
-        serve_control_plane(args.host, args.port, root, Path(args.rbac))
+        serve_control_plane(args.host, args.port, root, Path(args.rbac),
+                            max_body_bytes=args.max_body_bytes,
+                            request_timeout=args.request_timeout,
+                            rate_limit=args.rate_limit,
+                            rate_window_seconds=args.rate_window_seconds)
     except (OSError, ValueError) as exc:
         fail(str(exc))
         return 2

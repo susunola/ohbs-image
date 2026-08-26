@@ -11,6 +11,16 @@ groups:
         for: 15m
         labels: {severity: warning}
         annotations: {summary: "Golden-image builds are failing"}
+      - alert: OhbsImageFastBurn
+        expr: avg_over_time(ohbs_image_run_success_ratio[5m]) < 0.90 and avg_over_time(ohbs_image_run_success_ratio[1h]) < 0.98
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Golden-image success SLO is burning rapidly"}
+      - alert: OhbsImageSlowBurn
+        expr: avg_over_time(ohbs_image_run_success_ratio[30m]) < 0.97 and avg_over_time(ohbs_image_run_success_ratio[6h]) < 0.98
+        for: 30m
+        labels: {severity: warning}
+        annotations: {summary: "Golden-image success SLO is burning persistently"}
       - alert: OhbsImageReplicaFailure
         expr: 'ohbs_image_replicas{status="failed"} > 0'
         for: 10m
