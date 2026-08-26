@@ -62,6 +62,12 @@ from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._metrics import cmd_report_metrics
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._policy import cmd_policy_check, cmd_policy_verify
+from ._policy_registry import (
+    cmd_policy_list,
+    cmd_policy_publish,
+    cmd_policy_resolve,
+    cmd_policy_revoke,
+)
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._quickstart import cmd_quickstart
 from ._rebuild_events import cmd_event_process
@@ -591,6 +597,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_policy_check.add_argument("--environment", required=True)
     p_policy_check.add_argument("--output", choices=["text", "json"], default="text")
     p_policy_check.set_defaults(func=cmd_policy_check)
+    p_policy_publish = policy_sub.add_parser("publish", help="Publish an immutable policy version")
+    p_policy_publish.add_argument("bundle")
+    p_policy_publish.add_argument("--actor", required=True)
+    p_policy_publish.add_argument("--activate", action="store_true")
+    p_policy_publish.set_defaults(func=cmd_policy_publish)
+    p_policy_resolve = policy_sub.add_parser("resolve", help="Resolve an active or pinned policy")
+    p_policy_resolve.add_argument("policy_id")
+    p_policy_resolve.add_argument("--version", default="")
+    p_policy_resolve.set_defaults(func=cmd_policy_resolve)
+    p_policy_list = policy_sub.add_parser("list", help="List registered policy versions")
+    p_policy_list.set_defaults(func=cmd_policy_list)
+    p_policy_revoke = policy_sub.add_parser("revoke", help="Revoke a policy version")
+    p_policy_revoke.add_argument("policy_id")
+    p_policy_revoke.add_argument("version")
+    p_policy_revoke.add_argument("--actor", required=True)
+    p_policy_revoke.add_argument("--reason", required=True)
+    p_policy_revoke.set_defaults(func=cmd_policy_revoke)
 
     p_consumer = sub.add_parser("consumer", help="Resolve deployable images for CI, Terraform and OPA")
     consumer_sub = p_consumer.add_subparsers(dest="consumer_command")
