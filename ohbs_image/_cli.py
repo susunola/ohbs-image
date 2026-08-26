@@ -50,7 +50,12 @@ from ._config_tools import (
 )
 from ._consumer import cmd_consumer_resolve
 from ._discover import cmd_discover
-from ._distribution import cmd_distribution_plan, cmd_distribution_record
+from ._distribution import (
+    cmd_distribution_execute,
+    cmd_distribution_plan,
+    cmd_distribution_reconcile,
+    cmd_distribution_record,
+)
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
@@ -573,6 +578,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_dist_record.add_argument("--replica-id", required=True)
     p_dist_record.add_argument("--operation-id", help="Idempotency key for safe worker retries")
     p_dist_record.set_defaults(func=cmd_distribution_record)
+    p_dist_execute = distribution_sub.add_parser(
+        "execute", help="Plan replication, or explicitly start cloud copies")
+    p_dist_execute.add_argument("artifact_id")
+    p_dist_execute.add_argument("--region", action="append", required=True)
+    p_dist_execute.add_argument("--apply", action="store_true",
+                                help="Call SyncImages (default: dry-run)")
+    p_dist_execute.add_argument("--output", choices=["text", "json"], default="text")
+    p_dist_execute.set_defaults(func=cmd_distribution_execute)
+    p_dist_reconcile = distribution_sub.add_parser(
+        "reconcile", help="Converge pending replicas using DescribeImages")
+    p_dist_reconcile.add_argument("artifact_id")
+    p_dist_reconcile.add_argument("--timeout-minutes", type=int, default=60)
+    p_dist_reconcile.add_argument("--output", choices=["text", "json"], default="text")
+    p_dist_reconcile.set_defaults(func=cmd_distribution_reconcile)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")
