@@ -211,6 +211,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_qs.add_argument("--security-group", default="")
     p_qs.add_argument("--instance-type", default="",
                       help="Override the auto-selected instance type")
+    p_qs.add_argument("--ingress-cidr", default="",
+                      help="Runner public IPv4/CIDR allowed to reach SSH/WinRM; "
+                           "required when provisioning temporary networking")
     p_qs.add_argument("--dry-run", action="store_true",
                       help="Read-only: print the plan, create nothing")
     p_qs.add_argument("--yes", action="store_true",

@@ -35,9 +35,9 @@ jobs:
     # Outside github.workspace: checkout's default clean step removes
     # untracked files, while this state root keeps fingerprints/evidence for
     # the next scheduled run on the same private runner.
-    env:
-      OHBS_IMAGE_STATE_DIR: ${{ runner.tool_cache }}/ohbs-image-state
     steps:
+      - name: Configure persistent evidence state
+        run: echo "OHBS_IMAGE_STATE_DIR=$RUNNER_TOOL_CACHE/ohbs-image-state" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
@@ -106,6 +106,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: ohbs-image-evidence-${{ github.run_id }}
-          path: ${{ runner.tool_cache }}/ohbs-image-state
+          path: ${{ env.OHBS_IMAGE_STATE_DIR }}
           if-no-files-found: warn
           retention-days: 90

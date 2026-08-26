@@ -44,7 +44,6 @@ jobs:
       CANARY_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'tencentos3' }}
       CANARY_LEVEL: ${{ github.event_name == 'workflow_dispatch' && inputs.level || '1' }}
       CANARY_BUILD_INSTANCE_TYPE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_instance_type || 'SA5.MEDIUM2' }}
-      OHBS_IMAGE_STATE_DIR: ${{ runner.temp }}/ohbs-image-canary-state
       E2E_TARGET_REGION: ${{ secrets.TC_E2E_REGION }}
       E2E_TARGET_ZONE: ${{ secrets.TC_E2E_ZONE }}
       E2E_TARGET_VPC_ID: ${{ secrets.TC_E2E_VPC_ID }}
@@ -52,6 +51,8 @@ jobs:
       E2E_TARGET_SG_ID: ${{ secrets.TC_E2E_SG_ID }}
       WINRM_PASSWORD: ${{ secrets.TC_E2E_WINRM_PASSWORD }}
     steps:
+      - name: Configure ephemeral evidence state
+        run: echo "OHBS_IMAGE_STATE_DIR=$RUNNER_TEMP/ohbs-image-canary-state" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -92,6 +93,6 @@ jobs:
           name: cloud-canary-${{ env.CANARY_PROFILE }}-${{ github.run_id }}
           path: |
             logs
-            ${{ runner.temp }}/ohbs-image-canary-state
+            ${{ env.OHBS_IMAGE_STATE_DIR }}
           retention-days: 90
           if-no-files-found: warn

@@ -7,6 +7,22 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Security
+- **Quickstart networking is source-restricted by default** — provisioning
+  temporary networking now requires an explicit `--ingress-cidr`, normalizes
+  single IPv4 addresses to `/32`, and refuses internet-wide `0.0.0.0/0`
+  access to SSH or WinRM.
+
+### Fixed
+- **Quickstart provisioning is transactional** — every created VPC resource
+  is recorded immediately and a later provisioning failure rolls resources
+  back in reverse dependency order, retaining the record when cleanup needs
+  a retry.
+- **Cloud workflows start jobs again** — `build-image`, `real-e2e`, and
+  `cloud-canary` no longer reference the unavailable `runner.*` context from
+  job-level environment configuration; state paths are initialized through
+  `GITHUB_ENV` after the runner starts.
+
 ## [0.19.1] - 2026-08-25
 
 ### Fixed (Python 3.14 compatibility)

@@ -13,14 +13,17 @@ Everything quickstart creates is tagged ``managed_by=ohbs-image`` /
 Usage (all cloud calls are read-only except the explicit provisioning
 Create* actions and the --cleanup Delete* actions):
 
-    ohbs-image quickstart --region ap-guangzhou --profile ubuntu2204
-    ohbs-image quickstart --region ap-guangzhou --profile ubuntu2204 --dry-run
+    ohbs-image quickstart --region ap-guangzhou --profile ubuntu2204 \
+        --ingress-cidr 203.0.113.10/32
+    ohbs-image quickstart --region ap-guangzhou --profile ubuntu2204 \
+        --ingress-cidr 203.0.113.10/32 --dry-run
     ohbs-image quickstart --cleanup
 """
 
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import time
 from pathlib import Path
@@ -131,16 +134,29 @@ def _create_subnet(region: str, zone: str, vpc_id: str,
     return str(raw["Response"]["Subnet"]["SubnetId"])
 
 
-def _security_group_ingress(profile: str) -> list[dict[str, Any]]:
+def _normalize_ingress_cidr(value: str) -> str:
+    """Return one explicit IPv4 network; refuse internet-wide ingress."""
+    try:
+        network = ipaddress.ip_network(value, strict=False)
+    except ValueError as exc:
+        raise ConfigError(f"invalid --ingress-cidr {value!r}: {exc}") from exc
+    if network.version != 4:
+        raise ConfigError("--ingress-cidr must be an IPv4 address or CIDR")
+    if network.prefixlen == 0:
+        raise ConfigError("--ingress-cidr must not expose the build ports to 0.0.0.0/0")
+    return str(network)
+
+
+def _security_group_ingress(profile: str, cidr: str) -> list[dict[str, Any]]:
     """Minimal packer-facing ingress: SSH 22 (Linux) / WinRM 5985-5986 (Windows)."""
     family = PROFILES[profile].get("family", "")
     ports = ["5985", "5986"] if family == "windows" else ["22"]
-    return [{"Protocol": "TCP", "Port": port, "CidrBlock": "0.0.0.0/0",
+    return [{"Protocol": "TCP", "Port": port, "CidrBlock": cidr,
              "Action": "ACCEPT"} for port in ports]
 
 
-def _create_security_group(region: str, profile: str,
-                           sid: str, key: str, tok: str | None) -> str:
+def _create_security_group(region: str, sid: str, key: str,
+                           tok: str | None) -> str:
     raw = ohbs_image._tc3_api("vpc", "CreateSecurityGroup", "2017-03-12",
                               region, {
                                   "GroupName": "ohbs-image-quickstart",
@@ -149,14 +165,17 @@ def _create_security_group(region: str, profile: str,
                                                       "quickstart",
                                   "Tags": _QS_TAGS,
                               }, sid, key, tok)
-    sg = str(raw["Response"]["SecurityGroup"]["SecurityGroupId"])
+    return str(raw["Response"]["SecurityGroup"]["SecurityGroupId"])
+
+
+def _configure_security_group(region: str, sg: str, profile: str, cidr: str,
+                              sid: str, key: str, tok: str | None) -> None:
     ohbs_image._tc3_api("vpc", "CreateSecurityGroupPolicies", "2017-03-12",
                         region, {
                             "SecurityGroupId": sg,
                             "SecurityGroupPolicySet": {
-                                "Ingress": _security_group_ingress(profile)},
+                                "Ingress": _security_group_ingress(profile, cidr)},
                         }, sid, key, tok)
-    return sg
 
 
 def _resource_path(target: Path) -> Path:
@@ -172,6 +191,7 @@ def _record_resources(target: Path, region: str,
         "resources": resources,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
+    _resource_path(target).parent.mkdir(parents=True, exist_ok=True)
     _resource_path(target).write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8")
@@ -247,6 +267,18 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
         fail("--vpc, --subnet and --security-group must be given all together "
              "(reuse existing networking) or not at all (provision temporary ones)")
         return 2
+    ingress_cidr = ""
+    if provided == 0:
+        raw_cidr = str(getattr(args, "ingress_cidr", "")).strip()
+        if not raw_cidr:
+            fail("--ingress-cidr is required when quickstart creates a security group "
+                 "(use your runner's public IPv4 address with /32)")
+            return 2
+        try:
+            ingress_cidr = _normalize_ingress_cidr(raw_cidr)
+        except ConfigError as exc:
+            fail(str(exc))
+            return 2
     try:
         sid, key, tok = _creds()
     except ConfigError as exc:
@@ -270,17 +302,27 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
             if not vpc:
                 vpc = _create_vpc(region, sid, key, tok)
                 created["vpc_id"] = vpc
+                _record_resources(target, region, created)
                 info(f"Created temporary VPC: {vpc}")
             if not subnet:
                 subnet = _create_subnet(region, zone, vpc, sid, key, tok)
                 created["subnet_id"] = subnet
+                _record_resources(target, region, created)
                 info(f"Created temporary subnet: {subnet}")
             if not sg:
-                sg = _create_security_group(region, profile, sid, key, tok)
+                sg = _create_security_group(region, sid, key, tok)
                 created["security_group_id"] = sg
+                _record_resources(target, region, created)
+                _configure_security_group(region, sg, profile, ingress_cidr,
+                                          sid, key, tok)
                 info(f"Created temporary security group: {sg}")
         except ConfigError as exc:
             fail(f"Provisioning failed: {exc}")
+            if created:
+                warn("Rolling back resources created by this quickstart")
+                if _cmd_cleanup(target) != 0:
+                    warn(f"Rollback incomplete; retry: ohbs-image quickstart --target "
+                         f"{target} --cleanup")
             return 1
 
     info(f"Zone:            {zone}")

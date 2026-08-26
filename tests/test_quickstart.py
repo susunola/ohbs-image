@@ -11,7 +11,9 @@ from pathlib import Path
 
 import pytest
 
+from ohbs_image import ConfigError
 from ohbs_image._quickstart import (
+    _normalize_ingress_cidr,
     _resource_path,
     _security_group_ingress,
     _vpc_cidr_for,
@@ -26,6 +28,7 @@ def _args(target: str, **overrides: object) -> argparse.Namespace:
         "profile": "ubuntu2204", "region": "ap-guangzhou", "zone": "",
         "level": 1, "target": target, "force": False,
         "vpc": "", "subnet": "", "security_group": "", "instance_type": "",
+        "ingress_cidr": "203.0.113.7/32",
         "dry_run": False, "yes": False, "cleanup": False,
     }
     base.update(overrides)
@@ -130,7 +133,7 @@ class TestQuickstartProvision:
         assert len(policies) == 1
         assert policies[0]["SecurityGroupPolicySet"]["Ingress"] == [
             {"Protocol": "TCP", "Port": "22",
-             "CidrBlock": "0.0.0.0/0", "Action": "ACCEPT"}]
+             "CidrBlock": "203.0.113.7/32", "Action": "ACCEPT"}]
 
     def test_dry_run_creates_nothing(self, tmp_path, monkeypatch):
         cloud = _FakeCloud()
@@ -173,6 +176,12 @@ class TestQuickstartProvision:
         assert cmd_quickstart(
             _args(str(tmp_path / "ohbs-image.toml"), vpc="vpc-x")) == 2
 
+    def test_requires_scoped_ingress_for_created_networking(self, tmp_path,
+                                                            monkeypatch):
+        _set_creds(monkeypatch)
+        assert cmd_quickstart(_args(str(tmp_path / "ohbs-image.toml"),
+                                    ingress_cidr="")) == 2
+
     def test_requires_credentials(self, tmp_path, monkeypatch):
         monkeypatch.delenv("TENCENTCLOUD_SECRET_ID", raising=False)
         monkeypatch.delenv("TENCENTCLOUD_SECRET_KEY", raising=False)
@@ -204,10 +213,37 @@ class TestQuickstartProvision:
         assert chain[-1] == ["build", "--config", str(target), "--yes"]
 
     def test_windows_profile_opens_winrm_ports(self):
-        assert [p["Port"] for p in _security_group_ingress("win2022")] \
+        assert [p["Port"] for p in _security_group_ingress(
+            "win2022", "10.0.0.0/8")] \
             == ["5985", "5986"]
-        assert [p["Port"] for p in _security_group_ingress("ubuntu2204")] \
+        assert [p["Port"] for p in _security_group_ingress(
+            "ubuntu2204", "10.0.0.0/8")] \
             == ["22"]
+
+    def test_ingress_cidr_is_normalized_and_world_open_is_rejected(self):
+        assert _normalize_ingress_cidr("203.0.113.7") == "203.0.113.7/32"
+        with pytest.raises(ConfigError, match="0.0.0.0/0"):
+            _normalize_ingress_cidr("0.0.0.0/0")
+
+    def test_provisioning_failure_rolls_back_recorded_resources(self, tmp_path,
+                                                               monkeypatch):
+        cloud = _FakeCloud()
+
+        def fail_after_vpc(service, action, version, region, params, sid, key,
+                           tok=None):
+            if action == "CreateSubnet":
+                cloud.actions.append((action, params))
+                raise ConfigError("subnet quota exhausted")
+            return cloud(service, action, version, region, params, sid, key, tok)
+
+        monkeypatch.setattr("ohbs_image._tc3_api", fail_after_vpc)
+        _patch_discovery(monkeypatch)
+        _set_creds(monkeypatch)
+        target = tmp_path / "ohbs-image.toml"
+
+        assert cmd_quickstart(_args(str(target))) == 1
+        assert [action for action, _ in cloud.actions][-1] == "DeleteVpc"
+        assert not _resource_path(target).exists()
 
     def test_vpc_cidr_is_stable_per_region(self):
         assert _vpc_cidr_for("ap-guangzhou") == _vpc_cidr_for("ap-guangzhou")
