@@ -382,9 +382,11 @@ The opt-in `.github/workflows/cloud-canary.yml` runs a weekly real-cloud
 acceptance (TencentOS 3 L1 by default) only when repository variable
 `OHBS_ENABLE_CLOUD_CANARY=true`. It is disabled by default because it creates
 billed CVMs; manual runs require explicit cost confirmation. Manual dispatch
-additionally accepts `profile` (`tencentos3` / `win2022`), `level` (1/2) and
+additionally accepts `profile` (`tencentos3` / `ubuntu2404` / `win2022`),
+`level` (1/2) and
 `build_instance_type` (default `SA5.MEDIUM2`) so a canary can be targeted
-without editing the workflow.
+without editing the workflow. Scheduled runs can rotate the representative
+profile through repository variable `OHBS_CLOUD_CANARY_PROFILE`.
 
 ## Configuration
 
@@ -956,13 +958,16 @@ reviewable runs without creating surprise cloud spend:
 - `cloud-canary` adds a weekly TencentOS 3 L1 acceptance, but its scheduled
   job remains inert until repository variable
   `OHBS_ENABLE_CLOUD_CANARY=true`. Manual runs require cost confirmation and
-  may select TencentOS 3 or Windows Server 2022. Configure
-  `TC_CANARY_TENCENTOS3_IMAGE_ID` and `TC_CANARY_WIN2022_IMAGE_ID` in the same
-  protected environment.
+  may select TencentOS 3, Ubuntu 24.04 or Windows Server 2022. Configure
+  `TC_CANARY_TENCENTOS3_IMAGE_ID`, `TC_CANARY_UBUNTU2404_IMAGE_ID` and
+  `TC_CANARY_WIN2022_IMAGE_ID` in the same protected environment.
 
-All workflows use short-lived OIDC credentials and keep their logs/evidence
-as 90-day artifacts. They are intentionally manual until the organization has
-accepted the associated cloud cost and change-control policy.
+Every acceptance run writes a portable `acceptance-result.json` plus a GitHub
+run summary containing profile, level, commit, timestamps, result and evidence
+artifact. Failed builds still publish this diagnostic record before the job is
+marked failed. All workflows use short-lived OIDC credentials and keep their
+logs/evidence as 90-day artifacts. They are intentionally manual until the
+organization has accepted the associated cloud cost and change-control policy.
 
 - **SBOM + change detection (supply chain)** — with `[meta].sbom = true` the
   build emits a zero-dependency SBOM (`/opt/ohbs-image-SBOM.jsonl`, native
