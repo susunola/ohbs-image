@@ -10,6 +10,7 @@ from ._channels import collect_channels
 from ._config import _lineage_path
 from ._registry import collect_artifacts
 from ._slo import calculate_run_slo
+from ._telemetry import TrendStore, push_otlp
 
 METRICS_SCHEMA = "https://ohbs-image.dev/metrics-snapshot/v1"
 
@@ -98,11 +99,24 @@ def otlp_metrics(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 
 def cmd_report_metrics(args: argparse.Namespace) -> int:
-    snapshot = collect_metrics(_lineage_path().parent, days=args.days)
+    root = _lineage_path().parent
+    snapshot = collect_metrics(root, days=args.days)
+    if getattr(args, "record", False):
+        TrendStore(root / "telemetry" / "trends.db").record(snapshot)
+    endpoint = getattr(args, "push", "")
+    if endpoint:
+        push_otlp(otlp_metrics(snapshot), endpoint)
     if args.format == "prometheus":
         print(prometheus_metrics(snapshot), end="")
     elif args.format == "otlp-json":
         print(json.dumps(otlp_metrics(snapshot), ensure_ascii=False, indent=2))
     else:
         print(json.dumps(snapshot, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_report_trends(args: argparse.Namespace) -> int:
+    root = _lineage_path().parent
+    rows = TrendStore(root / "telemetry" / "trends.db").query(limit=args.limit)
+    print(json.dumps({"count": len(rows), "snapshots": rows}, ensure_ascii=False, indent=2))
     return 0
