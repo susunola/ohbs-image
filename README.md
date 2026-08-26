@@ -202,6 +202,12 @@ ohbs-image --version
 
 ## Commands
 
+Cloud integrations use a versioned plugin contract. Inspect the built-in
+Tencent Cloud adapter and any installed third-party adapters with
+`ohbs-image provider list`, then validate one with
+`ohbs-image provider verify PROVIDER`. See
+[`docs/provider-plugin.md`](docs/provider-plugin.md) for the entry-point API.
+
 ### Which command should I use?
 
 Four commands overlap at first glance; they serve four different moments of
