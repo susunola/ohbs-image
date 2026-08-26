@@ -48,6 +48,7 @@ from ._config_tools import (
     cmd_config_schema,
     cmd_config_validate,
 )
+from ._consumer import cmd_consumer_resolve
 from ._discover import cmd_discover
 from ._distribution import cmd_distribution_plan, cmd_distribution_record
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
@@ -90,7 +91,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "distribution", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -544,6 +545,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_policy_check.add_argument("--environment", required=True)
     p_policy_check.add_argument("--output", choices=["text", "json"], default="text")
     p_policy_check.set_defaults(func=cmd_policy_check)
+
+    p_consumer = sub.add_parser("consumer", help="Resolve deployable images for CI, Terraform and OPA")
+    consumer_sub = p_consumer.add_subparsers(dest="consumer_command")
+    p_consumer_resolve = consumer_sub.add_parser(
+        "resolve", help="Resolve a channel and enforce an optional policy bundle")
+    p_consumer_resolve.add_argument("bucket")
+    p_consumer_resolve.add_argument("channel")
+    p_consumer_resolve.add_argument("--policy")
+    p_consumer_resolve.add_argument("--environment",
+                                    help="Policy environment (default: channel name)")
+    p_consumer_resolve.add_argument("--output", choices=["json", "terraform"], default="json")
+    p_consumer_resolve.set_defaults(func=cmd_consumer_resolve)
 
     p_distribution = sub.add_parser(
         "distribution", help="Plan cached regional replication and record replicas")
