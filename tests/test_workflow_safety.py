@@ -12,7 +12,7 @@ def test_runner_context_is_not_used_in_job_level_environment() -> None:
     Referencing it from a job-level ``env`` makes GitHub reject the workflow
     before creating any jobs, which appears as a red run with ``jobs=[]``.
     """
-    for name in ("cloud-canary.yml", "real-e2e.yml", "build-image.yml"):
+    for name in ("cloud-canary.yml", "cloud-acceptance-matrix.yml", "real-e2e.yml", "build-image.yml"):
         text = (WORKFLOWS / name).read_text(encoding="utf-8")
         assert "${{ runner.temp }}" not in text, name
         assert "${{ runner.tool_cache }}" not in text, name
@@ -45,3 +45,12 @@ def test_canary_covers_representative_linux_and_windows_profiles() -> None:
     text = (WORKFLOWS / "cloud-canary.yml").read_text(encoding="utf-8")
     for profile in ("tencentos3", "ubuntu2404", "win2022"):
         assert profile in text
+
+
+def test_cloud_matrix_is_cost_gated_bounded_and_serial() -> None:
+    text = (WORKFLOWS / "cloud-acceptance-matrix.yml").read_text(encoding="utf-8")
+    assert "OHBS_ENABLE_CLOUD_MATRIX == 'true'" in text
+    assert "inputs.confirm_cost == true" in text
+    assert "max-parallel: 1" in text
+    assert "--max-jobs" in text
+    assert "environment: cloud-e2e" in text
