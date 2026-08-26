@@ -1,0 +1,22 @@
+services:
+  console:
+    build:
+      context: ..
+      target: server
+    image: ohbs-image:local
+    command: ["serve", "--host", "0.0.0.0", "--port", "8181", "--rbac", "/run/secrets/rbac.json"]
+    ports:
+      - "127.0.0.1:8181:8181"
+    volumes:
+      - ohbs-state:/var/lib/ohbs-image
+      - ./rbac.example.json:/run/secrets/rbac.json:ro
+    environment:
+      OHBS_IMAGE_STATE_DIR: /var/lib/ohbs-image
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+
+volumes:
+  ohbs-state:

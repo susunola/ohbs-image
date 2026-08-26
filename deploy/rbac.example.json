@@ -1,0 +1,8 @@
+{
+  "tokens": {
+    "replace-with-secret-manager-token": {
+      "role": "operator",
+      "buckets": ["*"]
+    }
+  }
+}

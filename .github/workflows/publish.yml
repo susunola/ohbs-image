@@ -10,7 +10,7 @@ on:
 
 permissions:
   id-token: write             # required for trusted publishing
-  contents: read
+  contents: write
   attestations: write         # required for build provenance attestation
 
 jobs:
@@ -37,6 +37,9 @@ jobs:
       - name: Build wheel + sdist (no isolation — pinned backend above)
         run: python -m build --no-isolation
 
+      - name: Generate checksums and CycloneDX SBOM
+        run: python scripts/build_release_manifest.py dist
+
       # SLSA-style build provenance for the release artifacts themselves:
       # GitHub signs an attestation linking the wheel/sdist to this repo +
       # commit. Verify later with `gh attestation verify dist/*.whl
@@ -48,6 +51,16 @@ jobs:
           subject-path: |
             dist/*.whl
             dist/*.tar.gz
+            dist/SHA256SUMS
+            dist/sbom.cdx.json
+
+      - name: Attach immutable assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || \
+            gh release create "${GITHUB_REF_NAME}" --verify-tag --generate-notes
+          gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1, pinned 2026-08-23

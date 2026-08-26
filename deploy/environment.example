@@ -1,0 +1,7 @@
+# Install as /etc/ohbs-image/environment with mode 0600.
+OHBS_IMAGE_STATE_DIR=/var/lib/ohbs-image
+OHBS_IMAGE_RBAC_FILE=/etc/ohbs-image/rbac.json
+# Reference secrets from your secret manager; never commit token values.
+TENCENTCLOUD_SECRET_ID=
+TENCENTCLOUD_SECRET_KEY=
+TENCENTCLOUD_TOKEN=
