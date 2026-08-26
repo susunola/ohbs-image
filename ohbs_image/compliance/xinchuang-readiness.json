@@ -1,0 +1,19 @@
+{
+  "schema": "https://ohbs-image.dev/compliance-mapping/v1",
+  "profile": "xinchuang-readiness",
+  "title": "Information-technology application innovation readiness evidence",
+  "reference": "Project-specific compatibility and supply-chain readiness checklist",
+  "disclaimer": "Readiness checklist only. Xinchuang acceptance is project- and catalog-specific; this is not product certification.",
+  "controls": [
+    {"id": "XC-OS-01", "title": "国产操作系统构建覆盖", "evidence": ["domestic_os_profile"]},
+    {"id": "XC-OFFLINE-01", "title": "离线加固能力", "evidence": ["offline_payload"]},
+    {"id": "XC-SUPPLY-01", "title": "供应链来源可追溯", "evidence": ["provenance", "sbom"]},
+    {"id": "XC-INTEGRITY-01", "title": "制品完整性验证", "evidence": ["artifact_integrity", "attestation"]},
+    {"id": "XC-SEC-01", "title": "安全基线和漏洞状态", "evidence": ["compliance_score", "critical_cves"]},
+    {"id": "XC-CRYPTO-01", "title": "密码能力可替换性", "manual": true, "evidence": ["crypto_provider_validation"]},
+    {"id": "XC-HW-01", "title": "目标 CPU/服务器兼容性", "manual": true, "evidence": ["hardware_compatibility"]},
+    {"id": "XC-DB-01", "title": "依赖组件兼容清单", "manual": true, "evidence": ["dependency_compatibility"]},
+    {"id": "XC-OPS-01", "title": "部署与恢复可验证", "evidence": ["clean_boot", "recovery_verified"]},
+    {"id": "XC-AUDIT-01", "title": "变更审批与审计", "evidence": ["policy_decision", "approval_audit"]}
+  ]
+}
