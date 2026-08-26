@@ -29,6 +29,7 @@ from ._packer import (
     run_preflight,
 )
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES, SAMPLE_CONFIG
+from ._registry import register_release
 from ._reports import (
     _atomic_write_bytes,
     _find_provenance,
@@ -473,6 +474,12 @@ def cmd_build(args: argparse.Namespace) -> int:
             return 1
         if release_manifests:
             info("Release manifest -> " + ", ".join(str(path) for path in release_manifests))
+            for release_path in release_manifests:
+                try:
+                    registered = register_release(release_path)
+                    info(f"Artifact registered -> {registered}")
+                except (OSError, TypeError, ValueError) as exc:
+                    warn(f"Could not register artifact from {release_path}: {exc}")
         write_build_checkpoint(r, "release-ready", {
             "release_manifests": [str(path) for path in (release_manifests or [])],
         })

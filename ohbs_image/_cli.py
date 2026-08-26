@@ -48,6 +48,12 @@ from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._quickstart import cmd_quickstart
 from ._reconcile import cmd_state_reconcile
+from ._registry import (
+    cmd_registry_list,
+    cmd_registry_rebuild,
+    cmd_registry_show,
+    cmd_registry_verify,
+)
 from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
 from ._run_events import cmd_run_events
 from ._runs import cmd_run_list, cmd_run_show
@@ -73,7 +79,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -435,6 +441,25 @@ def build_parser() -> argparse.ArgumentParser:
     p_slo.add_argument("--days", type=int, default=30)
     p_slo.add_argument("--output", choices=["text", "json"], default="text")
     p_slo.set_defaults(func=cmd_report_slo)
+
+    p_registry = sub.add_parser("registry", help="Manage versioned golden-image artifacts")
+    registry_sub = p_registry.add_subparsers(dest="registry_command")
+    p_reg_list = registry_sub.add_parser("list", help="List registered artifacts")
+    p_reg_list.add_argument("--bucket")
+    p_reg_list.add_argument("--status", choices=["active", "revoked"])
+    p_reg_list.add_argument("--output", choices=["text", "json"], default="text")
+    p_reg_list.set_defaults(func=cmd_registry_list)
+    p_reg_show = registry_sub.add_parser("show", help="Show one artifact")
+    p_reg_show.add_argument("artifact_id")
+    p_reg_show.add_argument("--output", choices=["text", "json"], default="text")
+    p_reg_show.set_defaults(func=cmd_registry_show)
+    p_reg_rebuild = registry_sub.add_parser(
+        "rebuild", help="Rebuild registry artifacts from release evidence")
+    p_reg_rebuild.add_argument("--output", choices=["text", "json"], default="text")
+    p_reg_rebuild.set_defaults(func=cmd_registry_rebuild)
+    p_reg_verify = registry_sub.add_parser("verify", help="Verify registry hashes and identities")
+    p_reg_verify.add_argument("--output", choices=["text", "json"], default="text")
+    p_reg_verify.set_defaults(func=cmd_registry_verify)
 
     p_engine = sub.add_parser("engine", help="Inspect and verify the bundled hardening engines")
     engine_sub = p_engine.add_subparsers(dest="engine_command")
