@@ -271,6 +271,11 @@ ohbs-image registry show IMAGE_ID [--output json]
 ohbs-image registry verify [--output json]
 ohbs-image registry quarantine IMAGE_ID --reason TEXT  # isolate + auto-rollback channels
 ohbs-image registry revoke IMAGE_ID --reason TEXT      # permanent revoke + auto-rollback
+ohbs-image ancestry descendants IMAGE_ID [--output json]
+ohbs-image ancestry impact IMAGE_ID [--output json]    # artifacts + channels blast radius
+ohbs-image ancestry revoke IMAGE_ID --reason TEXT      # dry run; add --apply to cascade
+ohbs-image ancestry link CHILD PARENT [--external]     # add a derived-from edge
+ohbs-image ancestry verify [--output json]             # cycles and malformed edges
 ohbs-image channel promote PROFILE stable IMAGE_ID [--expected-generation N]  # atomic CAS pointer move
 ohbs-image channel resolve PROFILE stable [--output json]  # verify pointer + artifact integrity
 ohbs-image channel list [--bucket PROFILE] [--output json]

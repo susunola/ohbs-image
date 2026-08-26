@@ -64,6 +64,9 @@ def artifact_from_release(release: dict[str, Any], source: Path) -> dict[str, An
         "source_release": str(source),
         "evidence": release.get("evidence") if isinstance(release.get("evidence"), dict) else {},
         "labels": {"profile": profile, "region": str(release.get("region") or "")},
+        "parents": ([{"artifact_id": str(release.get("source_image_id")),
+                       "relation": "derived_from", "external": True}]
+                    if release.get("source_image_id") else []),
     }
     doc["document_hash"] = _hash(doc)
     return doc
@@ -78,6 +81,27 @@ def register_release(path: Path, root: Path | None = None) -> Path:
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     lock = _state_lock(destination)
     try:
+        existing = _read_object(destination)
+        if existing is not None and existing.get("document_hash") == _hash(existing):
+            for key in ("status_changed_at", "status_changed_by", "status_reason",
+                        "status_history", "replicas"):
+                if key in existing:
+                    doc[key] = existing[key]
+            if existing.get("status") in {"quarantined", "revoked"}:
+                doc["status"] = existing["status"]
+            raw_inherited = doc.get("parents")
+            inherited: list[Any] = list(raw_inherited) if isinstance(raw_inherited, list) else []
+            known = {str(item.get("artifact_id")) for item in inherited
+                     if isinstance(item, dict) and item.get("artifact_id")}
+            raw_existing_parents = existing.get("parents")
+            existing_parents = raw_existing_parents if isinstance(raw_existing_parents, list) else []
+            for item in existing_parents:
+                if (isinstance(item, dict) and item.get("artifact_id")
+                        and str(item["artifact_id"]) not in known):
+                    inherited.append(item)
+                    known.add(str(item["artifact_id"]))
+            doc["parents"] = inherited
+            doc["document_hash"] = _hash(doc)
         _atomic_write_bytes(destination,
                             (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").encode())
     finally:
@@ -133,6 +157,8 @@ def verify_registry(root: Path | None = None) -> list[str]:
         if identity in seen:
             failures.append(f"{artifact_id}: duplicate bucket/version {identity[0]}/{identity[1]}")
         seen.add(identity)
+    from ._ancestry import verify_ancestry
+    failures.extend(verify_ancestry(root))
     return failures
 
 
