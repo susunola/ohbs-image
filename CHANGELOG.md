@@ -8,6 +8,10 @@ can be traced across rebuilds.
 ## [Unreleased]
 
 ### Added
+- **Production service boundary** — the control plane now enforces body limits,
+  request timeouts, per-token rate limits, expiring hot-reloaded RBAC tokens,
+  readiness probes, and structured access logs. Hardened systemd/Caddy examples
+  and multi-window SLO burn alerts provide an operable TLS deployment baseline.
 - **Leased rebuild Worker** — queued rebuild requests can now be claimed with
   expiring leases, recovered after worker loss, retried with exponential delay,
   and moved to a dead-letter state. A strict handler result requires successful

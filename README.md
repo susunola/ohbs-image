@@ -292,6 +292,9 @@ Authenticated v1 endpoints include paginated Artifact and Run queries,
 Artifact impact analysis, Channel resolution/promotion, rebuild requests, and
 Prometheus metrics. Responses are filtered by the caller's authorized Buckets;
 errors use a stable `{error: {code, message}}` envelope.
+For production, use the hardened systemd and Caddy examples in `deploy/` and
+follow `docs/control-plane-production.md`; keep the application server on
+loopback and expose it only through the TLS boundary.
 ohbs-image channel promote PROFILE stable IMAGE_ID [--expected-generation N]  # atomic CAS pointer move
 ohbs-image channel promote PROFILE stable IMAGE_ID --operation-id deploy-42   # idempotent worker retry + fencing
 ohbs-image channel resolve PROFILE stable [--output json]  # verify pointer + artifact integrity

@@ -1,0 +1,22 @@
+[Unit]
+Description=ohbs-image golden image control plane
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ohbs-image
+Group=ohbs-image
+EnvironmentFile=/etc/ohbs-image/environment
+ExecStart=/opt/ohbs-image/bin/ohbs-image serve --host 127.0.0.1 --port 8181 --rbac /etc/ohbs-image/rbac.json --max-body-bytes 1048576 --request-timeout 30 --rate-limit 120 --rate-window-seconds 60
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ohbs-image
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
