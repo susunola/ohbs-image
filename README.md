@@ -263,6 +263,8 @@ ohbs-image run list [--profile P] [--status S] # unified runs across lineage, pl
 ohbs-image run show RUN_ID                    # all evidence associated with one run
 ohbs-image run events RUN_ID [--output json]  # immutable, hash-chained state timeline
 ohbs-image run resume RUN_ID [--build --yes]  # continue from the last safe launch checkpoint
+ohbs-image run checkpoints RUN_ID [--output json]  # fine-grained build phase checkpoints
+ohbs-image report slo [--days 30] [--output json]  # run success, retry and latency SLOs
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
 ohbs-image engine version                  # ohbs-image + per-family engine versions
@@ -277,6 +279,7 @@ ohbs-image state init                          # create the evidence layout (ide
 ohbs-image state prune --keep 30 [--dry-run]   # retain recent lineage, drop old per-run evidence
 ohbs-image state prune --older-than 90 [--dry-run]
 ohbs-image state sync push --backend local --location /shared/ohbs-state
+ohbs-image state reconcile [--apply] [--output json]  # expired leases + orphan resource records
 ohbs-image state sync push --backend cos --location cos://bucket/ohbs-state
 ohbs-image state sync push --backend local --location /shared/ohbs-state --check
 ohbs-image preflight                          # validate config, credentials, prerequisites

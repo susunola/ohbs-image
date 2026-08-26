@@ -22,6 +22,9 @@ class PackerResult:
 
     exit_code: int
     stdout_lines: list[str] = field(default_factory=list)
+    failure_category: str = ""
+    retryable: bool = False
+    attempts: int = 1
 
 @dataclass
 class ResolvedConfig:

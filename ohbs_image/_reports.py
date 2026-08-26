@@ -257,7 +257,8 @@ def _write_run_manifest(r: ResolvedConfig, *, status: str, phase: str,
                         lease_hours: int = 48, resource: dict[str, str] | None = None,
                         notification: str | None = None,
                         next_action: str | None = None,
-                        checkpoint: dict[str, Any] | None = None) -> Path | None:
+                        checkpoint: dict[str, Any] | None = None,
+                        event_metadata: dict[str, Any] | None = None) -> Path | None:
     """Atomically update the recoverable lifecycle record for one run."""
     if not isinstance(r, ResolvedConfig) or not r.run_id:
         return None
@@ -294,7 +295,8 @@ def _write_run_manifest(r: ResolvedConfig, *, status: str, phase: str,
             try:
                 event = append_run_event(
                     r.run_id, str(current["state"]), phase=phase,
-                    reason=next_action or notification or "", root=path.parent.parent)
+                    reason=next_action or notification or "", metadata=event_metadata,
+                    root=path.parent.parent)
                 current["event_sequence"] = event["sequence"]
                 current["event_hash"] = event["event_hash"]
                 _atomic_write_bytes(
