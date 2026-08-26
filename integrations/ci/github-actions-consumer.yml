@@ -1,0 +1,17 @@
+name: Consume approved golden image
+on: {workflow_dispatch: {}}
+permissions: {contents: read, id-token: write}
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve and enforce admission
+        env:
+          OHBS_IMAGE_STATE_DIR: ${{ github.workspace }}/state
+        run: |
+          set -euo pipefail
+          ohbs-image consumer resolve rhel10 stable --policy policy.json --environment production > admission.json
+          jq -e '.allowed == true and .artifact.status == "active"' admission.json
+      - uses: actions/upload-artifact@v4
+        with: {name: ohbs-image-admission, path: admission.json}

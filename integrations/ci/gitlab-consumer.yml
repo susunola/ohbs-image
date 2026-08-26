@@ -1,0 +1,14 @@
+stages: [admission, deploy]
+
+golden-image-admission:
+  stage: admission
+  image: python:3.13-slim
+  script:
+    - pip install --require-hashes -r requirements-ohbs-image.txt
+    - ohbs-image consumer resolve rhel10 stable --policy policy.json --environment production > admission.json
+    - python -c 'import json; d=json.load(open("admission.json")); assert d["allowed"] and d["artifact"]["status"] == "active"'
+    - python -c 'import json; d=json.load(open("admission.json")); print("OHBS_IMAGE_ID=" + d["artifact"]["artifact_id"])' > image.env
+  artifacts:
+    reports: {dotenv: image.env}
+    paths: [admission.json]
+    expire_in: 1 day

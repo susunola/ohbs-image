@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohbs-image.dev/golden-image-lock/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "bucket", "channel", "generation", "artifact_id", "admission_hash"],
+  "properties": {
+    "schema": {"const": "https://ohbs-image.dev/golden-image-lock/v1"},
+    "bucket": {"type": "string", "minLength": 1},
+    "channel": {"type": "string", "minLength": 1},
+    "generation": {"type": "integer", "minimum": 1},
+    "artifact_id": {"type": "string", "minLength": 1},
+    "admission_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
