@@ -8,6 +8,14 @@ can be traced across rebuilds.
 ## [Unreleased]
 
 ### Added
+- **Release and deployment closure** — upgrade compatibility checks, SHA256
+  release manifests, CycloneDX SBOMs, provenance-attested GitHub Release
+  assets, documented rollback, and hardened Docker/Compose/systemd/Kubernetes
+  production baselines now ship together.
+- **Cloud provider plugin API and public benchmark** — versioned provider
+  capabilities and entry-point discovery make the Tencent Cloud adapter the
+  reference implementation, while deterministic local benchmarks publish
+  comparable controller performance artifacts without cloud spend.
 - **Production service boundary** — the control plane now enforces body limits,
   request timeouts, per-token rate limits, expiring hot-reloaded RBAC tokens,
   readiness probes, and structured access logs. Hardened systemd/Caddy examples

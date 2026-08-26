@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir build \
  && python -m build --wheel
 
 # --- stage 2: runtime with the installed package + check script --------------
-FROM python:3.11-slim
+FROM python:3.11-slim AS check-readme
 WORKDIR /app
 COPY --from=build /src/dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl
@@ -48,3 +48,19 @@ COPY --from=build /src/dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl \
  && mkdir -p /demo/out
 ENTRYPOINT ["ohbs-image", "try", "--output", "/demo/out"]
+
+# --- production control-plane server ---------------------------------------
+FROM python:3.11-slim AS server
+RUN groupadd --system --gid 10001 ohbs-image \
+ && useradd --system --uid 10001 --gid 10001 --home /var/lib/ohbs-image ohbs-image \
+ && mkdir -p /var/lib/ohbs-image \
+ && chown ohbs-image:ohbs-image /var/lib/ohbs-image
+COPY --from=build /src/dist/*.whl /tmp/
+RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl
+USER 10001:10001
+ENV OHBS_IMAGE_STATE_DIR=/var/lib/ohbs-image PYTHONDONTWRITEBYTECODE=1
+EXPOSE 8181
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8181/healthz', timeout=2)"
+ENTRYPOINT ["ohbs-image"]
+CMD ["serve", "--host", "0.0.0.0", "--port", "8181", "--rbac", "/run/secrets/rbac.json"]

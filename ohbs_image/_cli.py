@@ -113,6 +113,7 @@ from ._state_db import (
 )
 from ._telemetry import TraceRecorder
 from ._try import cmd_try
+from ._upgrade import cmd_upgrade_check
 from ._worker import cmd_worker_run
 
 # Roadmap D-91 — commands grouped by lifecycle in --help output.
@@ -126,7 +127,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "provider", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "provider", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -261,6 +262,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_benchmark_compare.add_argument("baseline")
     p_benchmark_compare.add_argument("--max-regression-percent", type=float, default=20.0)
     p_benchmark_compare.set_defaults(func=cmd_benchmark_compare)
+
+    p_upgrade = sub.add_parser("upgrade", help="Preflight package and state compatibility")
+    upgrade_sub = p_upgrade.add_subparsers(dest="upgrade_command")
+    p_upgrade_check = upgrade_sub.add_parser("check", help="Check a target version before upgrading")
+    p_upgrade_check.add_argument("target_version")
+    p_upgrade_check.add_argument("--database", default="")
+    p_upgrade_check.set_defaults(func=cmd_upgrade_check)
 
     p_configure = sub.add_parser("configure", help="Generate a minimal build configuration")
     p_configure.add_argument("--target", default="ohbs-image.toml")

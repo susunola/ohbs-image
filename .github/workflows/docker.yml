@@ -28,7 +28,7 @@ jobs:
       # final stage test, so a successful build already proves README.md is
       # current. We also re-run it explicitly below for a clear signal.
       - name: Build Docker image
-        run: docker build -t ohbs-image:check-readme .
+        run: docker build --target check-readme -t ohbs-image:check-readme .
 
       - name: Verify README check inside container
         run: docker run --rm ohbs-image:check-readme
@@ -59,6 +59,14 @@ jobs:
           print(f"packaged artifact OK: v{ohbs_image.VERSION}, "
                 f"{len(roles)} roles, all submodules present")
           '
+
+      - name: Build production server image
+        run: docker build --target server -t ohbs-image:server .
+
+      - name: Verify non-root production image metadata
+        run: |
+          test "$(docker image inspect ohbs-image:server --format '{{.Config.User}}')" = "10001:10001"
+          test "$(docker image inspect ohbs-image:server --format '{{json .Config.Healthcheck.Test}}')" != "null"
 
   # 6a: build the actual wheel with the same pinned backend as publish.yml,
   # then install it into a clean python:3.11-slim container and smoke-test

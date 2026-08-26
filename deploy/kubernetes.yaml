@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ohbs-image
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ohbs-image
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: ohbs-image}
+  template:
+    metadata:
+      labels: {app: ohbs-image}
+    spec:
+      serviceAccountName: ohbs-image
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: console
+          image: ghcr.io/susunola/ohbs-image:0.19.1
+          imagePullPolicy: IfNotPresent
+          args: ["serve", "--host", "0.0.0.0", "--port", "8181", "--rbac", "/run/ohbs-secrets/rbac.json"]
+          ports:
+            - {name: http, containerPort: 8181}
+          env:
+            - {name: OHBS_IMAGE_STATE_DIR, value: /var/lib/ohbs-image}
+          volumeMounts:
+            - {name: state, mountPath: /var/lib/ohbs-image}
+            - {name: rbac, mountPath: /run/ohbs-secrets, readOnly: true}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: state
+          persistentVolumeClaim: {claimName: ohbs-image-state}
+        - name: rbac
+          secret: {secretName: ohbs-image-rbac}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ohbs-image-state
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: {storage: 10Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ohbs-image
+spec:
+  selector: {app: ohbs-image}
+  ports:
+    - {name: http, port: 8181, targetPort: http}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ohbs-image
+spec:
+  podSelector:
+    matchLabels: {app: ohbs-image}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - {protocol: TCP, port: 8181}
+  egress:
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0}
+      ports:
+        - {protocol: TCP, port: 443}

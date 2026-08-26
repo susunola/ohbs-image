@@ -213,6 +213,12 @@ benchmark: `ohbs-image benchmark run --output benchmark.json`. Compare a run
 against a same-runner baseline with `ohbs-image benchmark compare`; methodology
 and interpretation guidance live in [`docs/benchmark.md`](docs/benchmark.md).
 
+Before an upgrade, run `ohbs-image upgrade check TARGET_VERSION`, back up the
+state database, and verify the release attestation, checksums and CycloneDX
+SBOM. Production Docker, Compose, systemd and Kubernetes baselines plus the
+rollback procedure are documented in
+[`docs/production-deployment.md`](docs/production-deployment.md).
+
 ### Which command should I use?
 
 Four commands overlap at first glance; they serve four different moments of
