@@ -67,6 +67,7 @@ from ._distribution_controller import (
 )
 from ._dr import cmd_dr_drill
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
+from ._extensions import ENTRY_POINT_GROUPS, cmd_extension_list, cmd_extension_verify
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._metrics import cmd_report_metrics, cmd_report_trends
@@ -127,7 +128,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "provider", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "provider", "extension", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -249,6 +250,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_provider_verify.add_argument("name")
     p_provider_verify.add_argument("--output", choices=["text", "json"], default="text")
     p_provider_verify.set_defaults(func=cmd_provider_verify)
+
+    p_extension = sub.add_parser("extension", help="Discover and certify extension plugins")
+    extension_sub = p_extension.add_subparsers(dest="extension_command")
+    p_extension_list = extension_sub.add_parser("list", help="List installed extensions")
+    p_extension_list.add_argument("--kind", choices=sorted(ENTRY_POINT_GROUPS))
+    p_extension_list.set_defaults(func=cmd_extension_list)
+    p_extension_verify = extension_sub.add_parser("verify", help="Run extension certification")
+    p_extension_verify.add_argument("kind", choices=sorted(ENTRY_POINT_GROUPS))
+    p_extension_verify.add_argument("name")
+    p_extension_verify.set_defaults(func=cmd_extension_verify)
 
     p_benchmark = sub.add_parser("benchmark", help="Run reproducible local performance benchmarks")
     benchmark_sub = p_benchmark.add_subparsers(dest="benchmark_command")
