@@ -4,6 +4,8 @@ import json
 
 from ohbs_image._ancestry import link_parent
 from ohbs_image._cli import build_parser
+from ohbs_image._policy import POLICY_SCHEMA
+from ohbs_image._policy_registry import publish_policy
 from ohbs_image._registry import ARTIFACT_SCHEMA, _hash, register_release
 from ohbs_image._service import ControlPlane
 
@@ -88,6 +90,32 @@ def test_console_includes_visual_run_and_lineage_analysis(tmp_path):
     assert status == 200
     assert b".timeline-step" in style
     assert b".lineage-node" in style
+    assert b"Simulate impact" in script
+    assert b".simulation-grid" in style
+
+
+def test_policy_simulation_is_scoped_and_does_not_record_decisions(tmp_path):
+    service = _service(tmp_path)
+    bundle = tmp_path / "candidate.json"
+    bundle.write_text(json.dumps({
+        "schema": POLICY_SCHEMA, "policy_id": "production", "version": "2",
+        "defaults": {"allowed_status": ["active"], "min_score": 90},
+        "environments": {}, "exceptions": [],
+    }), encoding="utf-8")
+    publish_policy(bundle, actor="test", root=tmp_path / "policy_registry")
+    payload = json.dumps({"bundle": json.loads(bundle.read_text()),
+                          "environment": "production"}).encode()
+    status, _, body = service.dispatch(
+        "POST", "/api/v1/policies/simulate", "Bearer view-token", body=payload)
+    result = json.loads(body)
+    assert status == 200
+    assert result["dry_run"] is True
+    assert result["artifact_count"] == 1
+    assert result["summary"]["denied"] == 1
+    assert not (tmp_path / "decisions").exists()
+    status, _, body = service.dispatch(
+        "POST", "/api/v1/policies/simulate", "Bearer wrong-bucket", body=payload)
+    assert status == 200 and json.loads(body)["artifact_count"] == 0
 
 
 def test_service_default_port_is_8181():
