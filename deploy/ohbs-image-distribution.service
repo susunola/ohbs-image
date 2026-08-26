@@ -1,0 +1,21 @@
+[Unit]
+Description=ohbs-image distribution controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ohbs-image
+Group=ohbs-image
+EnvironmentFile=/etc/ohbs-image/distribution.env
+ExecStart=/usr/local/bin/ohbs-image --state-dir /var/lib/ohbs-image distribution worker --apply --global-limit 8 --account-limit 4 --region-limit 2
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ohbs-image
+
+[Install]
+WantedBy=multi-user.target

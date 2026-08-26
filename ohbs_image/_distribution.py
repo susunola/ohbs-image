@@ -17,8 +17,53 @@ from ._reports import _atomic_write_bytes, _state_lock
 
 DISTRIBUTION_SCHEMA = "https://ohbs-image.dev/distribution-plan/v1"
 EXECUTION_SCHEMA = "https://ohbs-image.dev/distribution-execution/v1"
+SHARE_SCHEMA = "https://ohbs-image.dev/distribution-share/v1"
 _REGION = re.compile(r"[a-z]{2,}-[a-z0-9-]{2,}")
 CloudAPI = Callable[[str, str, str, str, dict[str, Any], str, str, str | None], dict[str, Any]]
+
+
+def share_artifact(artifact_id: str, account_id: str, *, apply: bool = False,
+                   root: Path | None = None, api: CloudAPI | None = None,
+                   secret_id: str | None = None, secret_key: str | None = None,
+                   token: str | None = None) -> dict[str, Any]:
+    """Share an active image with another root account in its source region."""
+    if not re.fullmatch(r"[0-9]{5,32}", account_id):
+        raise ValueError("target account must be a Tencent Cloud root account ID")
+    path, artifact = _load_artifact(artifact_id, root)
+    result: dict[str, Any] = {"schema": SHARE_SCHEMA, "artifact_id": artifact_id,
+                              "account_id": account_id,
+                              "mode": "apply" if apply else "dry-run"}
+    if not apply:
+        return result
+    if api is None:
+        from ._tc_cloud import _tc3_api
+        api = _tc3_api
+    sid = secret_id or os.environ.get("TENCENTCLOUD_SECRET_ID", "")
+    skey = secret_key or os.environ.get("TENCENTCLOUD_SECRET_KEY", "")
+    token = token or os.environ.get("TENCENTCLOUD_SECURITY_TOKEN")
+    if not sid or not skey:
+        raise ConfigError("source-account Tencent Cloud credentials are not set")
+    response = api("cvm", "ModifyImageSharePermission", "2017-03-12",
+        str(artifact.get("region") or ""), {"ImageId": artifact_id,
+        "AccountIds": [account_id], "Permission": "SHARE"}, sid, skey, token)
+    body = response.get("Response", {})
+    if "Error" in body:
+        raise ConfigError(f"ModifyImageSharePermission failed: {body['Error']}")
+    lock = _state_lock(path)
+    try:
+        latest = _read_object(path)
+        if latest is None or latest.get("document_hash") != _hash(latest):
+            raise ValueError("artifact changed during image sharing")
+        shares = dict(latest.get("shares") or {})
+        shares[account_id] = {"status": "shared", "shared_at": datetime.now(UTC).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"), "request_id": body.get("RequestId")}
+        latest["shares"] = shares
+        latest["document_hash"] = _hash(latest)
+        _atomic_write_bytes(path, (json.dumps(latest, ensure_ascii=False, indent=2) + "\n").encode())
+    finally:
+        lock.rmdir()
+    result["request_id"] = body.get("RequestId")
+    return result
 
 
 def _load_artifact(artifact_id: str, root: Path | None = None) -> tuple[Path, dict[str, Any]]:
