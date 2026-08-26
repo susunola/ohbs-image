@@ -1,8 +1,14 @@
 import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from ohbs_image._distribution import distribution_plan, record_replica
+from ohbs_image._distribution import (
+    distribution_plan,
+    execute_distribution,
+    reconcile_distribution,
+    record_replica,
+)
 from ohbs_image._registry import change_artifact_status, register_release, verify_registry
 
 
@@ -60,3 +66,63 @@ def test_distribution_rejects_revoked_artifact(tmp_path):
     change_artifact_status("img-1", "revoked", actor="security", reason="CVE", root=root)
     with pytest.raises(ValueError, match="not active"):
         distribution_plan("img-1", ["ap-shanghai"], root)
+
+
+def test_execute_is_dry_run_by_default(tmp_path):
+    _artifact(tmp_path)
+    called = False
+
+    def api(*args):
+        nonlocal called
+        called = True
+        return {}
+
+    result = execute_distribution("img-1", ["ap-shanghai"],
+                                  root=tmp_path / "registry", api=api)
+    assert result["mode"] == "dry-run"
+    assert result["started"] == []
+    assert called is False
+
+
+def test_execute_records_pending_and_reconcile_marks_ready(tmp_path):
+    _artifact(tmp_path)
+    root = tmp_path / "registry"
+    calls = []
+
+    def api(service, action, version, region, params, sid, skey, token):
+        calls.append((action, region, params))
+        if action == "SyncImages":
+            return {"Response": {"RequestId": "req-1", "ImageSet": [
+                {"Region": "ap-shanghai", "ImageId": "img-copy-1"}]}}
+        return {"Response": {"ImageSet": [
+            {"ImageId": "img-copy-1", "ImageState": "NORMAL"}]}}
+
+    started = execute_distribution(
+        "img-1", ["ap-shanghai"], apply=True, root=root, api=api,
+        secret_id="sid", secret_key="key")
+    assert started["started"][0]["status"] == "pending"
+    assert calls[0][0] == "SyncImages"
+    pending_plan = distribution_plan("img-1", ["ap-shanghai"], root)
+    assert pending_plan["actions"][0]["reason"] == "copy-pending"
+    assert pending_plan["copy_count"] == 0
+    reconciled = reconcile_distribution(
+        "img-1", root=root, api=api, secret_id="sid", secret_key="key")
+    assert reconciled["ready"] == 1
+    assert distribution_plan("img-1", ["ap-shanghai"], root)["cache_hits"] == 1
+
+
+def test_reconcile_times_out_missing_replica(tmp_path):
+    _artifact(tmp_path)
+    root = tmp_path / "registry"
+
+    def sync_api(*args):
+        return {"Response": {"RequestId": "req-2", "ImageSet": []}}
+
+    execute_distribution("img-1", ["ap-shanghai"], apply=True, root=root,
+                         api=sync_api, secret_id="sid", secret_key="key")
+    result = reconcile_distribution(
+        "img-1", root=root, timeout_minutes=1, api=sync_api,
+        secret_id="sid", secret_key="key",
+        now=datetime.now(UTC) + timedelta(minutes=2))
+    assert result["failed"] == 1
+    assert result["replicas"][0]["failure_category"] == "replica-timeout"

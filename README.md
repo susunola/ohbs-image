@@ -286,6 +286,9 @@ ohbs-image consumer resolve PROFILE stable --policy organization-policy.json --e
 ohbs-image consumer resolve PROFILE stable --policy organization-policy.json --output terraform
 ohbs-image channel promote PROFILE stable IMAGE_ID --policy organization-policy.json  # enforced gate
 ohbs-image distribution plan IMAGE_ID --region ap-shanghai --region ap-beijing  # no cloud writes
+ohbs-image distribution execute IMAGE_ID --region ap-shanghai                  # dry-run
+ohbs-image distribution execute IMAGE_ID --region ap-shanghai --apply          # SyncImages; records pending
+ohbs-image distribution reconcile IMAGE_ID --timeout-minutes 60                 # DescribeImages → ready/failed
 ohbs-image distribution record IMAGE_ID --region ap-shanghai --replica-id img-copy --operation-id copy-job-7
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
