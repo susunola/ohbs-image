@@ -615,7 +615,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_serve = sub.add_parser("serve", help="Run the authenticated HTTP control plane")
     p_serve.add_argument("--host", default="127.0.0.1")
-    p_serve.add_argument("--port", type=int, default=8080)
+    p_serve.add_argument("--port", type=int, default=8181)
     p_serve.add_argument("--rbac", required=True, help="Bearer-token RBAC JSON configuration")
     p_serve.add_argument("--allow-remote", action="store_true",
                          help="Allow non-loopback listen (put behind TLS)")

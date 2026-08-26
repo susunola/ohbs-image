@@ -11,7 +11,8 @@ can be traced across rebuilds.
 - **Authenticated Web Console** — `ohbs-image serve` now hosts a responsive,
   read-only operations console for authorized artifacts and Prometheus metrics;
   Bearer tokens stay in page memory, Bucket scoping remains server-side, and
-  strict browser security headers protect the local control-plane boundary.
+  strict browser security headers protect the local control-plane boundary. The
+  loopback service defaults to port `8181` (`--port` remains configurable).
 - **Resumable launch runs** — configuration-bound safe checkpoints let
   `run resume` continue under the original run ID without repeating passed
   stages; billed cloud builds still require explicit `--build --yes` approval.
