@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohbs-image.dev/schemas/v1/channel.schema.json",
+  "title": "Artifact Channel v1",
+  "type": "object",
+  "required": ["schema", "bucket", "channel", "artifact_id", "generation", "promoted_at", "document_hash"],
+  "properties": {
+    "schema": {"const": "https://ohbs-image.dev/channel/v1"}, "bucket": {"type": "string"},
+    "channel": {"type": "string"}, "artifact_id": {"type": "string"},
+    "generation": {"type": "integer", "minimum": 1}, "previous_artifact_id": {"type": ["string", "null"]},
+    "operation_id": {"type": ["string", "null"]}, "fencing_token": {"type": "integer", "minimum": 1},
+    "promoted_at": {"type": "string", "format": "date-time"},
+    "document_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }, "additionalProperties": true
+}

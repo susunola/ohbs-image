@@ -1,0 +1,49 @@
+openapi: 3.1.0
+info:
+  title: ohbs-image Control Plane API
+  version: 1.0.0
+  description: Stable v1 contract for querying and governing golden-image assets.
+servers:
+  - url: /api/v1
+paths:
+  /artifacts:
+    get:
+      operationId: listArtifacts
+      parameters:
+        - {name: bucket, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string, enum: [active, quarantined, revoked]}}
+      responses:
+        '200': {description: Artifact list, content: {application/json: {schema: {type: array, items: {$ref: '../schemas/v1/artifact.schema.json'}}}}}
+  /artifacts/{artifactId}:
+    get:
+      operationId: getArtifact
+      parameters: [{$ref: '#/components/parameters/ArtifactId'}]
+      responses:
+        '200': {description: Artifact, content: {application/json: {schema: {$ref: '../schemas/v1/artifact.schema.json'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /artifacts/{artifactId}/descendants:
+    get:
+      operationId: listDescendants
+      parameters: [{$ref: '#/components/parameters/ArtifactId'}]
+      responses: {'200': {description: Descendant impact graph, content: {application/json: {schema: {type: object}}}}}
+  /channels/{bucket}/{channel}:
+    get:
+      operationId: resolveChannel
+      parameters: [{$ref: '#/components/parameters/Bucket'}, {$ref: '#/components/parameters/Channel'}]
+      responses: {'200': {description: Channel pointer, content: {application/json: {schema: {$ref: '../schemas/v1/channel.schema.json'}}}}, '404': {$ref: '#/components/responses/NotFound'}}
+    put:
+      operationId: promoteChannel
+      parameters: [{$ref: '#/components/parameters/Bucket'}, {$ref: '#/components/parameters/Channel'}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [artifact_id], properties: {artifact_id: {type: string}, expected_generation: {type: integer}}}}}}
+      responses: {'200': {description: Promoted channel, content: {application/json: {schema: {$ref: '../schemas/v1/channel.schema.json'}}}}, '409': {description: Generation or fencing conflict}}
+  /metrics:
+    get:
+      operationId: getMetrics
+      responses: {'200': {description: Prometheus metrics, content: {text/plain: {schema: {type: string}}}}}
+components:
+  parameters:
+    ArtifactId: {name: artifactId, in: path, required: true, schema: {type: string}}
+    Bucket: {name: bucket, in: path, required: true, schema: {type: string}}
+    Channel: {name: channel, in: path, required: true, schema: {type: string}}
+  responses:
+    NotFound: {description: Resource not found}
