@@ -213,23 +213,10 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "kmod_list",
-    "params": {
-      "modules": [
-        "cramfs",
-        "freevxfs",
-        "hfs",
-        "hfsplus",
-        "jffs2",
-        "kafs",
-        "squashfs",
-        "udf"
-      ],
-      "note": "check-only: 'fat' stays loaded on UEFI hosts (vfat ESP), so the modprobe.d fixer is not auto-applied"
-    },
-    "risk": "safe",
-    "page": 56,
-    "note": "'fat' dropped from the combined list: /boot/efi is vfat (needs the fat module) — blacklisting it would break ESP mounts on UEFI hosts"
+    "family": "manual",
+    "params": {},
+    "risk": "none",
+    "page": 56
   },
   {
     "id": "1.1.2.1.1",
@@ -407,10 +394,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/home"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 85
   },
@@ -466,10 +451,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/var"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 92
   },
@@ -525,10 +508,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/var/tmp"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 99
   },
@@ -604,10 +585,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/var/log"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 108
   },
@@ -683,10 +662,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/var/log/audit"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 117
   },
@@ -762,7 +739,7 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "gpg_keys",
+    "family": "manual",
     "params": {},
     "risk": "none",
     "page": 126
@@ -819,7 +796,7 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "pkg_repos",
+    "family": "manual",
     "params": {},
     "risk": "none",
     "page": 133
@@ -856,9 +833,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "updates_applied",
+    "family": "manual",
     "params": {},
-    "risk": "safe",
+    "risk": "none",
     "page": 138
   },
   {
@@ -1038,11 +1015,10 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "bootloader_password",
+    "family": "manual",
     "params": {},
-    "risk": "safe",
-    "page": 162,
-    "note": "auto-remediated: ohbs-image sets a per-image random GRUB superuser password at build time (hash in grub config, plaintext root-only in /root/ohbs-image-grub-password)"
+    "risk": "none",
+    "page": 162
   },
   {
     "id": "1.4.2",
@@ -1333,7 +1309,7 @@
     "params": {
       "kind": "no_sha1"
     },
-    "risk": "safe",
+    "risk": "disruptive",
     "page": 218
   },
   {
@@ -1684,7 +1660,6 @@
     "title": "Ensure cockpit web services are not in use",
     "section": "2.1",
     "levels": [
-      1,
       2
     ],
     "platforms": [
@@ -1703,8 +1678,7 @@
       ]
     },
     "risk": "disruptive",
-    "page": 278,
-    "note": "benchmark assigns L2; enforced at L1 here so the golden image has no cockpit listener on 9090/tcp (2.1.22 approved-ports policy)"
+    "page": 278
   },
   {
     "id": "2.1.4",
@@ -2145,7 +2119,7 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "listening_ports",
+    "family": "manual",
     "params": {},
     "risk": "none",
     "page": 331
@@ -2530,10 +2504,8 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "info_only",
-    "params": {
-      "kind": "ipv6"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 376
   },
@@ -3358,12 +3330,13 @@
     "assessment": "Automated",
     "family": "kv_conf",
     "params": {
-      "files": [
-        "/etc/firewalld/firewalld.conf"
-      ],
       "key": "FirewallBackend",
       "sep": "=",
-      "value": "nftables"
+      "value": "nftables",
+      "op": "set",
+      "files": [
+        "/etc/firewalld/firewalld.conf"
+      ]
     },
     "risk": "safe",
     "page": 547
@@ -3384,6 +3357,9 @@
     "params": {
       "units": [
         "firewalld.service"
+      ],
+      "packages": [
+        "firewalld"
       ]
     },
     "risk": "safe",
@@ -3418,11 +3394,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "firewalld_rules",
-    "params": {
-      "kind": "loopback"
-    },
-    "risk": "safe",
+    "family": "manual",
+    "params": {},
+    "risk": "none",
     "page": 553
   },
   {
@@ -3437,11 +3411,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "firewalld_rules",
-    "params": {
-      "kind": "loopback_src"
-    },
-    "risk": "safe",
+    "family": "manual",
+    "params": {},
+    "risk": "none",
     "page": 555
   },
   {
@@ -3456,11 +3428,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "firewalld_rules",
-    "params": {
-      "kind": "services"
-    },
-    "risk": "safe",
+    "family": "manual",
+    "params": {},
+    "risk": "none",
     "page": 558
   },
   {
@@ -4099,9 +4069,11 @@
       "Server",
       "Workstation"
     ],
-    "family": "user_audit",
+    "family": "pam_module",
     "params": {
-      "kind": "su_wheel"
+      "module": "pam_wheel.so",
+      "arg": "use_uid",
+      "mode": "flag"
     },
     "risk": "safe",
     "page": 638,
@@ -4324,7 +4296,7 @@
       "Server",
       "Workstation"
     ],
-    "assessment": "Automated",
+    "assessment": "Manual",
     "family": "kv_conf",
     "params": {
       "files": [
@@ -4723,7 +4695,7 @@
     "params": {
       "kind": "pw_change_past"
     },
-    "risk": "safe",
+    "risk": "none",
     "page": 728
   },
   {
@@ -4742,7 +4714,7 @@
     "params": {
       "kind": "uid0_root_only"
     },
-    "risk": "safe",
+    "risk": "none",
     "page": 731
   },
   {
@@ -4761,7 +4733,7 @@
     "params": {
       "kind": "gid0_root_only"
     },
-    "risk": "safe",
+    "risk": "none",
     "page": 733
   },
   {
@@ -4794,7 +4766,7 @@
     ],
     "family": "root_access",
     "params": {},
-    "risk": "none",
+    "risk": "safe",
     "page": 736,
     "assessment": "Automated"
   },
@@ -5042,7 +5014,7 @@
       "Server",
       "Workstation"
     ],
-    "assessment": "Automated",
+    "assessment": "Manual",
     "family": "journald_fileperm",
     "params": {},
     "risk": "safe",
@@ -5059,7 +5031,7 @@
       "Server",
       "Workstation"
     ],
-    "assessment": "Automated",
+    "assessment": "Manual",
     "family": "kv_conf",
     "params": {
       "files": [
@@ -5088,7 +5060,7 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "exclusive_logging",
+    "family": "manual",
     "params": {},
     "risk": "none",
     "page": 783
@@ -5142,10 +5114,16 @@
       "Server",
       "Workstation"
     ],
-    "family": "manual",
-    "risk": "none",
+    "family": "svc_enabled",
+    "params": {
+      "units": [
+        "systemd-journal-upload.service"
+      ],
+      "packages": []
+    },
+    "risk": "safe",
     "page": 792,
-    "note": "Needs a site-specific remote log destination (URL + optional TLS material); a golden image cannot know it. CIS intends upload-to-remote for clients and journal-remote NOT in use locally.",
+    "note": "manual: enabling journal-upload requires a site-specific remote log receiver (URL/cert); configure at deployment time, not during image build",
     "assessment": "Automated"
   },
   {
@@ -5170,6 +5148,31 @@
     },
     "risk": "disruptive",
     "page": 794
+  },
+  {
+    "id": "6.2.2.2",
+    "title": "Ensure journald ForwardToSyslog is disabled",
+    "section": "6.2.2",
+    "levels": [
+      1
+    ],
+    "platforms": [
+      "Server",
+      "Workstation"
+    ],
+    "family": "kv_conf",
+    "params": {
+      "files": [
+        "/etc/systemd/journald.conf.d/99-cis.conf"
+      ],
+      "key": "ForwardToSyslog",
+      "sep": "=",
+      "value": "no",
+      "op": "eq"
+    },
+    "risk": "safe",
+    "page": 796,
+    "assessment": "Automated"
   },
   {
     "id": "6.2.2.3",
@@ -5337,9 +5340,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "rsyslog_actions",
+    "family": "manual",
     "params": {},
-    "risk": "none",
+    "risk": "safe",
     "page": 819
   },
   {
@@ -5387,7 +5390,7 @@
       "Server",
       "Workstation"
     ],
-    "assessment": "Automated",
+    "assessment": "Manual",
     "family": "pkg_present",
     "params": {
       "packages": [
@@ -6370,7 +6373,7 @@
       "Server",
       "Workstation"
     ],
-    "family": "audit_rules_valid",
+    "family": "audit_failure_mode",
     "params": {},
     "risk": "safe",
     "page": 990,
@@ -6897,11 +6900,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "suid_baseline",
-    "params": {
-      "baseline": "/etc/ohbs-image/suid-baseline.list"
-    },
-    "risk": "safe",
+    "family": "manual",
+    "params": {},
+    "risk": "none",
     "page": 1050
   },
   {
@@ -6958,7 +6959,7 @@
     "params": {
       "kind": "groups_exist"
     },
-    "risk": "safe",
+    "risk": "none",
     "page": 1058
   },
   {

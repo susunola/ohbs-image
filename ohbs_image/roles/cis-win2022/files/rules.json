@@ -641,8 +641,7 @@
     "params": {
       "privilege": "SeDenyNetworkLogonRight",
       "expected_sid": "S-1-5-32-546,S-1-5-114"
-    },
-    "defer": "firstboot"
+    }
   },
   {
     "id": "2.2.22",
@@ -1198,11 +1197,11 @@
     "automated": true,
     "risk": "medium",
     "page": 163,
-    "family": "password-policy",
+    "family": "reg-dword",
     "params": {
-      "key": "EnableGuestAccount",
-      "expected": 0,
-      "op": "eq"
+      "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\SpecialAccounts\\UserList",
+      "name": "Guest",
+      "value": 0
     }
   },
   {
@@ -1622,15 +1621,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "medium",
     "page": 212,
-    "family": "reg-string",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
-      "name": "legalnoticetext",
-      "value": "<org banner>"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "2.3.7.5",
@@ -1643,15 +1638,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "medium",
     "page": 214,
-    "family": "reg-string",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
-      "name": "legalnoticecaption",
-      "value": "<org title>"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "2.3.7.6",
@@ -2529,8 +2520,7 @@
       "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
       "name": "FilterAdministratorToken",
       "value": 1
-    },
-    "defer": "firstboot"
+    }
   },
   {
     "id": "2.3.17.2",
@@ -2794,15 +2784,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "medium",
     "page": 331,
-    "family": "reg-string",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\DomainProfile\\Logging",
-      "name": "LogFilePath",
-      "value": "%SystemRoot%\\System32\\logfiles\\firewall\\domainfw.log"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "9.1.5",
@@ -2939,15 +2925,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "medium",
     "page": 346,
-    "family": "reg-string",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\PrivateProfile\\Logging",
-      "name": "LogFilePath",
-      "value": "%SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "9.2.5",
@@ -2965,7 +2947,7 @@
     "page": 348,
     "family": "reg-dword",
     "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\PrivateProfile\\Logging",
+      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\PrivateProfile \\Logging",
       "name": "LogFileSize",
       "value": 16384
     }
@@ -3126,15 +3108,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "medium",
     "page": 365,
-    "family": "reg-string",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\PublicProfile\\Logging",
-      "name": "LogFilePath",
-      "value": "%SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "9.3.7",
@@ -5423,15 +5401,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 641,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Printers",
-      "name": "DisableWebPnPDownload",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.2",
@@ -5444,15 +5418,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 643,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\InputPersonalization",
-      "name": "RestrictImplicitInkCollection",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.3",
@@ -5465,15 +5435,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 645,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\HandwritingErrorReports",
-      "name": "PreventHandwritingErrorReports",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.4",
@@ -5486,15 +5452,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 647,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Internet Connection Wizard",
-      "name": "ExitOnMSICW",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.5",
@@ -5507,15 +5469,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 649,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
-      "name": "NoWebServices",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.6",
@@ -5528,15 +5486,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 651,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Printers",
-      "name": "DisableHTTPPrinting",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.7",
@@ -5549,15 +5503,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 653,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Registration Wizard Control",
-      "name": "NoRegistration",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.8",
@@ -5570,15 +5520,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 655,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\SearchCompanion",
-      "name": "DisableContentFileUpdates",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.9",
@@ -5591,15 +5537,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 657,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
-      "name": "NoOnlinePrintsWizard",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.10",
@@ -5612,15 +5554,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 659,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
-      "name": "NoPublishingWizard",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.20.1.11",
@@ -6146,15 +6084,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 726,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Power\\PowerSettings\\f15576e8-98b7-4186-b944-eafa664402d9",
-      "name": "DCSettingIndex",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.35.6.2",
@@ -6167,15 +6101,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 728,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Power\\PowerSettings\\f15576e8-98b7-4186-b944-eafa664402d9",
-      "name": "ACSettingIndex",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.35.6.3",
@@ -6335,15 +6265,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 754,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\ScriptedDiagnosticsProvider\\Policy",
-      "name": "DisableQueryRemoteServer",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.49.11.1",
@@ -6356,15 +6282,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 758,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WDI\\{9c5a40da-b965-4fc3-8781-88dd50a6299d}",
-      "name": "ScenarioExecutionEnabled",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.9.51.1",
@@ -6545,15 +6467,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 784,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Biometrics\\FacialFeatures",
-      "name": "EnhancedAntiSpoofing",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.11.1",
@@ -6973,15 +6891,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 833,
-    "family": "reg-string",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Application",
-      "name": "Retention",
-      "value": "0"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.26.1.2",
@@ -6994,16 +6908,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 835,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Application",
-      "name": "MaxSize",
-      "value": 32768,
-      "op": "ge"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.26.2.1",
@@ -7016,15 +6925,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 838,
-    "family": "reg-string",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Security",
-      "name": "Retention",
-      "value": "0"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.26.2.2",
@@ -7037,16 +6942,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 840,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Security",
-      "name": "MaxSize",
-      "value": 196608,
-      "op": "ge"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.26.3.1",
@@ -7059,15 +6959,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 843,
-    "family": "reg-string",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Setup",
-      "name": "Retention",
-      "value": "0"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.26.3.2",
@@ -7080,16 +6976,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 845,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Setup",
-      "name": "MaxSize",
-      "value": 32768,
-      "op": "ge"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.26.4.1",
@@ -7102,15 +6993,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 848,
-    "family": "reg-string",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\System",
-      "name": "Retention",
-      "value": "0"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.26.4.2",
@@ -7123,16 +7010,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 850,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\System",
-      "name": "MaxSize",
-      "value": 32768,
-      "op": "ge"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.29.2",
@@ -7313,15 +7195,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 878,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "DisablePasswordSaving",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.2.1",
@@ -7355,15 +7233,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 884,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "EnableUiaRedirection",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.3.2",
@@ -7376,15 +7250,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 886,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "fDisableCcm",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.3.3",
@@ -7397,15 +7267,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 888,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "fDisableCdm",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.3.4",
@@ -7418,15 +7284,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 890,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "fDisableLocationRedir",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.3.5",
@@ -7439,15 +7301,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 892,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "fDisableLPT",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.3.6",
@@ -7460,15 +7318,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 894,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "fDisablePNPRedir",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.3.7",
@@ -7481,15 +7335,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 896,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "fDisableWebAuthn",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.9.1",
@@ -7523,15 +7373,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 902,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "fEncryptRPCTraffic",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.9.3",
@@ -7544,15 +7390,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 904,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "SecurityLayer",
-      "value": 2
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.9.4",
@@ -7586,15 +7428,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 908,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "MinEncryptionLevel",
-      "value": 3
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.10.1",
@@ -7607,16 +7445,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 911,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "MaxIdleTime",
-      "value": 900000,
-      "op": "le"
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.11.1",
@@ -7629,15 +7462,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 914,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "DeleteTempDirsOnExit",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.57.3.11.2",
@@ -7650,15 +7479,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 916,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
-      "name": "PerSessionTempDir",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.58.1",
@@ -7692,15 +7517,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "medium",
     "page": 921,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Internet Explorer\\Feeds",
-      "name": "AllowBasicAuthInClear",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.59.2",
@@ -7797,15 +7618,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 937,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
-      "name": "EnableSmartScreen",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.81.1",
@@ -8011,15 +7828,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
-    "risk": "medium",
+    "automated": false,
+    "risk": "safe",
     "page": 962,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client",
-      "name": "AllowBasic",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.90.1.2",
@@ -8032,15 +7845,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
-    "risk": "medium",
+    "automated": false,
+    "risk": "safe",
     "page": 964,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client",
-      "name": "AllowUnencryptedTraffic",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.90.1.3",
@@ -8053,15 +7862,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 966,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client",
-      "name": "AllowDigest",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.90.2.1",
@@ -8074,16 +7879,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
-    "risk": "medium",
+    "automated": false,
+    "risk": "safe",
     "page": 969,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
-      "name": "AllowBasic",
-      "value": 0
-    },
-    "defer": "firstboot"
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.90.2.2",
@@ -8096,16 +7896,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
-    "risk": "medium",
+    "automated": false,
+    "risk": "safe",
     "page": 971,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
-      "name": "AllowAutoConfig",
-      "value": 0
-    },
-    "defer": "firstboot"
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.90.2.3",
@@ -8118,16 +7913,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
-    "risk": "medium",
+    "automated": false,
+    "risk": "safe",
     "page": 973,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
-      "name": "AllowUnencryptedTraffic",
-      "value": 0
-    },
-    "defer": "firstboot"
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.90.2.4",
@@ -8140,15 +7930,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 975,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
-      "name": "DisableRunAs",
-      "value": 1
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.91.1",
@@ -8169,8 +7955,7 @@
       "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service\\WinRS",
       "name": "AllowRemoteShell",
       "value": 0
-    },
-    "defer": "firstboot"
+    }
   },
   {
     "id": "18.10.93.2.1",
@@ -8225,15 +8010,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 987,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
-      "name": "AUOptions",
-      "value": 4
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.94.2.2",
@@ -8246,15 +8027,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 990,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
-      "name": "ScheduledInstallDay",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.94.4.1",
@@ -8267,15 +8044,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 993,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate",
-      "name": "ManagePreviewBuildsPolicyValue",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.10.94.4.2",
@@ -8288,15 +8061,11 @@
       "Server"
     ],
     "assessment": "Automated",
-    "automated": true,
+    "automated": false,
     "risk": "safe",
     "page": 995,
-    "family": "reg-dword",
-    "params": {
-      "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate",
-      "name": "DeferQualityUpdatesPeriodInDays",
-      "value": 0
-    }
+    "family": "manual",
+    "params": {}
   },
   {
     "id": "18.11.1",

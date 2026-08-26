@@ -172,21 +172,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "kmod_list",
-    "params": {
-      "modules": [
-        "cramfs",
-        "fat",
-        "freevxfs",
-        "hfs",
-        "hfsplus",
-        "jffs2",
-        "kafs",
-        "squashfs",
-        "udf"
-      ]
-    },
-    "risk": "disruptive",
+    "family": "manual",
+    "params": {},
+    "risk": "none",
     "page": 60
   },
   {
@@ -365,10 +353,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/home"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 88
   },
@@ -424,10 +410,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/var"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 96
   },
@@ -483,10 +467,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/var/tmp"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 104
   },
@@ -562,10 +544,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/var/log"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 113
   },
@@ -641,10 +621,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "partition",
-    "params": {
-      "mount": "/var/log/audit"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 122
   },
@@ -720,7 +698,7 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "gpg_keys",
+    "family": "manual",
     "params": {},
     "risk": "none",
     "page": 132
@@ -777,7 +755,7 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "pkg_repos",
+    "family": "manual",
     "params": {},
     "risk": "none",
     "page": 139
@@ -794,9 +772,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "updates_applied",
+    "family": "manual",
     "params": {},
-    "risk": "safe",
+    "risk": "none",
     "page": 142
   },
   {
@@ -917,9 +895,10 @@
     "assessment": "Manual",
     "family": "selinux",
     "params": {
-      "kind": "no_unconfined"
+      "kind": "no_unconfined",
+      "value": ""
     },
-    "risk": "none",
+    "risk": "safe",
     "page": 160
   },
   {
@@ -975,11 +954,10 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "bootloader_password",
+    "family": "manual",
     "params": {},
-    "risk": "safe",
-    "page": 169,
-    "note": "auto-remediated: ohbs-image sets a per-image random GRUB superuser password at build time (hash in grub config, plaintext root-only in /root/ohbs-image-grub-password)"
+    "risk": "none",
+    "page": 169
   },
   {
     "id": "1.4.2",
@@ -1039,7 +1017,7 @@
       "params": [
         {
           "key": "kernel.yama.ptrace_scope",
-          "value": "(1|2|3)"
+          "value": "1"
         }
       ]
     },
@@ -1148,7 +1126,7 @@
     "params": {
       "kind": "no_sha1"
     },
-    "risk": "safe",
+    "risk": "disruptive",
     "page": 197
   },
   {
@@ -2079,12 +2057,8 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "listening_ports",
-    "params": {
-      "allow_ports": [
-        22
-      ]
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 333
   },
@@ -2466,10 +2440,8 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "info_only",
-    "params": {
-      "kind": "ipv6"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 380
   },
@@ -2931,15 +2903,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "exclusive_stack",
-    "params": {
-      "group": [
-        "firewalld.service",
-        "nftables.service",
-        "iptables.service",
-        "ufw.service"
-      ]
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 472
   },
@@ -2955,11 +2920,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "firewalld_rules",
-    "params": {
-      "kind": "services"
-    },
-    "risk": "safe",
+    "family": "manual",
+    "params": {},
+    "risk": "none",
     "page": 479
   },
   {
@@ -2974,11 +2937,9 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "firewalld_rules",
-    "params": {
-      "kind": "loopback"
-    },
-    "risk": "safe",
+    "family": "manual",
+    "params": {},
+    "risk": "none",
     "page": 481
   },
   {
@@ -2993,10 +2954,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "nft_rules",
-    "params": {
-      "kind": "base_chains"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 487
   },
@@ -3012,10 +2971,8 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "nft_rules",
-    "params": {
-      "kind": "established"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 490
   },
@@ -3031,10 +2988,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "nft_rules",
-    "params": {
-      "kind": "default_deny"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 492
   },
@@ -3050,10 +3005,8 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "nft_rules",
-    "params": {
-      "kind": "loopback"
-    },
+    "family": "manual",
+    "params": {},
     "risk": "none",
     "page": 494
   },
@@ -3151,9 +3104,13 @@
     "assessment": "Automated",
     "family": "sshd_param",
     "params": {
-      "key": "KexAlgorithms",
-      "op": "deny_list",
-      "value": "diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1"
+      "params": [
+        {
+          "key": "KexAlgorithms",
+          "value": "diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1",
+          "op": "deny_list"
+        }
+      ]
     },
     "risk": "safe",
     "page": 516
@@ -3704,9 +3661,11 @@
       "Server",
       "Workstation"
     ],
-    "family": "user_audit",
+    "family": "pam_module",
     "params": {
-      "kind": "su_wheel"
+      "module": "pam_wheel.so",
+      "arg": "use_uid",
+      "mode": "flag"
     },
     "risk": "safe",
     "page": 575,
@@ -3992,7 +3951,7 @@
       "Server",
       "Workstation"
     ],
-    "assessment": "Automated",
+    "assessment": "Manual",
     "family": "kv_conf",
     "params": {
       "files": [
@@ -4393,7 +4352,7 @@
     "params": {
       "kind": "pw_change_past"
     },
-    "risk": "safe",
+    "risk": "none",
     "page": 684
   },
   {
@@ -4412,7 +4371,7 @@
     "params": {
       "kind": "uid0_root_only"
     },
-    "risk": "safe",
+    "risk": "none",
     "page": 687
   },
   {
@@ -4431,7 +4390,7 @@
     "params": {
       "kind": "gid0_root_only"
     },
-    "risk": "safe",
+    "risk": "none",
     "page": 688
   },
   {
@@ -4712,7 +4671,7 @@
       "Server",
       "Workstation"
     ],
-    "assessment": "Automated",
+    "assessment": "Manual",
     "family": "journald_fileperm",
     "params": {},
     "risk": "safe",
@@ -4729,7 +4688,7 @@
       "Server",
       "Workstation"
     ],
-    "assessment": "Automated",
+    "assessment": "Manual",
     "family": "kv_conf",
     "params": {
       "files": [
@@ -4758,7 +4717,7 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "exclusive_logging",
+    "family": "manual",
     "params": {},
     "risk": "none",
     "page": 740
@@ -4812,10 +4771,16 @@
       "Server",
       "Workstation"
     ],
-    "family": "manual",
-    "risk": "none",
+    "family": "svc_enabled",
+    "params": {
+      "units": [
+        "systemd-journal-upload.service"
+      ],
+      "packages": []
+    },
+    "risk": "safe",
     "page": 748,
-    "note": "Needs a site-specific remote log destination (URL + optional TLS material); a golden image cannot know it. CIS intends upload-to-remote for clients and journal-remote NOT in use locally.",
+    "note": "manual: enabling journal-upload requires a site-specific remote log receiver (URL/cert); configure at deployment time, not during image build",
     "assessment": "Automated"
   },
   {
@@ -4840,6 +4805,31 @@
     },
     "risk": "disruptive",
     "page": 750
+  },
+  {
+    "id": "6.2.2.2",
+    "title": "Ensure journald ForwardToSyslog is disabled",
+    "section": "6.2.2",
+    "levels": [
+      1
+    ],
+    "platforms": [
+      "Server",
+      "Workstation"
+    ],
+    "family": "kv_conf",
+    "params": {
+      "files": [
+        "/etc/systemd/journald.conf.d/99-cis.conf"
+      ],
+      "key": "ForwardToSyslog",
+      "sep": "=",
+      "value": "no",
+      "op": "eq"
+    },
+    "risk": "safe",
+    "page": 752,
+    "assessment": "Automated"
   },
   {
     "id": "6.2.2.3",
@@ -5007,9 +4997,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "rsyslog_actions",
+    "family": "manual",
     "params": {},
-    "risk": "none",
+    "risk": "safe",
     "page": 772
   },
   {
@@ -5057,7 +5047,7 @@
       "Server",
       "Workstation"
     ],
-    "assessment": "Automated",
+    "assessment": "Manual",
     "family": "pkg_present",
     "params": {
       "packages": [
@@ -5138,13 +5128,9 @@
       "Workstation"
     ],
     "assessment": "Automated",
-    "family": "grub_flag",
-    "params": {
-      "match": "audit_backlog_limit=(\\d+)",
-      "min": 8192,
-      "flag": "audit_backlog_limit=8192"
-    },
-    "risk": "safe",
+    "family": "manual",
+    "params": {},
+    "risk": "none",
     "page": 798
   },
   {
@@ -5468,10 +5454,10 @@
     "family": "audit_rule",
     "params": {
       "rules": [
-        "-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -k perm_mod",
-        "-a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -k perm_mod",
-        "-a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -k perm_mod"
-      ]
+        "-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat,setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -k perm_mod",
+        "-a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -k perm_mod"
+      ],
+      "name": "discretionary access control permission modification events are collected"
     },
     "risk": "safe",
     "page": 847
@@ -6224,11 +6210,9 @@
       "Workstation"
     ],
     "assessment": "Manual",
-    "family": "suid_baseline",
-    "params": {
-      "baseline": "/etc/ohbs-image/suid-baseline.list"
-    },
-    "risk": "safe",
+    "family": "manual",
+    "params": {},
+    "risk": "none",
     "page": 950
   },
   {
@@ -6285,7 +6269,7 @@
     "params": {
       "kind": "groups_exist"
     },
-    "risk": "safe",
+    "risk": "none",
     "page": 959
   },
   {
