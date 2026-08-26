@@ -375,6 +375,9 @@ can be traced across rebuilds.
   the sibling rules in the ubuntu catalogs.
 
 ### Added
+- **Unified run index** — `run list` and `run show RUN_ID` join lineage,
+  manifests, saved plans, releases, reports, provenance and cloud acceptance
+  results, including interrupted runs that never reached lineage recording.
 - **Machine-readable real-cloud acceptance results** — protected canary and
   manual E2E workflows now always publish `acceptance-result.json` and a
   GitHub run summary before enforcing the final pass/fail result. The
