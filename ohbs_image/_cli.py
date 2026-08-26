@@ -50,6 +50,7 @@ from ._config_tools import (
     cmd_config_validate,
 )
 from ._consumer import cmd_consumer_resolve
+from ._cve_feed import OSV_QUERY_BATCH, cmd_cve_sync
 from ._discover import cmd_discover
 from ._distribution import (
     cmd_distribution_execute,
@@ -122,7 +123,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -723,11 +724,25 @@ def build_parser() -> argparse.ArgumentParser:
     p_event_process.add_argument("--output", choices=["text", "json"], default="text")
     p_event_process.set_defaults(func=cmd_event_process)
 
+    p_cve = sub.add_parser("cve", help="Synchronize production vulnerability feeds")
+    cve_sub = p_cve.add_subparsers(dest="cve_command")
+    p_cve_sync = cve_sub.add_parser("sync", help="Query OSV for artifact package inventories")
+    p_cve_sync.add_argument("--inventory", required=True)
+    p_cve_sync.add_argument("--state", default=".ohbs-state/cve-feed-state.json")
+    p_cve_sync.add_argument("--endpoint", default=OSV_QUERY_BATCH)
+    p_cve_sync.add_argument("--timeout", type=int, default=30)
+    p_cve_sync.add_argument("--apply", action="store_true")
+    p_cve_sync.add_argument("--output", choices=["text", "json"], default="text")
+    p_cve_sync.set_defaults(func=cmd_cve_sync)
+
     p_worker = sub.add_parser("worker", help="Process queued rebuild requests")
     worker_sub = p_worker.add_subparsers(dest="worker_command")
     p_worker_run = worker_sub.add_parser("run", help="Run the fenced rebuild worker")
-    p_worker_run.add_argument("--handler", required=True,
-                              help="Command that reads request JSON and returns result JSON")
+    worker_handler = p_worker_run.add_mutually_exclusive_group(required=True)
+    worker_handler.add_argument("--handler",
+                                help="Command that reads request JSON and returns result JSON")
+    worker_handler.add_argument("--pipeline",
+                                help="Built-in four-stage rebuild pipeline JSON")
     p_worker_run.add_argument("--apply", action="store_true",
                               help="Claim and execute requests (default: dry-run)")
     p_worker_run.add_argument("--once", action="store_true")

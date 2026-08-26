@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from ohbs_image._worker import (
     WORKER_RESULT_SCHEMA,
+    _pipeline_handler,
     claim_request,
     finish_request,
     process_one,
@@ -84,3 +85,20 @@ def test_invalid_stage_result_is_retryable_failure(tmp_path):
 
     assert result is not None and result["status"] == "retry_wait"
     assert "stage build did not succeed" in result["error"]
+
+
+def test_builtin_pipeline_executes_all_stages_and_propagates_artifact(tmp_path):
+    script = tmp_path / "stage.py"
+    script.write_text("import json,sys\nrequest=json.load(sys.stdin)\n"
+                      "print(json.dumps({'artifact_id': sys.argv[2]}))\n")
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text(json.dumps({"cwd": str(tmp_path), "stages": {
+        stage: {"command": ["python3", str(script), stage,
+                            "img-new" if stage == "build" else "{artifact_id}"]}
+        for stage in ("build", "policy", "distribute", "promote")}}))
+
+    result = _pipeline_handler(pipeline, 10)({
+        "request_id": "evt:img-1", "event_id": "evt", "artifact_id": "img-1"})
+
+    assert result["artifact_id"] == "img-new"
+    assert all(row["status"] == "succeeded" for row in result["stages"].values())

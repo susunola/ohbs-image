@@ -1,0 +1,18 @@
+{
+  "schema": "https://ohbs-image.dev/rebuild-pipeline/v1",
+  "cwd": ".",
+  "stages": {
+    "build": {
+      "command": ["ohbs-image", "build", "--non-interactive"]
+    },
+    "policy": {
+      "command": ["ohbs-image", "policy", "check", "{artifact_id}", "--environment", "production"]
+    },
+    "distribute": {
+      "command": ["ohbs-image", "distribution", "execute", "{artifact_id}", "--apply"]
+    },
+    "promote": {
+      "command": ["ohbs-image", "channel", "promote", "production", "stable", "{artifact_id}"]
+    }
+  }
+}
