@@ -17,6 +17,7 @@ import ohbs_image
 
 from ._audit import _drift_diff, _write_sarif, _write_xccdf
 from ._build_checkpoints import write_build_checkpoint as _write_build_checkpoint
+from ._capacity import apply_capacity, load_capacity_plan, select_capacity
 from ._config import ResolvedConfig, load_config, load_config_layered, resolve
 from ._logging import VERSION, ConfigError, banner, fail, info, logger, ok, warn
 from ._packer import (
@@ -272,6 +273,19 @@ def cmd_build(args: argparse.Namespace) -> int:
         fail("invalid internal run ID")
         return 2
     r.run_id = requested_run_id or ohbs_image._new_run_id()
+    capacity_plan = vars(args).get("capacity_plan", "")
+    if capacity_plan:
+        try:
+            capacity = select_capacity(load_capacity_plan(Path(capacity_plan)))
+            apply_capacity(r, capacity)
+            write_build_checkpoint(r, "capacity-selected", capacity)
+            if capacity["fallback_used"]:
+                warn(f"Capacity fallback selected {r.instance_type} in {r.zone} ({r.region})")
+            else:
+                info(f"Capacity confirmed for {r.instance_type} in {r.zone}")
+        except (OSError, ValueError) as exc:
+            fail(str(exc))
+            return 1
 
     # A subset audit is useful for diagnosis, but does not establish the
     # compliance of a golden image.  Make approval an explicit operator act.

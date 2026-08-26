@@ -1,0 +1,21 @@
+{
+  "schema": "https://ohbs-image.dev/capacity-fallback/v1",
+  "candidates": [
+    {
+      "region": "ap-guangzhou",
+      "zone": "ap-guangzhou-3",
+      "instance_type": "S5.MEDIUM2",
+      "vpc_id": "vpc-primary",
+      "subnet_id": "subnet-primary",
+      "security_group_id": "sg-primary"
+    },
+    {
+      "region": "ap-guangzhou",
+      "zone": "ap-guangzhou-4",
+      "instance_type": "SA5.MEDIUM2",
+      "vpc_id": "vpc-fallback",
+      "subnet_id": "subnet-fallback",
+      "security_group_id": "sg-fallback"
+    }
+  ]
+}

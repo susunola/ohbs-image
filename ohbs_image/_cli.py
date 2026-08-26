@@ -64,6 +64,7 @@ from ._distribution_controller import (
     cmd_distribution_slo,
     cmd_distribution_worker,
 )
+from ._dr import cmd_dr_drill
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
@@ -123,7 +124,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
         "validate", "build", "scan", "test", "try",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "config", "registry", "ancestry", "channel", "policy", "consumer", "distribution", "event", "cve", "dr", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -756,6 +757,14 @@ def build_parser() -> argparse.ArgumentParser:
                               help="Use the transactional SQLite queue backend")
     p_worker_run.set_defaults(func=cmd_worker_run)
 
+    p_dr = sub.add_parser("dr", help="Run isolated disaster-recovery and chaos drills")
+    dr_sub = p_dr.add_subparsers(dest="dr_command")
+    p_dr_drill = dr_sub.add_parser("drill", help="Verify recovery without touching live state")
+    p_dr_drill.add_argument("--scenario", choices=["all", "database", "worker", "evidence"],
+                            default="all")
+    p_dr_drill.add_argument("--output", default="", help="Write the JSON evidence report")
+    p_dr_drill.set_defaults(func=cmd_dr_drill)
+
     p_serve = sub.add_parser("serve", help="Run the authenticated HTTP control plane")
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8181)
@@ -826,6 +835,8 @@ def build_parser() -> argparse.ArgumentParser:
                             "benchmark, level) are unchanged since the last "
                             "successful build")
     p_bld.add_argument("--run-id", default="", help=argparse.SUPPRESS)
+    p_bld.add_argument("--capacity-plan", default="",
+                       help="Select the first purchasable placement from a fallback plan")
     p_bld.set_defaults(func=cmd_build)
 
     p_cln = sub.add_parser("clean", parents=[common], help="Remove working directory")

@@ -10,7 +10,7 @@ import check_readme  # noqa: E402
 
 import ohbs_image  # noqa: E402
 
-ALL_CMDS = {"ancestry", "audit", "build", "catalog", "channel", "check-source", "clean", "cleanup", "cleanup-images", "cleanup-runs", "config", "configure", "consumer", "cve", "discover", "distribution", "doctor", "drift", "engine", "event", "launch", "plan", "policy", "promote", "registry", "report", "rollback", "run", "serve", "state", "verify-release",
+ALL_CMDS = {"ancestry", "audit", "build", "catalog", "channel", "check-source", "clean", "cleanup", "cleanup-images", "cleanup-runs", "config", "configure", "consumer", "cve", "discover", "distribution", "doctor", "dr", "drift", "engine", "event", "launch", "plan", "policy", "promote", "registry", "report", "rollback", "run", "serve", "state", "verify-release",
             "images", "init", "list", "pending", "preflight", "quickstart", "scan", "test",
             "try", "validate", "verify", "verify-image", "worker"}
 
