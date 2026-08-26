@@ -124,6 +124,34 @@ def test_artifact_search_and_admin_write_api(tmp_path):
     assert status == 200 and [row["artifact_id"] for row in result["artifacts"]] == ["img-api"]
 
 
+def test_console_operational_read_apis_and_evidence_boundary(tmp_path):
+    service = _service(tmp_path)
+    runs = tmp_path / "runs"
+    runs.mkdir(exist_ok=True)
+    (runs / "run-console.json").write_text(json.dumps({
+        "run_id": "run-console", "profile": "rhel10", "status": "ok"}))
+    telemetry = tmp_path / "telemetry"
+    telemetry.mkdir()
+    (telemetry / "traces.jsonl").write_text(json.dumps({
+        "trace_id": "a" * 32, "span_id": "b" * 16, "name": "build",
+        "status": "ok", "duration_ms": 12.5}) + "\n")
+
+    status, _, body = service.dispatch("GET", "/api/v1/traces?name=build",
+                                       "Bearer view-token")
+    assert status == 200 and json.loads(body)["spans"][0]["duration_ms"] == 12.5
+    status, _, body = service.dispatch("GET", "/api/v1/policies", "Bearer view-token")
+    assert status == 200 and json.loads(body)["policies"] == []
+    status, _, body = service.dispatch("GET", "/api/v1/approvals", "Bearer view-token")
+    assert status == 403
+    status, _, body = service.dispatch(
+        "GET", "/api/v1/runs/run-console/evidence?path=../rbac.json", "Bearer view-token")
+    assert status == 403 and "not attached" in body.decode()
+    status, _, body = service.dispatch(
+        "GET", "/api/v1/runs/run-console/evidence?path=runs%2Frun-console.json",
+        "Bearer view-token")
+    assert status == 200 and json.loads(body)["run_id"] == "run-console"
+
+
 def test_runs_list_show_and_scope(tmp_path):
     service = _service(tmp_path)
     runs = tmp_path / "runs"
