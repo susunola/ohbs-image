@@ -219,6 +219,11 @@ benchmark: `ohbs-image benchmark run --output benchmark.json`. Compare a run
 against a same-runner baseline with `ohbs-image benchmark compare`; methodology
 and interpretation guidance live in [`docs/benchmark.md`](docs/benchmark.md).
 
+Long-running production claims use a tamper-evident daily ledger. Record and
+verify it with `ohbs-image proof record|verify|report`; incomplete coverage is
+reported as incomplete rather than promoted as evidence. See
+[`docs/production-proof.md`](docs/production-proof.md).
+
 Before an upgrade, run `ohbs-image upgrade check TARGET_VERSION`, back up the
 state database, and verify the release attestation, checksums and CycloneDX
 SBOM. Production Docker, Compose, systemd and Kubernetes baselines plus the
