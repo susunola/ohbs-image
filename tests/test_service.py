@@ -18,6 +18,7 @@ def _service(tmp_path):
     rbac.write_text(json.dumps({"tokens": {
         "view-token": {"subject": "reader", "roles": ["viewer"], "buckets": ["rhel10"]},
         "promote-token": {"subject": "release", "roles": ["viewer", "promoter"], "buckets": ["rhel10"]},
+        "audit-token": {"subject": "audit", "roles": ["auditor"], "buckets": []},
         "wrong-bucket": {"subject": "other", "roles": ["viewer"], "buckets": ["ubuntu2404"]}}}),
         encoding="utf-8")
     return ControlPlane(tmp_path, rbac)
@@ -163,4 +164,17 @@ def test_viewer_cannot_promote(tmp_path):
     status, _, _ = service.dispatch("PUT", "/api/v1/channels/rhel10/stable",
         "Bearer view-token", body=b'{"artifact_id":"img-1"}',
         headers={"Idempotency-Key": "deploy-2"})
+    assert status == 403
+
+
+def test_auditor_can_search_structured_audit_events(tmp_path):
+    service = _service(tmp_path)
+    service._audit({"subject": "release"}, "channel.promote", "rhel10/stable", "allowed")
+    service._audit({"subject": "worker"}, "rebuild.run", "img-1", "allowed")
+    status, _, body = service.dispatch(
+        "GET", "/api/v1/audit?action=channel.promote", "Bearer audit-token")
+    result = json.loads(body)
+    assert status == 200 and result["count"] == 1
+    assert result["events"][0]["subject"] == "release"
+    status, _, _ = service.dispatch("GET", "/api/v1/audit", "Bearer view-token")
     assert status == 403
