@@ -55,6 +55,6 @@ jobs:
       - name: Inspect or terminate stale ephemeral CVMs
         run: |
           pip install .
-          args=(cleanup-runs --config ohbs-image.toml --older-than "${{ inputs.older_than_hours }}")
+          args=(cleanup runs --config ohbs-image.toml --older-than "${{ inputs.older_than_hours }}")
           if [ "${{ inputs.apply }}" = "true" ]; then args+=(--apply); fi
           ohbs-image "${args[@]}"
