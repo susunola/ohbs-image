@@ -10,8 +10,8 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from ._channels import promote_channel, resolve_channel
-from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
 from ._config import _lineage_path
+from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
 from ._logging import fail, info
 from ._metrics import collect_metrics, prometheus_metrics
 from ._registry import _artifact_path, _read_object, collect_artifacts
