@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -17,12 +19,13 @@ from ._reports import _state_lock
 
 STATE_STATUS_SCHEMA = "https://ohbs-image.dev/state-status/v1"
 STATE_PRUNE_SCHEMA = "https://ohbs-image.dev/state-prune/v1"
+STATE_VERIFY_SCHEMA = "https://ohbs-image.dev/state-verify/v1"
 
 # Evidence subdirectories created by `state init` under the state root.
-_STATE_SUBDIRS = ("plans", "runs", "releases", "provenance", "reports")
+_STATE_SUBDIRS = ("plans", "runs", "releases", "provenance", "reports", "acceptance")
 
 # Every `state status` bucket, in stable output order.
-_STATUS_BUCKETS = ("lineage", "runs", "plans", "releases", "provenance", "reports")
+_STATUS_BUCKETS = ("lineage", "runs", "plans", "releases", "provenance", "reports", "acceptance")
 
 
 class StateBackend(Protocol):
@@ -128,7 +131,7 @@ def _evidence_counts(root: Path) -> dict[str, int]:
                 if line.strip())
     patterns = {"runs": "*.json", "plans": "*-plan.json",
                 "releases": "*.json", "provenance": "*.provenance.json",
-                "reports": "*"}
+                "reports": "*", "acceptance": "*.json"}
     for name, pattern in patterns.items():
         directory = root / name
         if directory.is_dir():
@@ -209,6 +212,180 @@ def cmd_state_status(args: argparse.Namespace) -> int:
     if "last_record" in doc:
         print(f"  last record {doc['last_record']}")
     return 0
+
+
+def _verify_finding(findings: list[dict[str, str]], severity: str, code: str,
+                    path: str, message: str) -> None:
+    findings.append({"severity": severity, "code": code, "path": path,
+                     "message": message})
+
+
+def _verify_json(path: Path, root: Path, findings: list[dict[str, str]]) -> dict[str, Any] | None:
+    rel = str(path.relative_to(root))
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        _verify_finding(findings, "error", "invalid-json", rel, str(exc))
+        return None
+    if not isinstance(value, dict):
+        _verify_finding(findings, "error", "invalid-document", rel,
+                        "expected a JSON object")
+        return None
+    return value
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _verify_release(root: Path, path: Path, doc: dict[str, Any],
+                    known_runs: set[str], findings: list[dict[str, str]]) -> None:
+    rel = str(path.relative_to(root))
+    run_id = str(doc.get("run_id") or "")
+    if run_id and run_id not in known_runs:
+        _verify_finding(findings, "warning", "unknown-release-run", rel,
+                        f"references unknown run {run_id}")
+    evidence = doc.get("evidence")
+    if not isinstance(evidence, dict):
+        _verify_finding(findings, "error", "invalid-release-evidence", rel,
+                        "release evidence must be an object")
+        return
+    digest_keys = {
+        "audit_report": "audit_sha256",
+        "provenance": "provenance_sha256",
+        "html_report": "html_report_sha256",
+    }
+    for name, digest_key in digest_keys.items():
+        reference = evidence.get(name, "")
+        expected = evidence.get(digest_key, "")
+        if not reference and not expected:
+            continue
+        if not isinstance(reference, str) or not isinstance(expected, str) or not expected:
+            _verify_finding(findings, "error", "incomplete-evidence-reference", rel,
+                            f"{name} needs a relative path and SHA-256")
+            continue
+        candidate = (root / reference).resolve()
+        try:
+            candidate.relative_to(root.resolve())
+        except ValueError:
+            _verify_finding(findings, "error", "evidence-path-escape", rel,
+                            f"{name} escapes the state root")
+            continue
+        if not candidate.is_file():
+            _verify_finding(findings, "error", "missing-evidence", rel,
+                            f"{name} is missing: {reference}")
+        elif _sha256(candidate) != expected:
+            _verify_finding(findings, "error", "evidence-digest-mismatch", rel,
+                            f"{name} SHA-256 does not match")
+
+
+def verify_state(root: Path) -> dict[str, Any]:
+    """Return a read-only integrity report for one evidence state root."""
+    findings: list[dict[str, str]] = []
+    known_runs: set[str] = set()
+    lineage_ids: set[str] = set()
+    if not root.is_dir():
+        _verify_finding(findings, "error", "missing-state-root", str(root),
+                        "state directory does not exist")
+    lineage = root / "lineage.jsonl"
+    if lineage.is_file():
+        try:
+            lines = lineage.read_text(encoding="utf-8").splitlines()
+        except OSError as exc:
+            _verify_finding(findings, "error", "unreadable-lineage", "lineage.jsonl", str(exc))
+            lines = []
+        for number, line in enumerate(lines, 1):
+            if not line.strip():
+                continue
+            try:
+                doc = json.loads(line)
+            except json.JSONDecodeError as exc:
+                _verify_finding(findings, "error", "invalid-lineage-json",
+                                f"lineage.jsonl:{number}", str(exc))
+                continue
+            if not isinstance(doc, dict) or not isinstance(doc.get("run_id"), str):
+                _verify_finding(findings, "error", "invalid-lineage-record",
+                                f"lineage.jsonl:{number}", "record needs a string run_id")
+                continue
+            run_id = doc["run_id"]
+            if run_id in lineage_ids:
+                _verify_finding(findings, "error", "duplicate-run-id",
+                                f"lineage.jsonl:{number}", f"duplicate run {run_id}")
+            lineage_ids.add(run_id)
+            known_runs.add(run_id)
+
+    for directory, suffix, id_key in (
+        ("runs", ".json", "run_id"),
+        ("plans", "-plan.json", "run_id"),
+        ("acceptance", ".json", "runId"),
+    ):
+        for path in sorted((root / directory).glob(f"*{suffix}")):
+            doc = _verify_json(path, root, findings)
+            if doc is None:
+                continue
+            filename_id = path.name.removesuffix(suffix)
+            run_id = str(doc.get(id_key) or doc.get("run_id") or filename_id)
+            known_runs.add(run_id)
+            if run_id != filename_id:
+                _verify_finding(findings, "error", "run-id-mismatch",
+                                str(path.relative_to(root)),
+                                f"document run {run_id} does not match filename {filename_id}")
+            if directory == "runs" and doc.get("status") == "active":
+                try:
+                    expiry = datetime.fromisoformat(
+                        str(doc["lease_expires_at"]).replace("Z", "+00:00"))
+                except (KeyError, ValueError):
+                    _verify_finding(findings, "error", "invalid-active-lease",
+                                    str(path.relative_to(root)),
+                                    "active run needs a valid lease_expires_at")
+                else:
+                    if expiry <= datetime.now(UTC):
+                        _verify_finding(findings, "error", "expired-active-lease",
+                                        str(path.relative_to(root)),
+                                        "active run lease has expired")
+
+    for path in sorted((root / "releases").glob("*.json")):
+        doc = _verify_json(path, root, findings)
+        if doc is not None:
+            _verify_release(root, path, doc, known_runs, findings)
+
+    uuid_in_name = re.compile(r"([0-9a-f]{8}-[0-9a-f-]{27})")
+    for directory in ("provenance", "reports"):
+        for path in sorted((root / directory).glob("*")):
+            if not path.is_file():
+                continue
+            match = uuid_in_name.search(path.name)
+            if match and match.group(1) not in known_runs:
+                _verify_finding(findings, "warning", "orphan-evidence",
+                                str(path.relative_to(root)),
+                                f"references unknown run {match.group(1)}")
+
+    errors = sum(item["severity"] == "error" for item in findings)
+    warnings = sum(item["severity"] == "warning" for item in findings)
+    return {"schema": STATE_VERIFY_SCHEMA, "path": str(root),
+            "valid": errors == 0, "runs": len(known_runs),
+            "errors": errors, "warnings": warnings, "findings": findings}
+
+
+def cmd_state_verify(args: argparse.Namespace) -> int:
+    root = _state_dir().expanduser().resolve()
+    doc = verify_state(root)
+    if args.output == "json":
+        print(json.dumps(doc, ensure_ascii=False, indent=2))
+    else:
+        print(f"state verify: {root}")
+        for item in doc["findings"]:
+            print(f"  {str(item['severity']).upper():7s} {item['code']}: "
+                  f"{item['path']} — {item['message']}")
+        if not doc["findings"]:
+            ok(f"State is valid ({doc['runs']} run(s))")
+        else:
+            print(f"  {doc['errors']} error(s), {doc['warnings']} warning(s)")
+    return 1 if doc["errors"] or (args.strict and doc["warnings"]) else 0
 
 
 # ------------------------------------------------------------- lifecycle

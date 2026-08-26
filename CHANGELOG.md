@@ -375,6 +375,10 @@ can be traced across rebuilds.
   the sibling rules in the ubuntu catalogs.
 
 ### Added
+- **Offline state integrity gate** — `state verify` detects corrupt JSON,
+  duplicate or mismatched RUN_IDs, missing or modified release evidence,
+  expired active leases and orphaned artifacts. `--strict` promotes warnings
+  to a CI-blocking result; verification never modifies state or cloud resources.
 - **One-command launch journey** — `launch` guides an existing configuration
   through doctor, risk-gated plan, preflight and an optional build under one
   RUN_ID. It defaults to read-only readiness and requires both `--build` and
