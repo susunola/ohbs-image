@@ -53,6 +53,7 @@ from ._registry import (
     cmd_registry_list,
     cmd_registry_rebuild,
     cmd_registry_show,
+    cmd_registry_status,
     cmd_registry_verify,
 )
 from ._report_diff import cmd_report_cost, cmd_report_diff, cmd_report_html, cmd_report_list, cmd_report_show
@@ -447,7 +448,7 @@ def build_parser() -> argparse.ArgumentParser:
     registry_sub = p_registry.add_subparsers(dest="registry_command")
     p_reg_list = registry_sub.add_parser("list", help="List registered artifacts")
     p_reg_list.add_argument("--bucket")
-    p_reg_list.add_argument("--status", choices=["active", "revoked"])
+    p_reg_list.add_argument("--status", choices=["active", "quarantined", "revoked"])
     p_reg_list.add_argument("--output", choices=["text", "json"], default="text")
     p_reg_list.set_defaults(func=cmd_registry_list)
     p_reg_show = registry_sub.add_parser("show", help="Show one artifact")
@@ -461,6 +462,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_reg_verify = registry_sub.add_parser("verify", help="Verify registry hashes and identities")
     p_reg_verify.add_argument("--output", choices=["text", "json"], default="text")
     p_reg_verify.set_defaults(func=cmd_registry_verify)
+    for status in ("quarantine", "revoke"):
+        stored_status = "quarantined" if status == "quarantine" else "revoked"
+        p_status = registry_sub.add_parser(status, help=f"Mark an artifact {stored_status}")
+        p_status.add_argument("artifact_id")
+        p_status.add_argument("--reason", required=True)
+        p_status.add_argument("--actor", default=os.environ.get("GITHUB_ACTOR") or os.environ.get("USER") or "unknown")
+        p_status.add_argument("--no-auto-rollback", action="store_true")
+        p_status.add_argument("--output", choices=["text", "json"], default="text")
+        p_status.set_defaults(func=cmd_registry_status, artifact_status=stored_status)
 
     p_channel = sub.add_parser("channel", help="Atomically promote and resolve artifact channels")
     channel_sub = p_channel.add_subparsers(dest="channel_command")

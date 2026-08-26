@@ -95,6 +95,32 @@ def collect_channels(root: Path | None = None, bucket: str | None = None) -> lis
     return [doc for path in sorted(paths) if (doc := _read_object(path)) is not None]
 
 
+def rollback_channels_for_artifact(artifact_id: str, *, actor: str, reason: str,
+                                   root: Path | None = None) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    for pointer in collect_channels(root):
+        if pointer.get("artifact_id") != artifact_id:
+            continue
+        bucket = str(pointer.get("bucket") or "")
+        channel = str(pointer.get("channel") or "")
+        previous = str(pointer.get("previous_artifact_id") or "")
+        result: dict[str, Any] = {"bucket": bucket, "channel": channel,
+                                  "from": artifact_id, "to": previous or None}
+        if not previous:
+            result.update(status="blocked", error="no previous artifact")
+        else:
+            try:
+                updated = promote_channel(
+                    bucket, channel, previous,
+                    expected_generation=int(pointer.get("generation", 0)),
+                    actor=actor, reason=f"automatic rollback: {reason}", root=root)
+                result.update(status="rolled_back", generation=updated["generation"])
+            except (OSError, ValueError) as exc:
+                result.update(status="blocked", error=str(exc))
+        results.append(result)
+    return results
+
+
 def cmd_channel_promote(args: argparse.Namespace) -> int:
     try:
         doc = promote_channel(args.bucket, args.channel, args.artifact_id,
