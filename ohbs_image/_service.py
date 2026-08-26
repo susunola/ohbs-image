@@ -22,7 +22,8 @@ from ._distribution import execute_distribution
 from ._identity import IdentityError, verify_oidc_token
 from ._logging import fail, info
 from ._metrics import collect_metrics, prometheus_metrics
-from ._policy_registry import list_policies
+from ._policy_registry import list_policies, resolve_policy
+from ._policy_simulation import simulate_policy
 from ._rebuild_events import EVENT_SCHEMA, process_rebuild_event
 from ._registry import _database, _hash, _read_object, change_artifact_status, get_artifact, put_artifact
 from ._reports import _state_lock
@@ -445,6 +446,29 @@ class ControlPlane:
                 limit, offset = self._page(query)
                 return self._json(200, {"count": len(rows), "limit": limit,
                     "offset": offset, "policies": rows[offset:offset + limit]})
+            if method == "POST" and route == ["policies", "simulate"]:
+                self._authorize(principal, "viewer")
+                payload = json.loads(body.decode("utf-8"))
+                candidate = payload.get("bundle") if isinstance(payload, dict) else None
+                environment = str(payload.get("environment") or "production") \
+                    if isinstance(payload, dict) else "production"
+                if not isinstance(candidate, dict):
+                    raise ValueError("simulation bundle must be an object")
+                _count, artifacts = _database(self.root / "registry").search_artifacts(limit=1000)
+                artifacts = [artifact for artifact in artifacts
+                             if self._visible(principal, artifact.get("bucket"))]
+                baseline = None
+                try:
+                    record = resolve_policy(str(candidate.get("policy_id") or ""),
+                                            root=self.root / "policy_registry")
+                    value = record.get("bundle")
+                    baseline = value if isinstance(value, dict) else None
+                except ValueError:
+                    pass
+                result = simulate_policy(candidate, artifacts, environment, baseline=baseline)
+                self._audit(principal, "policy.simulate",
+                            str(candidate.get("policy_id") or "candidate"), "allowed")
+                return self._json(200, result)
             if method == "GET" and route == ["traces"]:
                 self._authorize(principal, "viewer")
                 query = parse_qs(parsed.query)
