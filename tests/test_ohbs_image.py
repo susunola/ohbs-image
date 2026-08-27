@@ -647,6 +647,12 @@ class TestRenderAll:
         # HCL: re-audit must keep the result so we can persist it; new
         # provisioner #7.5 collects it; new #8 runs the finalize.
         assert "cis_keep_remote_artifacts=true" in hcl
+        assert "ohbs-image-run-audit.sh" in hcl
+        assert hcl.count('provisioner "ansible-local"') == 0
+        assert 'source      = "packer/ansible-bundle.tar.gz"' in hcl
+        assert "tar -xzf /root/ansible-bundle.tar.gz" in hcl
+        assert (wd / "packer" / "ansible-bundle.tar.gz").is_file()
+        assert "/opt/ohbs-image-ansible/staging/site-audit.yml" in hcl
         assert "ohbs-image-AUDIT-RESULT.json" in hcl
         assert "collect-audit.sh" in hcl
         assert "ohbs-image-finalize.sh" in hcl
@@ -3156,7 +3162,7 @@ class TestIdempotencyAndSarif:
         render_all(wd, r, idempotency=True)
         hcl = (wd / "packer" / "main.pkr.hcl").read_text()
         assert "__IDEMPOTENCY_BLOCK__" not in hcl
-        assert hcl.count('playbook_file    = "ansible/site.yml"') == 2  # apply + re-apply
+        assert hcl.count("ansible-playbook site.yml") == 2  # apply + re-apply
         assert hcl.count("{") == hcl.count("}")
 
     def test_idempotency_not_rendered_by_default(self, valid_toml, tmp_path):
@@ -3164,7 +3170,7 @@ class TestIdempotencyAndSarif:
         wd = tmp_path / "build"
         render_all(wd, r)
         hcl = (wd / "packer" / "main.pkr.hcl").read_text()
-        assert hcl.count('playbook_file    = "ansible/site.yml"') == 1
+        assert hcl.count("ansible-playbook site.yml") == 1
 
     def test_cmd_test_pass(self, valid_toml, tmp_path):
         from ohbs_image import PackerResult, cmd_test

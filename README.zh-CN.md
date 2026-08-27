@@ -420,7 +420,7 @@ benchmark = "CIS-v1.0.0"
 
 ## 架构
 
-### Linux 构建流水线（SSH × ansible-local）
+### Linux 构建流水线（SSH × 实例内 Ansible）
 
 ```
 构建机                                     腾讯云
@@ -437,7 +437,8 @@ benchmark = "CIS-v1.0.0"
 └─────────────┘                           └──────────────────┘
 ```
 
-Packer 在临时 CVM 上通过 `ansible-local` 执行三个阶段：
+Packer 先将完整 Ansible 内容压缩为单个归档上传到临时 CVM，解压后在实例内
+通过 `ansible-playbook` 执行三个阶段：
 
 1. **安装** — 通过系统包管理器 + pip 安装 ansible-core。
 2. **加固** — 运行捆绑的 ohbs-os 引擎（`ohbs_engine.py` + `rules.json`）。
@@ -490,8 +491,9 @@ Windows 构建使用 Packer 的 `ansible` provisioner（控制器侧），通过
 13 个 ohbs-os 引擎角色全部随包发布在 `ohbs_image/roles/` 目录下。构建时工具
 将角色复制到工作目录。无网络依赖，无版本漂移。
 
-**`ansible-local`（Linux）— 实例内自包含。**
-Packer 控制器不需要能 SSH 进云内网，playbook 和角色全部在构建实例内执行。
+**实例内 Ansible（Linux）— 单包上传、自包含执行。**
+Packer 将完整内容作为一个归档上传，避免递归上传大量小文件时卡住；playbook
+和角色全部在构建实例内执行，控制器无需安装 `ansible-core`。
 
 **`ansible`（Windows）— 控制器通过 WinRM 驱动。**
 Windows 镜像使用 Packer 的 `ansible` provisioner，从控制器通过 WinRM 连接。
@@ -506,7 +508,7 @@ AK/SK 仅通过环境变量传入（HCL `sensitive = true`）。临时实例打�
 
 ## 画像
 
-### Linux（SSH × ansible-local）
+### Linux（SSH × 实例内 Ansible）
 
 | Profile | 操作系统 | SSH 用户 | 包管理器 | 角色 |
 |---|---|---|---|---|

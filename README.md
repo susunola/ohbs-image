@@ -680,7 +680,8 @@ benchmark = "CIS-v1.0.0"
 
 ### Linux pipeline
 
-Four phases executed inside the ephemeral CVM via `ansible-local`:
+Four phases executed inside the ephemeral CVM. Packer uploads one compressed
+Ansible bundle, extracts it, and runs `ansible-playbook` locally:
 
 1. **Install** — provisions `ansible-core` via the OS package manager + pip.
 2. **Harden** — runs the bundled ohbs-os engine (`ohbs_engine.py` + `rules.json`). Variables: `cis_mode: apply`, `cis_profile: L1/L2`.
@@ -760,7 +761,7 @@ Windows builds use the Packer `ansible` provisioner (controller-side) over WinRM
 | | Linux | Windows |
 |---|---|---|
 | Communicator | SSH | WinRM |
-| Packer provisioner | `ansible-local` (runs in the CVM) | `ansible` (controller-side) |
+| Packer provisioner | single `file` upload + local `ansible-playbook` | `ansible` (controller-side) |
 | Engine | `ohbs_engine.py` | `ohbs_engine.ps1` |
 | Controller requirement | none — engine runs on the instance | `ansible-core` on the build machine |
 | Reboot safety net | `ohbsimage` build user + SSH guard | WinRM direct (no reboot lockout risk) |
@@ -769,7 +770,9 @@ Windows builds use the Packer `ansible` provisioner (controller-side) over WinRM
 
 **Bundled roles.** All 13 ohbs-os engine roles ship inside `ohbs_image/roles/`. At build time the tool copies the selected role into the workspace. No Galaxy, no network dependency, no version drift.
 
-**ansible-local (Linux).** Playbooks and roles execute inside the build instance — the Packer controller does not need SSH access into the cloud VPC.
+**Local Ansible (Linux).** Packer uploads the complete payload as one archive;
+playbooks and roles then execute inside the build instance. This avoids recursive
+upload stalls while keeping the controller free of an `ansible-core` dependency.
 
 **ansible (Windows).** Controller-driven over WinRM. The controller must have `ansible-core` installed locally.
 
@@ -781,7 +784,7 @@ Windows builds use the Packer `ansible` provisioner (controller-side) over WinRM
 
 ## Profiles
 
-### Linux (SSH × ansible-local)
+### Linux (SSH × local Ansible)
 
 | Profile | OS | SSH User | Pkg Manager | Role |
 |---|---|---|---|---|

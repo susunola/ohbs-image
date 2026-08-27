@@ -130,20 +130,23 @@ build {
     remote_path  = "__REMOTE_DIR__/ohbs-image-install-ansible.sh"
   }
 
-  # 2. CIS apply (gate disabled: fails don't block, re-audited after reboot)
-  provisioner "ansible-local" {
-    command          = "/opt/ohbs-image-ansible/bin/ansible-playbook"
-    playbook_dir     = "ansible"
-    playbook_file    = "ansible/site.yml"
-    staging_directory = "/opt/ohbs-image-ansible/staging"
-    # Keep the staging dir so cleanup.sh can preserve the bundled role
-    # (engine + rules.json) inside the image for later re-scans.
-    clean_staging_directory = false
-    # TMPDIR relocation lives in the venv wrapper (install-ansible.sh) —
-    # ansible-local has no ansible_env_vars argument.
-    extra_arguments  = [
-      "-v",
-      "-e", "ansible_python_interpreter=/opt/ohbs-image-ansible/bin/python"
+  # 2. CIS apply.  Upload one archive instead of asking ansible-local to walk
+  #    and SCP the complete role tree.  TencentCloud's communicator can stall
+  #    indefinitely during that recursive upload even while SSH is healthy.
+  provisioner "file" {
+    source      = "packer/ansible-bundle.tar.gz"
+    destination = "__REMOTE_DIR__/ansible-bundle.tar.gz"
+  }
+
+  provisioner "shell" {
+    remote_path = "__REMOTE_DIR__/ohbs-image-run-apply.sh"
+    inline = [
+      "set -e",
+      "sudo mkdir -p /opt/ohbs-image-ansible/staging",
+      "sudo tar -xzf __REMOTE_DIR__/ansible-bundle.tar.gz -C /opt/ohbs-image-ansible/staging --strip-components=1",
+      "sudo rm -f __REMOTE_DIR__/ansible-bundle.tar.gz",
+      "cd /opt/ohbs-image-ansible/staging",
+      "sudo /opt/ohbs-image-ansible/bin/ansible-playbook site.yml -v -e ansible_python_interpreter=/opt/ohbs-image-ansible/bin/python -c local -i 'localhost,'"
     ]
   }
 
@@ -537,19 +540,15 @@ build {
   # 6. Re-audit after reboot + gate check (score >= 85%).
   #    cis_keep_remote_artifacts=true keeps /tmp/cis-*/result.json so
   #    provisioner #7.5 can persist it to /opt for the ohbs-image report.
-  provisioner "ansible-local" {
-    command          = "/opt/ohbs-image-ansible/bin/ansible-playbook"
-    playbook_dir     = "ansible"
-    playbook_file    = "ansible/site-audit.yml"
-    staging_directory = "/opt/ohbs-image-ansible/staging"
-    # Keep the staging dir so cleanup.sh can preserve the bundled role
-    # (engine + rules.json) inside the image for later re-scans.
-    clean_staging_directory = false
-    # TMPDIR relocation lives in the venv wrapper (install-ansible.sh).
-    extra_arguments  = [
-      "-v",
-      "-e", "ansible_python_interpreter=/opt/ohbs-image-ansible/bin/python",
-      "-e", "cis_keep_remote_artifacts=true"
+  # The archive extraction deliberately preserves the complete staging tree,
+  # including site-audit.yml and the role. Execute that retained copy directly
+  # after reboot, with no second upload.
+  provisioner "shell" {
+    pause_before = "5s"
+    remote_path  = "__REMOTE_DIR__/ohbs-image-run-audit.sh"
+    inline = [
+      "cd /opt/ohbs-image-ansible/staging",
+      "sudo /opt/ohbs-image-ansible/bin/ansible-playbook /opt/ohbs-image-ansible/staging/site-audit.yml -v -e ansible_python_interpreter=/opt/ohbs-image-ansible/bin/python -e cis_keep_remote_artifacts=true -c local -i 'localhost,'"
     ]
   }
 
@@ -661,16 +660,11 @@ __IDEMPOTENCY_BLOCK____SMOKE_TEST_BLOCK____SUPPLY_CHAIN_BLOCK____TEST_COMPONENTS
 }
 """
 
-IDEMPOTENCY_LINUX_BLOCK = r"""  provisioner "ansible-local" {
-    command          = "/opt/ohbs-image-ansible/bin/ansible-playbook"
-    playbook_dir     = "ansible"
-    playbook_file    = "ansible/site.yml"
-    staging_directory = "/opt/ohbs-image-ansible/staging"
-    clean_staging_directory = false
-    extra_arguments  = [
-      "-v",
-      "-e", "ansible_python_interpreter=/opt/ohbs-image-ansible/bin/python",
-      "-e", "cis_keep_remote_artifacts=true"
+IDEMPOTENCY_LINUX_BLOCK = r"""  provisioner "shell" {
+    remote_path = "__REMOTE_DIR__/ohbs-image-idempotency.sh"
+    inline = [
+      "cd /opt/ohbs-image-ansible/staging",
+      "sudo /opt/ohbs-image-ansible/bin/ansible-playbook site.yml -v -e ansible_python_interpreter=/opt/ohbs-image-ansible/bin/python -e cis_keep_remote_artifacts=true -c local -i 'localhost,'"
     ]
   }
 """

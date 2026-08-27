@@ -219,7 +219,7 @@ benchmark = "CIS-v1.0.0"
 
 ## สถาปัตยกรรม
 
-### Linux Build Pipeline (SSH × ansible-local)
+### Linux Build Pipeline (SSH × local Ansible)
 
 ```
 เครื่อง Build                              Tencent Cloud
@@ -236,7 +236,8 @@ benchmark = "CIS-v1.0.0"
 └─────────────┘                           └──────────────────┘
 ```
 
-Packer รัน 3 เฟสบน CVM ชั่วคราวผ่าน `ansible-local`:
+Packer อัปโหลด Ansible payload ทั้งหมดเป็น archive เดียว แตกไฟล์บน CVM ชั่วคราว
+แล้วรัน 3 เฟสด้วย `ansible-playbook` ภายใน instance:
 
 1. **Install** — ใช้ package manager ของ OS + pip ติดตั้ง ansible-core
 2. **Harden** — รัน ohbs-os engine ที่ให้มาด้วย (`ohbs_engine.py` + `rules.json`)
@@ -272,9 +273,10 @@ ohbs-os engine role ทั้ง 12 ตัวถูกรวมไว้ใน�
 เครื่องมือจะคัดลอก role ที่เลือกไปยัง workspace ไม่มี dependency ด้าน network
 ไม่มี version drift
 
-**`ansible-local` (Linux) — self-contained ภายใน instance**
-Packer controller ไม่จำเป็นต้อง SSH เข้าไปใน cloud VPC เลย playbook และ role
-รันอยู่ใน build instance
+**Local Ansible (Linux) — อัปโหลดครั้งเดียวและรันภายใน instance**
+Packer อัปโหลด payload เป็น archive เดียวเพื่อลดปัญหาการค้างระหว่างอัปโหลดไฟล์ย่อย
+จากนั้น playbook และ role จะรันใน build instance โดย controller ไม่ต้องติดตั้ง
+`ansible-core`
 
 **`ansible` (Windows) — controller-driven ผ่าน WinRM**
 Windows image ใช้ Packer `ansible` provisioner จาก controller ต่อผ่าน WinRM
@@ -291,7 +293,7 @@ AK/SK ผ่าน environment variable เท่านั้น (HCL `sensitive
 
 ## Profile ที่รองรับ
 
-### Linux (SSH × ansible-local)
+### Linux (SSH × local Ansible)
 
 | Profile | OS | SSH User | Package Manager | Role |
 |---|---|---|---|---|

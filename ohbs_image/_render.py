@@ -10,6 +10,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 from datetime import UTC
 from pathlib import Path
@@ -673,6 +674,13 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
                                        allow_disruptive=r.allow_disruptive)
         _assert_no_markers(site_audit, "site-audit.yml")
         (workdir / "ansible" / "site-audit.yml").write_text(site_audit, encoding="utf-8")
+
+        # Packer's ansible-local provisioner recursively uploads the role tree.
+        # On TencentCloud that transfer can stall even while SSH remains healthy.
+        # Build one archive at render time so the file provisioner performs one
+        # bounded upload and the guest extracts the complete, immutable payload.
+        with tarfile.open(workdir / "packer" / "ansible-bundle.tar.gz", "w:gz") as bundle:
+            bundle.add(workdir / "ansible", arcname="ansible")
 
     # 5. Install script (Linux only)
     if family != "windows":
