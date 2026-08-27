@@ -70,6 +70,7 @@ from ._distribution_controller import (
 from ._dr import cmd_dr_drill
 from ._engine import cmd_engine_list, cmd_engine_verify, cmd_engine_version
 from ._extensions import ENTRY_POINT_GROUPS, cmd_extension_list, cmd_extension_verify
+from ._guide import JOURNEYS, cmd_guide
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._metrics import cmd_report_metrics, cmd_report_trends
@@ -127,9 +128,10 @@ from ._worker import cmd_worker_run
 # aliases (see _deprecated_alias below) and remain grouped here so --help
 # renders them under the same lifecycle headings.
 COMMAND_GROUPS: dict[str, list[str]] = {
+    "start here": ["guide", "try", "launch", "quickstart"],
     "build lifecycle": [
-        "launch", "quickstart", "init", "configure", "doctor", "discover", "plan", "preflight", "benchmark",
-        "validate", "build", "scan", "test", "try",
+        "init", "configure", "doctor", "discover", "plan", "preflight", "benchmark",
+        "validate", "build", "scan", "test",
     ],
     "manage & evidence": [
         "run", "state", "config", "registry", "ancestry", "channel", "policy", "compliance", "consumer", "distribution", "event", "cve", "dr", "provider", "extension", "proof", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
@@ -211,6 +213,14 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Evidence state directory (may be placed before any command)")
 
     sub = parser.add_subparsers(dest="command")
+
+    p_guide = sub.add_parser(
+        "guide", help="Choose a role-based path through the product")
+    p_guide.add_argument("role", nargs="?", choices=tuple(JOURNEYS),
+                         help="Show one journey (omit to list every role)")
+    p_guide.add_argument("--output", choices=["text", "json"], default="text",
+                         help="Output format (default: text)")
+    p_guide.set_defaults(func=cmd_guide)
 
     p_init = sub.add_parser("init", help="Generate sample ohbs-image.toml")
     p_init.add_argument("--target", default=".", help="Output directory (default: current)")
@@ -998,7 +1008,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_vrf_rel.set_defaults(func=cmd_verify_release)
 
     # Deprecated flat aliases of the verify group (scheduled for removal in
-    # 0.20.0): keep parsing identically, but warn and point at the group form.
+    # 0.21.0): keep parsing identically, but warn and point at the group form.
     p_vrf_img_alias = sub.add_parser(
         "verify-image", parents=[common],
         help="[deprecated] use 'ohbs-image verify image'")
@@ -1139,7 +1149,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_clnruns.set_defaults(func=cmd_cleanup_runs)
 
     # Deprecated flat aliases of the cleanup group (scheduled for removal in
-    # 0.20.0): keep parsing identically, but warn and point at the group form.
+    # 0.21.0): keep parsing identically, but warn and point at the group form.
     p_clnimg_alias = sub.add_parser(
         "cleanup-images",
         help="[deprecated] use 'ohbs-image cleanup images'")
@@ -1213,11 +1223,11 @@ def _deprecated_alias(alias: str, replacement: str,
     verify/cleanup convergence — the flat forms (`verify-image`,
     `verify-release`, `cleanup-images`, `cleanup-runs`, and the flat `verify`
     default) still work, but print a removal-window notice to stderr before
-    dispatching to the real handler. Scheduled for removal in 0.20.0.
+    dispatching to the real handler. Scheduled for removal in 0.21.0.
     """
     def _wrapped(args: argparse.Namespace) -> int:
         print(f"warning: '{alias}' is deprecated, use 'ohbs-image {replacement}' "
-              "(scheduled for removal in 0.20.0)", file=sys.stderr)
+              "(scheduled for removal in 0.21.0)", file=sys.stderr)
         return func(args)
     return _wrapped
 
@@ -1226,10 +1236,10 @@ def _deprecation_prog(argv: list[str] | None) -> None:
     """Roadmap D-92/93 — keep the pre-rebrand entry name as a deprecated alias.
 
     `cis-image` (the pre-0.16.25 package name) still works but prints a
-    deprecation notice; it is scheduled for removal in 0.19.0.
+    deprecation notice; it is scheduled for removal in 0.21.0.
     """
     first = argv[0] if argv else sys.argv[0]
     name = os.path.basename(str(first)).lower()
     if name in ("cis-image", "cis_image"):
         print("warning: 'cis-image' is deprecated, use 'ohbs-image' "
-              "(scheduled for removal in 0.19.0)", file=sys.stderr)
+              "(scheduled for removal in 0.21.0)", file=sys.stderr)

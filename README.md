@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.19.1-blue?logo=pypi&logoColor=white" alt="Version 0.19.1">
+  <img src="https://img.shields.io/badge/version-0.20.0-blue?logo=pypi&logoColor=white" alt="Version 0.20.0">
   <img src="https://img.shields.io/badge/python-3.11_|_3.12_|_3.13_|_3.14-blue?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/profiles-13-orange" alt="13 profiles">
   <img src="https://img.shields.io/badge/platform-Tencent%20Cloud-0052D9" alt="Tencent Cloud">
@@ -146,7 +146,7 @@ export WINRM_PASSWORD=xxxx   # Windows builds only
 
 ```
 ══════════════════════════════════════════════════════════
-  ohbs-image 0.19.1 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.20.0 — tencentos3 (L1) → ap-guangzhou-4
 ══════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: Launching instance (S5.MEDIUM2)...
 [packer]  tencentcloud-cvm: Provisioning with ansible-local...
@@ -208,6 +208,19 @@ ohbs-image --version
 
 ## Commands
 
+Not sure where to begin? Ask the CLI for the path that matches your role:
+
+```bash
+ohbs-image guide             # list the four product journeys
+ohbs-image guide builder     # first hardened image, end to end
+ohbs-image guide security    # assessment, policy and evidence
+ohbs-image guide platform    # state, promotion, distribution and recovery
+ohbs-image guide consumer    # resolve and verify deployable images
+```
+
+`guide` is offline and configuration-free. It returns task-oriented steps by
+default and a stable machine-readable contract with `--output json`.
+
 Cloud integrations use a versioned plugin contract. Inspect the built-in
 Tencent Cloud adapter and any installed third-party adapters with
 `ohbs-image provider list`, then validate one with
@@ -258,11 +271,12 @@ the image lifecycle — pick by what you are trying to *do*:
 `build` with remediation switched off, which is why its score is a fair
 "before" snapshot for a migration or a quarterly compliance review.
 
-### The five commands you will use 90% of the time
+### Choose a path, then use these five commands 90% of the time
 
 New to ohbs-image? Ignore the full reference below; start here:
 
 ```bash
+ohbs-image guide         # choose the shortest path for your role
 ohbs-image init          # generate ohbs-image.toml (interactive)
 ohbs-image preflight     # validate config + credentials before spending money
 ohbs-image build         # produce the hardened golden image
@@ -278,6 +292,7 @@ documented in the full reference below.
 
 ```bash
 ohbs-image                                    # show help (exits 2)
+ohbs-image guide [builder|security|platform|consumer] [--output text|json]
 ohbs-image try [-o DIR] [--profile P] [--level 1|2]  # zero-cost offline demo: gates + sample HTML report
 ohbs-image quickstart --region R --profile P --ingress-cidr IP/32  # temp resources + config + doctor + plan
 ohbs-image quickstart --dry-run               # read-only: print the plan, create nothing
@@ -304,6 +319,7 @@ ohbs-image run events RUN_ID [--output json]  # immutable, hash-chained state ti
 ohbs-image run resume RUN_ID [--build --yes]  # continue from the last safe launch checkpoint
 ohbs-image run checkpoints RUN_ID [--output json]  # fine-grained build phase checkpoints
 ohbs-image report slo [--days 30] [--output json]  # run success, retry and latency SLOs
+ohbs-image dr drill --help                    # isolated disaster-recovery/chaos exercise
 ohbs-image report metrics --format prometheus       # Prometheus exposition format
 ohbs-image report metrics --format otlp-json        # OTLP/JSON metrics document
 
@@ -392,7 +408,7 @@ ohbs-image cleanup images --apply                 # actually delete (default = d
 ohbs-image cleanup runs --older-than 24           # find tagged orphaned build/probe CVMs (dry run)
 ohbs-image cleanup runs --older-than 24 --apply   # actually terminate the tagged CVMs (hours must be > 0)
 ohbs-image cleanup runs --include-legacy --apply  # explicitly include pre-manifest probes after review
-# --- deprecated flat aliases (removal planned in 0.20.0) ---
+# --- deprecated flat aliases (removal planned in 0.21.0) ---
 ohbs-image verify --provenance <file>         # [deprecated] use `ohbs-image verify provenance`
 ohbs-image verify-image --image <img-id>      # [deprecated] use `ohbs-image verify image`
 ohbs-image verify-release --image img-xxx     # [deprecated] use `ohbs-image verify release`

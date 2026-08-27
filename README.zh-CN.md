@@ -124,7 +124,7 @@ ohbs-image clean
 
 ```
 ════════════════════════════════════════════════════════
-  ohbs-image 0.19.1 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.20.0 — tencentos3 (L1) → ap-guangzhou-4
 ════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: output will be in this color
 [packer]  ==> tencentcloud-cvm: Creating temporary keypair...
@@ -178,6 +178,18 @@ ohbs-image images        # 列出已构建的镜像（血缘）
 ohbs-image scan          # 只需要分数时做只审计检查
 ```
 
+不知道从哪里开始时，先按你的角色选择任务路径：
+
+```bash
+ohbs-image guide             # 查看四条产品旅程
+ohbs-image guide builder     # 首个加固镜像端到端路径
+ohbs-image guide security    # 评估、策略与证据
+ohbs-image guide platform    # 状态、晋升、分发与恢复
+ohbs-image guide consumer    # 解析并验证可部署镜像
+```
+
+`guide` 无需配置和云访问，并支持稳定的 `--output json` 输出。
+
 其它命令 —— `config` 工具、`report` 证据、`state` 管理、`cleanup-*` 卫生、
 `audit` 交叉验证 —— 需要时再用，全部在下方完整参考中有说明。
 
@@ -185,6 +197,7 @@ ohbs-image scan          # 只需要分数时做只审计检查
 
 | 命令 | 说明 |
 |---|---|
+| `ohbs-image guide [builder\|security\|platform\|consumer]` | 按角色给出最短产品路径；`--output json` 输出稳定契约 |
 | `ohbs-image try [-o DIR] [--profile P] [--level 1\|2]` | 零成本离线演示：运行引擎 + 规则目录门禁并输出示例 HTML 合规报告 |
 | `ohbs-image init` | 在当前目录生成 `ohbs-image.toml` |
 | `ohbs-image configure` | 交互或非交互生成最小可用配置 |
@@ -240,11 +253,11 @@ ohbs-image scan          # 只需要分数时做只审计检查
 | `ohbs-image verify provenance --provenance <file>` | 校验 SLSA 来源签名 |
 | `ohbs-image verify provenance --image <img-id>` | 按镜像 ID 定位来源记录 |
 | `ohbs-image verify image --image <img-id>` | 对产出镜像做干净启动验收 |
-| `ohbs-image verify --provenance <file>` | [已弃用] 请使用 `ohbs-image verify provenance`（计划 0.20.0 移除） |
-| `ohbs-image verify-image --image <img-id>` | [已弃用] 请使用 `ohbs-image verify image`（计划 0.20.0 移除） |
-| `ohbs-image verify-release --image <id>` | [已弃用] 请使用 `ohbs-image verify release`（计划 0.20.0 移除） |
-| `ohbs-image cleanup-images [--older-than 30]` | [已弃用] 请使用 `ohbs-image cleanup images`（计划 0.20.0 移除） |
-| `ohbs-image cleanup-runs --older-than 24` | [已弃用] 请使用 `ohbs-image cleanup runs`（计划 0.20.0 移除） |
+| `ohbs-image verify --provenance <file>` | [已弃用] 请使用 `ohbs-image verify provenance`（计划 0.21.0 移除） |
+| `ohbs-image verify-image --image <img-id>` | [已弃用] 请使用 `ohbs-image verify image`（计划 0.21.0 移除） |
+| `ohbs-image verify-release --image <id>` | [已弃用] 请使用 `ohbs-image verify release`（计划 0.21.0 移除） |
+| `ohbs-image cleanup-images [--older-than 30]` | [已弃用] 请使用 `ohbs-image cleanup images`（计划 0.21.0 移除） |
+| `ohbs-image cleanup-runs --older-than 24` | [已弃用] 请使用 `ohbs-image cleanup runs`（计划 0.21.0 移除） |
 | `ohbs-image drift --host <ip> [--image <id>]` | 实例配置漂移检测（对比镜像基线） |
 | `ohbs-image drift --host <ip> --save-baseline` | 保存当前主机扫描为漂移基线 |
 | `ohbs-image check-source` | 源镜像刷新检测（是否需要重建） |

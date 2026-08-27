@@ -107,7 +107,7 @@ ohbs-image clean
 
 ```
 ════════════════════════════════════════════════════════
-  ohbs-image 0.19.1 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.20.0 — tencentos3 (L1) → ap-guangzhou-4
 ════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: output will be in this color
 [packer]  ==> tencentcloud-cvm: Creating temporary keypair...
@@ -128,6 +128,7 @@ ohbs-image clean
 
 | คำสั่ง | คำอธิบาย |
 |---|---|
+| `ohbs-image guide [builder\|security\|platform\|consumer]` | แสดงเส้นทางที่สั้นที่สุดตามบทบาท โดยไม่ต้องมี config หรือ cloud access; รองรับ `--output json` |
 | `ohbs-image init` | สร้าง `ohbs-image.toml` ในไดเรกทอรีปัจจุบัน |
 | `ohbs-image preflight` | ตรวจ config, credential และข้อกำหนดเบื้องต้น |
 | `ohbs-image validate` | Render template และรัน `packer validate` |

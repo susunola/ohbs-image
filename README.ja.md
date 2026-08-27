@@ -108,7 +108,7 @@ ohbs-image clean
 
 ```
 ════════════════════════════════════════════════════════
-  ohbs-image 0.19.1 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.20.0 — tencentos3 (L1) → ap-guangzhou-4
 ════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: output will be in this color
 [packer]  ==> tencentcloud-cvm: Creating temporary keypair...
@@ -129,6 +129,7 @@ ohbs-image clean
 
 | コマンド | 説明 |
 |---|---|
+| `ohbs-image guide [builder\|security\|platform\|consumer]` | 役割別の最短パスを表示（設定・クラウドアクセス不要、`--output json` 対応） |
 | `ohbs-image init` | カレントディレクトリに `ohbs-image.toml` を生成 |
 | `ohbs-image preflight` | 設定・資格情報・前提条件を検証 |
 | `ohbs-image validate` | テンプレートをレンダリングし `packer validate` を実行 |
