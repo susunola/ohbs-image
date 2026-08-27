@@ -23,7 +23,7 @@ def _rhel_profile(role_dir: str, os_tag: str, **kw: Any) -> dict[str, Any]:
         "role_dir": role_dir, "ssh_username": "root", "os_tag": os_tag,
         "pkg_update": "sudo dnf makecache",
         "pkg_install": "sudo dnf install -y python3-pip",
-        "cis_pkg_batch": "sudo dnf install -y --skip-broken sudo pam authselect firewalld chrony rsyslog cronie aide systemd-journal-remote libselinux libselinux-utils || true",
+        "cis_pkg_batch": "sudo dnf install -y --skip-broken sudo pam authselect firewalld chrony rsyslog cronie aide systemd-journal-remote libselinux libselinux-utils policycoreutils selinux-policy-targeted || true",
         "clean_cmd": "sudo dnf clean all", **kw,
     }
 
@@ -34,7 +34,7 @@ def _tlinux_profile(role_dir: str, os_tag: str, **kw: Any) -> dict[str, Any]:
         "pip_index_url": "https://mirrors.cloud.tencent.com/pypi/simple/",
         "pkg_update": "sudo dnf makecache",
         "pkg_install": "sudo dnf install -y python3-pip",
-        "cis_pkg_batch": "sudo dnf install -y --skip-broken sudo pam authselect firewalld chrony rsyslog cronie aide systemd-journal-remote libselinux libselinux-utils || true",
+        "cis_pkg_batch": "sudo dnf install -y --skip-broken sudo pam authselect firewalld chrony rsyslog cronie aide systemd-journal-remote libselinux libselinux-utils policycoreutils selinux-policy-targeted || true",
         "clean_cmd": "sudo dnf clean all", **kw,
     }
 
@@ -59,11 +59,16 @@ PROFILES: dict[str, dict[str, Any]] = {
     # rhel9 payload is shared verbatim with only the benchmark identity
     # changed (CIS Rocky Linux 9 Benchmark v2.0.0, see role vars).
     "rocky9":      _rhel_profile("cis-rocky9", "rocky-9", benchmark="CIS-v2.0.0"),
+    # Current TencentOS Server 3.1 public image img-eb30mz89 listens on 22;
+    # probing from the build controller on 2026-08-27 confirmed 36000 is
+    # refused while 22 accepts SSH. Keep this explicit so the historical
+    # _tlinux_profile default cannot stall Packer for the full timeout.
     "tencentos3":  _tlinux_profile("cis-tencentos3", "tencentos-3",
+                                   ssh_port=22,
                                    ansible_core_spec="ansible-core>=2.11",
                                    benchmark="CIS-v1.0.0"),
-    # TencentOS Server 4's public images ship with sshd on the standard
-    # port 22 (not 36000 like TencentOS 3). Verified empirically: the
+    # TencentOS Server 4's public images also ship with sshd on the standard
+    # port 22. Verified empirically: the
     # img-6n21msk1 image listens only on :22 and accepts root key auth there,
     # while :36000 is not an sshd (connection closed). Override the shared
     # 36000 default or every tencentos4 build times out waiting for SSH.

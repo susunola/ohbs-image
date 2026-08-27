@@ -663,9 +663,10 @@ class TestRenderAll:
         assert "/opt/ohbs-image-REPORT.md" in finalize
         assert "/usr/local/bin/ohbs-image-info" in finalize
         assert "Banner /etc/ohbs-image/banner" in finalize
-        # The source image, OS and ohbs-image version are wired through.
-        assert valid_toml["build"]["source_image_id"] in finalize
-        assert valid_toml["meta"]["os_tag"] in finalize
+        # The source image and OS are passed to finalize as arguments rather
+        # than disclosed in the CIS-controlled login-message files.
+        assert valid_toml["build"]["source_image_id"] in hcl
+        assert valid_toml["meta"]["os_tag"] in hcl
         # The ohbs-image banner ASCII is embedded.
         assert "OHBS IMAGE" in finalize
         assert "OHBS-HARDENED IMAGE BUILDER" in finalize
@@ -844,7 +845,16 @@ class TestRenderAll:
         hcl = (wd / "packer" / "main.pkr.hcl").read_text()
         assert "fix-logperms.sh" in hcl
         assert "chmod g-wx,o-rwx" in hcl
+        assert "systemctl is-active --quiet rsyslog" in hcl
+        assert "ForwardToSyslog=yes" in hcl
         assert "ForwardToSyslog=no" in hcl
+        assert "/etc/systemd/journald.conf.d/60-ohbs-cis.conf" in hcl
+        assert "systemctl restart systemd-journald" in hcl
+        assert "ohbs-cloud-agent-permissions.service" in hcl
+        assert "ohbs-cloud-agent-permissions.timer" in hcl
+        assert "OnUnitActiveSec=5min" in hcl
+        assert "chmod 0644 /run/.barad_agent.pid" in hcl
+        assert "-name executor.log -o -name dispatcher.log" in hcl
         # Must appear after reconnect but before re-audit
         reconnect_idx = hcl.find("reconnected.sh")
         logfix_idx = hcl.find("fix-logperms.sh")
@@ -2276,16 +2286,43 @@ class TestAllProfilesRender:
                 f"{profile_name}: old family-only nft iteration still present"
             )
             # post-reboot reconnect provisioner widens the CONNECT window
-            assert 'start_retry_timeout = "25m"' in hcl, (
+            assert 'start_retry_timeout = "20m"' in hcl, (
                 f"{profile_name}: post-reboot connect window not widened"
             )
-            # stale SELinux autorelabel marker must be removed pre-reboot
+            assert "max_retries         = 0" in hcl, (
+                f"{profile_name}: reconnect must not multiply the full timeout"
+            )
+            assert "build key preserved" in hcl
+            assert "build key restored" in hcl
+            assert "00-ohbs-image-build.conf" in hcl
+            assert "PubkeyAuthentication yes" in hcl
+            assert "RequiredRSASize 2048" in hcl
+            assert "RequiredRSASize unsupported" in hcl
+            # A permissive boot may discard a stale marker, but an enforcing
+            # boot must preserve it or sshd starts with an unlabeled context.
             assert "rm -f /.autorelabel" in hcl, (
-                f"{profile_name}: stale /.autorelabel not removed by guard"
+                f"{profile_name}: permissive stale-marker cleanup missing"
+            )
+            assert "preserving /.autorelabel for enforcing boot" in hcl, (
+                f"{profile_name}: enforcing autorelabel preservation missing"
+            )
+            relock = hcl.rfind("PermitRootLogin no")
+            smoke = hcl.rfind("smoke test PASSED")
+            assert relock > smoke, (
+                f"{profile_name}: root login must be re-locked only after "
+                "all reconnecting provisioners have finished"
             )
             # post-reboot evidence echo must exist
             assert "post-reboot: autorelabel=" in hcl, (
                 f"{profile_name}: post-reboot state evidence missing"
+            )
+            assert "unmask selinux-autorelabel-mark.service" in hcl, (
+                f"{profile_name}: one-transition SELinux mask not restored"
+            )
+            assert "SELinux L2 promotion: full relabel" in hcl
+            assert "L2 requires SELinux enforcing" in hcl
+            assert "remount,nodev,nosuid,noexec /dev/shm" in hcl, (
+                f"{profile_name}: post-reboot /dev/shm hardening missing"
             )
             # /opt must be made rw (fstab ro stripped + remount) so post-reboot
             # provisioner uploads and ansible staging do not hit a ro fs
@@ -3591,6 +3628,20 @@ class TestShareImages:
         assert "cannot share images" in caplog.text
 
 
+class TestSitePolicyControls:
+    def test_complete_approval_is_merged_into_rule_override(self, valid_toml):
+        valid_toml["site_policy"] = {"controls": {"2.1.24": {
+            "approved": True, "reason": "SEC-NET-004", "owner": "security",
+            "reviewed_at": "2026-08-27"}}}
+        r = resolve(valid_toml)
+        assert r.rules_overrides["2.1.24"]["site_policy"]["owner"] == "security"
+
+    def test_incomplete_approval_fails_closed(self, valid_toml):
+        valid_toml["site_policy"] = {"controls": {"2.1.24": {"approved": True}}}
+        with pytest.raises(ConfigError, match="requires reason, owner, reviewed_at"):
+            resolve(valid_toml)
+
+
 class TestBuildReportArchive:
     """The per-rule audit JSON is archived on the BUILD machine at
     ~/.ohbs-image/reports/<image>.json — Linux via a gzipped+base64 marker line
@@ -4590,11 +4641,12 @@ class TestProvenanceSbom:
         assert "Profiles" in text
         assert "Assessment Results" in text
         assert "Assessment Details" in text
-        assert "Scores by recommendation group" in text
+        assert "<th>Run level</th>" in text
+        assert "<th>Profiles</th>" not in text
+        assert "Scores by recommendation group" not in text
         assert "Catalog coverage" in text
         assert "Not evaluated" in text
-        assert "Scores use evaluated rules only" in text
-        assert "Group 1" in text
+        assert '<section class="recommendation-summary">' not in text
         assert 'id="audit-filter"' in text
         assert 'id="audit-search"' in text
         assert "Ensure cramfs kernel module is not available" in text
@@ -4602,6 +4654,10 @@ class TestProvenanceSbom:
         assert "not evaluated (scope)" in text
         assert "Rules requiring attention" in text
         assert "Example failed rule" in text
+        assert text.count("<div") == text.count("</div>")
+        assert text.count("<section") == text.count("</section>")
+        assert text.index('id="profiles"') < text.index('id="assessment-results"')
+        assert text.index('id="assessment-results"') < text.index('id="evidence"')
 
     def test_release_manifest_tracks_promotion_and_rollback(self, valid_toml, tmp_path, monkeypatch):
         from ohbs_image import (
@@ -6559,3 +6615,30 @@ class TestFinalStateRescanWarning:
         assert ("WARNING: engine not found under "
                 "/opt/ohbs-image-ansible/roles/cis-*/files") in hcl
         assert "WARNING: final-state re-scan failed; keeping pre-finalize audit" in hcl
+
+    def test_definitive_audit_runs_after_root_relock(self, valid_toml, tmp_path):
+        r = resolve(valid_toml)
+        wd = tmp_path / "build"
+        render_all(wd, r)
+        hcl = (wd / "packer" / "main.pkr.hcl").read_text(encoding="utf-8")
+        relock = hcl.rfind("PermitRootLogin no")
+        definitive = hcl.rfind("cis-definitive-scan.json")
+        marker = hcl.rfind("__CIS_IMAGE_AUDIT_B64__")
+        assert relock < definitive < marker
+        assert hcl.count("__CIS_IMAGE_AUDIT_B64__") == 1
+        assert "chmod 0600" in hcl
+
+    def test_login_messages_are_cis_safe(self, valid_toml, tmp_path):
+        r = resolve(valid_toml)
+        wd = tmp_path / "build"
+        render_all(wd, r)
+        finalize = (wd / "packer" / "scripts" / "ohbs-image-finalize.sh").read_text(
+            encoding="utf-8")
+        warning = "Authorized uses only. All activity may be monitored and reported."
+        assert finalize.count(warning) == 3
+        motd = finalize.split("# 2. /etc/motd", 1)[1].split("# 3. /etc/issue", 1)[0]
+        issues = finalize.split("# 3. /etc/issue", 1)[1].split("# 3.5", 1)[0]
+        for block in (motd, issues):
+            assert valid_toml["meta"]["os_tag"] not in block
+            assert valid_toml["build"]["source_image_id"] not in block
+            assert valid_toml["meta"]["benchmark"] not in block

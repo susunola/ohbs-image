@@ -550,6 +550,15 @@ level = 1                                 # 1 or 2
 # allow_scoped_approval = true             # explicitly permit a subset-built image to be approved (default false)
 # Per-control parameter overrides (deep-merged into the catalog at render):
 # [ohbs.overrides."5.2.2"]
+#
+# Explicit evidence for a site-specific Manual control. A control is only
+# promoted to pass when all approval fields are present; otherwise it remains
+# Manual. The attestation is embedded in the per-rule JSON evidence.
+# [site_policy.controls."2.1.24"]
+# approved = true
+# reason = "Listening services match SEC-NET-004 allowlist"
+# owner = "security-platform"
+# reviewed_at = "2026-08-27"
 # ssh_max_auth_tries = 4
 
 [cloud]
@@ -623,7 +632,7 @@ benchmark = "CIS-v1.0.0"
 | | `assume_role_duration` | int | Session seconds, 0-43200 (default 7200) |
 | `[meta]` | `os_tag` | string | Tag value for output image |
 | | `benchmark` | string | CIS benchmark version tag (pinned in lineage/provenance for auditability) |
-| | `ssh_port` | int | SSH port (default `22`; TencentOS: `36000`) |
+| | `ssh_port` | int | SSH port (default `22`; current TencentOS 3/4 public images: `22`) |
 | | `ssh_timeout` | string | Packer SSH timeout (default `"15m"`) |
 | | `ssh_debug_password` | string | Root password for VNC debug (default empty) |
 | | `smoke_test` | bool | Instance-level checks before snapshot (default `true`) |

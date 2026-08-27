@@ -5393,7 +5393,8 @@
       "key": "ForwardToSyslog",
       "sep": "=",
       "value": "no",
-      "op": "eq"
+      "op": "eq",
+      "unless_service_active": "rsyslog.service"
     },
     "risk": "safe",
     "page": 826
@@ -5508,7 +5509,8 @@
       "units": [
         "systemd-journal-upload.service"
       ],
-      "packages": []
+      "packages": [],
+      "requires_config": "journal-upload"
     },
     "risk": "safe",
     "page": 841,
@@ -5606,7 +5608,8 @@
       "key": "ForwardToSyslog",
       "sep": "=",
       "value": "yes",
-      "op": "eq"
+      "op": "eq",
+      "if_service_active": "rsyslog.service"
     },
     "risk": "none",
     "page": 850,

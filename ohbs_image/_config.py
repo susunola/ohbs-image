@@ -84,6 +84,7 @@ class ResolvedConfig:
     attestation_required: bool          # [attestation].required — signed provenance is required before release
     test_components: list[str]          # [meta].test_components — user-defined test scripts run before snapshot
     verify_boot: bool                   # [meta].verify_boot — boot a probe instance from the produced image and re-audit before declaring success (default false)
+    site_policy_controls: dict[str, dict[str, Any]] = field(default_factory=dict)
     packer_extra: dict[str, Any] = field(default_factory=dict)  # [build.packer] — arbitrary packer tencentcloud-cvm builder args (passthrough)
     run_id: str = ""                    # runtime-only evidence correlation ID (not read from TOML)
 
@@ -561,6 +562,25 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
                 f"got {type(params).__name__}.")
         rules_overrides[rid] = {str(k): v for k, v in params.items()}
 
+    controls_raw = data.get("site_policy", {}).get("controls", {})
+    if not isinstance(controls_raw, dict):
+        raise ConfigError("[site_policy].controls must be a table keyed by CIS rule ID.")
+    site_policy_controls: dict[str, dict[str, Any]] = {}
+    for rid, control in controls_raw.items():
+        rid = str(rid).strip()
+        if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", rid) or not isinstance(control, dict):
+            raise ConfigError(f"[site_policy].controls.{rid} must be a table for a dotted CIS rule ID.")
+        approved = control.get("approved", False)
+        if not isinstance(approved, bool):
+            raise ConfigError(f"[site_policy].controls.{rid}.approved must be boolean.")
+        normalized = {str(k): v for k, v in control.items()}
+        if approved:
+            missing = [k for k in ("reason", "owner", "reviewed_at") if not str(normalized.get(k, "")).strip()]
+            if missing:
+                raise ConfigError(f"[site_policy].controls.{rid} approved=true requires {', '.join(missing)}.")
+        site_policy_controls[rid] = normalized
+        rules_overrides.setdefault(rid, {})["site_policy"] = normalized
+
     # [meta].cve_scan / [meta].sbom — optional supply-chain gates.
     cve_scan = _read_bool(data, "meta", "cve_scan", False)
     sbom = _read_bool(data, "meta", "sbom", False)
@@ -673,6 +693,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         rules_include=rules_include,
         rules_exclude=rules_exclude,
         rules_overrides=rules_overrides,
+        site_policy_controls=site_policy_controls,
         min_score=min_score,
         allow_disruptive=allow_disruptive,
         allow_scoped_approval=allow_scoped_approval,

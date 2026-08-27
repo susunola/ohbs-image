@@ -460,7 +460,6 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
     findings: list[str] = []
     assessment_rows: list[str] = []
     assessment_details: list[str] = []
-    category_stats: dict[str, dict[str, int]] = {}
     results_by_id: dict[str, dict[str, Any]] = {}
     raw_results = audit.get("results", [])
     if isinstance(raw_results, list):
@@ -472,10 +471,6 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
             rule_id = item.get("id", item.get("rule_id", "Not available"))
             title = item.get("title", item.get("name", ""))
             results_by_id[str(rule_id)] = item
-            category = str(item.get("section") or str(rule_id).split(".", 1)[0])
-            stats = category_stats.setdefault(category, {"pass": 0, "fail": 0, "manual": 0, "error": 0})
-            if rule_status in stats:
-                stats[rule_status] += 1
             assessment_rows.append(
                 f"<tr><td>{text(rule_id)}</td><td>{text(title)}</td>"
                 f"<td>{text(rule_status or 'Not available')}</td>"
@@ -500,7 +495,6 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
     # outside a scoped run explicit instead of silently omitting them.
     display_rules = catalog_rules or list(results_by_id.values())
     assessment_rows.clear()
-    category_stats.clear()
     evaluated_rules = 0
     not_evaluated_rules = 0
     for rule in sorted(display_rules, key=lambda value: _cis_rule_order_key(value.get("id", ""))):
@@ -510,21 +504,18 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
         assessment_type = rule.get("assessment", result.get("assessment", "Automated"))
         display_status = rule_status or ("manual" if assessment_type == "Manual" else "not evaluated (scope)")
         remediation = result.get("apply_status", "Not run")
-        levels = rule.get("levels", result.get("levels", []))
-        profiles = ", ".join(f"L{level}" for level in levels) if isinstance(levels, list) else "Not available"
-        category = str(rule.get("section") or result.get("section") or rule_id.split(".", 1)[0])
-        stats = category_stats.setdefault(
-            category, {"pass": 0, "fail": 0, "manual": 0, "error": 0, "not_evaluated": 0})
-        if rule_status in stats:
-            stats[rule_status] += 1
+        # A build runs exactly one CIS level. Rule applicability metadata may
+        # mention multiple profiles, but showing it here makes one run look
+        # like a mixed L1/L2 assessment. Report the selected run level only.
+        run_level = f"L{r.level}"
+        if rule_status in ("pass", "fail", "manual", "error"):
             evaluated_rules += 1
         else:
-            stats["not_evaluated"] += 1
             not_evaluated_rules += 1
         status_token = re.sub(r"[^a-z0-9]+", "-", display_status.lower()).strip("-") or "unknown"
         assessment_rows.append(
             f"<tr data-status=\"{status_token}\"><td>{text(rule_id)}</td><td>{text(rule.get('title', result.get('title', '')))}</td>"
-            f"<td>{text(profiles)}</td><td>{text(assessment_type)}</td>"
+            f"<td>{text(run_level)}</td><td>{text(assessment_type)}</td>"
             f"<td>{text(display_status)}</td><td>{text(remediation)}</td></tr>")
     findings_html = ("<section class=\"findings\"><div class=\"section-heading\"><div><p>EXCEPTIONS</p><h2>Rules requiring attention</h2></div><strong>"
                      f"{len(findings)} record{'s' if len(findings) != 1 else ''}</strong></div><table><tr><th>Rule</th><th>Audit</th><th>Remediation</th><th>Title</th></tr>"
@@ -542,28 +533,12 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
                     "<h2>Recommendation results</h2></div><strong>"
                     f"{view.total_rules} recommendations · {view.evaluated_rules} evaluated ({coverage_s})</strong></div>"
                     "<div class=\"results-tools\"><label>Audit status <select id=\"audit-filter\"><option value=\"all\">All</option><option value=\"pass\">Pass</option><option value=\"fail\">Fail</option><option value=\"manual\">Manual</option><option value=\"error\">Error</option><option value=\"not-evaluated-scope\">Not evaluated (scope)</option></select></label><label>Search recommendation <input id=\"audit-search\" type=\"search\" placeholder=\"Rule ID or text\"></label><span id=\"audit-count\"></span></div>"
-                    "<table id=\"assessment-table\"><tr><th>Rule</th><th>Recommendation</th><th>Profiles</th><th>Assessment</th><th>Audit</th><th>Remediation</th></tr>"
+                    "<table id=\"assessment-table\"><tr><th>Rule</th><th>Recommendation</th><th>Run level</th><th>Assessment</th><th>Audit</th><th>Remediation</th></tr>"
                     + "".join(assessment_rows[:1000]) + "</table></section>") if assessment_rows else ""
     details_html = ("<section id=\"assessment-details\" class=\"assessment-details\"><div class=\"section-heading\"><div><p>ASSESSMENT DETAILS</p>"
                     "<h2>Exception review</h2></div><strong>"
                     f"{len(assessment_details)} item{'s' if len(assessment_details) != 1 else ''}</strong></div>"
                     + "".join(assessment_details[:200]) + "</section>") if assessment_details else ""
-    category_rows: list[str] = []
-    for category, stats in sorted(category_stats.items(), key=lambda entry: _cis_rule_order_key(entry[0])):
-        scored = stats["pass"] + stats["fail"] + stats["error"]
-        category_score = f"{(100 * stats['pass'] / scored):.0f}%" if scored else "Not scored"
-        category_evaluated = stats["pass"] + stats["fail"] + stats["manual"] + stats["error"]
-        category_total = sum(stats.values())
-        category_coverage = (f"{category_evaluated}/{category_total} "
-                             f"({(100 * category_evaluated / category_total):.0f}%)") if category_total else "Not available"
-        category_rows.append(
-            f"<tr><td>Group {text(category)}</td><td>{text(category_score)} (evaluated)</td><td>{text(category_coverage)}</td>"
-            f"<td>{text(stats['pass'])}</td><td>{text(stats['fail'])}</td>"
-            f"<td>{text(stats['manual'])}</td><td>{text(stats['error'])}</td><td>{text(stats['not_evaluated'])}</td></tr>")
-    category_html = ("<section class=\"recommendation-summary\"><div class=\"section-heading\"><div><p>COMPLIANCE SUMMARY</p>"
-                     "<h2>Scores by recommendation group</h2></div><strong>Scores use evaluated rules only</strong></div>"
-                     "<table><tr><th>Group</th><th>Score</th><th>Coverage</th><th>Pass</th><th>Fail</th><th>Manual</th><th>Error</th><th>Not evaluated</th></tr>"
-                     + "".join(category_rows) + "</table></section>") if category_rows else ""
     rows = [("Profile", r.profile_name), ("CIS level", f"L{r.level}"),
             ("Region / zone", f"{r.region} / {r.zone}"), ("Source image", r.source_image_id),
             ("Output image IDs", ", ".join(image_ids) or "Not available"), ("Benchmark", r.image_benchmark),
@@ -572,7 +547,6 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
     detail_rows = "".join(f"<tr><th>{text(k)}</th><td>{text(v)}</td></tr>" for k, v in rows)
     html_doc = f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ohbs-image delivery report · {text(image_name)}</title><style>:root{{--ink:#15212c;--muted:#627487;--line:#dce4eb;--bg:#f3f6f8;--navy:#173a63;--ok:#06734d;--bad:#a12e2b}}*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}}main{{max-width:1000px;margin:auto;padding:32px 20px 64px}}header{{background:var(--navy);color:white;padding:30px;border-radius:15px 15px 0 0}}h1{{margin:0;font-size:27px}}.sub{{color:#cfdef0;margin-top:7px}}.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}}.card,table{{background:white;border:1px solid var(--line);border-radius:10px}}.card{{padding:17px}}.label{{font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--muted);text-transform:uppercase}}.value{{font-size:27px;font-weight:800;margin-top:5px}}.approved{{color:var(--ok)}}.blocked{{color:var(--bad)}}h2{{font-size:18px;margin:32px 0 12px}}table{{border-collapse:separate;border-spacing:0;width:100%;overflow:hidden}}th,td{{padding:12px 15px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;word-break:break-word}}th{{width:31%;color:var(--muted);font-size:13px}}tr:last-child th,tr:last-child td{{border-bottom:0}}footer{{color:var(--muted);font-size:12px;margin-top:22px}}@media(max-width:700px){{.grid{{grid-template-columns:repeat(2,1fr)}}header{{border-radius:10px}}}}</style><body><main><header><h1>Image delivery report</h1><div class="sub">{text(image_name)} · generated by ohbs-image</div></header><section class="grid"><div class="card"><div class="label">Release status</div><div class="value {status_class}">{status}</div></div><div class="card"><div class="label">Re-audit score</div><div class="value">{text(score_s)}</div></div><div class="card"><div class="label">Rules passed</div><div class="value">{text(summary.get("pass", "—"))}</div></div><div class="card"><div class="label">Rules failed</div><div class="value">{text(summary.get("fail", "—"))}</div></div></section><h2>Build identity</h2><table>{detail_rows}</table><h2>Evidence</h2><table><tr><th>Attestation</th><td>{"Signed" if signed else "Not signed"}</td></tr><tr><th>SBOM packages</th><td>{text(summary.get("sbom_packages", "—"))}</td></tr><tr><th>Audit mode</th><td>{text(audit.get("mode", "—"))}</td></tr></table><footer>This report is a human-readable view. Verify the referenced provenance signature and machine-readable result for release automation.</footer></main></body></html>'''
     html_doc = html_doc.replace("</section><h2>Build identity", metric_cards + coverage_cards + "</section><h2>Build identity")
-    html_doc = html_doc.replace("<h2>Evidence", results_html + findings_html + details_html + "<h2>Evidence")
     html_doc = html_doc.replace('<div class="card"><div class="label">Rules passed',
                                 '<div class="card success"><div class="label">Pass')
     html_doc = html_doc.replace('<div class="card"><div class="label">Rules failed',
@@ -581,12 +555,26 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
     html_doc = html_doc.replace("</header>",
                                 f'<div class="release-stamp {status_class}"><span>Release decision</span><strong>{status}</strong></div><div class="cover-meta"><span>Assessment report</span><span>{text(generated_at)}</span><span>Run {text(r.run_id)}</span></div></header>')
     html_doc = html_doc.replace("</header><section class=\"grid\">",
-                                '<nav aria-label="Report sections"><a href="#summary">Summary</a><a href="#profiles">Profiles</a><a href="#assessment-results">Assessment Results</a><a href="#assessment-details">Assessment Details</a><a href="#evidence">Evidence</a></nav><section id="summary" class="summary"><div class="grid">')
+                                '</header><nav aria-label="Report sections"><a href="#summary">Summary</a><a href="#profiles">Profiles</a><a href="#assessment-results">Assessment Results</a><a href="#assessment-details">Assessment Details</a><a href="#evidence">Evidence</a></nav><section id="summary" class="summary"><div class="grid">')
     html_doc = html_doc.replace("</section><h2>Build identity",
-                                "</div></section>" + category_html + "<h2>Build identity")
-    html_doc = html_doc.replace("<h2>Build identity", '<section id="profiles" class="identity"><div class="section-heading"><div><p>PROFILES</p><h2>Build target and profile')
-    html_doc = html_doc.replace("</table><h2>Evidence", "</table></div></section><section id=\"evidence\" class=\"evidence\"><div class=\"section-heading\"><div><p>EVIDENCE</p><h2>Evidence")
-    html_doc = html_doc.replace("</table><footer>", "</table></div></section><footer>")
+                                "</div></section><h2>Build identity")
+    html_doc = html_doc.replace(
+        "<h2>Build identity</h2><table>",
+        '<section id="profiles" class="identity"><div class="section-heading"><div>'
+        '<p>PROFILES</p><h2>Build target and profile</h2></div></div><table>')
+    html_doc = html_doc.replace(
+        "</table><h2>Evidence</h2><table>",
+        '</table></section><section id="evidence" class="evidence">'
+        '<div class="section-heading"><div><p>EVIDENCE</p><h2>Evidence</h2>'
+        '</div></div><table>')
+    html_doc = html_doc.replace("</table><footer>", "</table></section><footer>")
+    # Insert the large assessment sections only after Profiles and Evidence
+    # have been made into balanced sibling sections.  Inserting them before
+    # the identity close used to make the whole report nest under Profiles.
+    html_doc = html_doc.replace(
+        '<section id="evidence"',
+        results_html + findings_html + details_html + '<section id="evidence"',
+        1)
     html_doc = html_doc.replace("</style>", '''
 /* Release dossier visual system: static, high-contrast, and print-safe. */
 :root{--ink:#102a43;--muted:#61758a;--line:#d9e2ec;--bg:#eef3f7;--navy:#0c2744;--teal:#087c73;--ok:#087850;--bad:#b33a3a;--warn:#a56613}
@@ -630,6 +618,9 @@ nav{display:flex;gap:0;margin:0 1px;padding:0;background:#fff;border:1px solid v
 /* Assessment-report treatment: data-led, restrained, and export-safe. */
 :root{--ink:#1c2b36;--muted:#61727f;--line:#cfd8de;--bg:#f1f4f5;--navy:#17384f;--teal:#16756c;--ok:#287a4f;--bad:#b43d3d;--warn:#9a651e}
 body{background:var(--bg);font:14px/1.5 Arial,"Helvetica Neue",sans-serif}main{max-width:1180px;padding:42px 28px 72px}header{min-height:242px;padding:35px 38px 66px;border-radius:0;border-top:7px solid var(--teal);background:var(--navy);box-shadow:none}h1{font-size:33px;font-weight:650;letter-spacing:-.025em}.dossier{font-size:12px;letter-spacing:.11em}.sub{max-width:660px;font-size:16px}.release-stamp{right:38px;top:38px;border-radius:0;border-color:#88a2b3;background:transparent}.cover-meta{position:absolute;bottom:19px;left:38px;right:38px;display:flex;gap:24px;padding-top:12px;border-top:1px solid rgb(255 255 255/.24);color:#c2d2dc;font-size:11px}.cover-meta span:first-child{font-weight:750;letter-spacing:.08em;text-transform:uppercase}nav{border-radius:0;border:0;border-bottom:1px solid var(--line);background:transparent}nav a{padding:15px 16px;border-right:0;color:#425a6b}nav a:first-child{padding-left:0}nav a:hover{color:var(--teal);background:transparent}.summary{margin:30px 0 0;background:#fff;border:1px solid var(--line);padding:26px 28px}.grid{grid-template-columns:repeat(5,1fr);gap:0;margin:0}.card{min-height:94px;padding:10px 15px;border:0;border-left:1px solid var(--line);border-top:0;border-radius:0;box-shadow:none}.card:first-child{border-left:0;padding-left:0}.card:nth-child(1),.card:nth-child(2){grid-column:span 1}.card:nth-child(n+6){margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.label{font-size:10px;color:var(--muted);letter-spacing:.1em}.value{font-size:28px;font-weight:650}.card.success,.card.danger,.card.warning{border-top:0}.card.success .value{color:var(--ok)}.card.danger .value{color:var(--bad)}.card.warning .value{color:var(--warn)}.identity,.evidence,.findings,.results,.assessment-details,.recommendation-summary{margin-top:28px;padding:28px;background:#fff;border:1px solid var(--line);border-radius:0;box-shadow:none}.section-heading{align-items:baseline;margin-bottom:18px}.section-heading h2{font-size:20px;font-weight:650}.section-heading p{font-size:10px;letter-spacing:.12em}.section-heading strong{font-weight:600}table{border:0;border-radius:0}th,td{padding:10px 12px;border-bottom:1px solid #e2e7ea}th{background:#eaf0f2;color:#355063;font-size:10px;font-weight:750}.identity th{background:#f6f8f9}.recommendation-summary td:nth-child(2){font-weight:700;color:var(--teal)}.results tr:nth-child(even) td,.findings tr:nth-child(even) td{background:#fafcfc}.rule-detail{padding:20px 0}.rule-detail h3{font-size:15px;font-weight:650}.rule-detail dl{grid-template-columns:130px 1fr}.rule-detail dt{font-size:10px}.evidence tr:first-child td{font-weight:650}.identity,.evidence{break-inside:avoid}footer{font-size:11px;color:var(--muted)}@media(max-width:700px){main{padding:20px 14px 40px}header{min-height:0;padding:27px 22px 60px}.release-stamp{position:static;margin-top:24px}.cover-meta{left:22px;right:22px;bottom:17px;gap:8px;flex-direction:column}.summary,.identity,.evidence,.findings,.results,.assessment-details,.recommendation-summary{padding:20px}.grid{grid-template-columns:repeat(2,1fr)}.card:nth-child(odd){border-left:0;padding-left:0}.card:nth-child(n+3){margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}}@media print{body{background:#fff}main{padding:0}header{min-height:180px}.summary,.identity,.evidence,.findings,.results,.assessment-details,.recommendation-summary{border-color:#aebbc4}.cover-meta{bottom:12px}.grid{grid-template-columns:repeat(5,1fr)}}
+/* Component isolation: wide audit tables must not inherit identity-table widths. */
+nav a{color:#a9bcc9}.summary .grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));height:auto}.summary .card{display:block;min-width:0;overflow:visible}.summary .value{display:block;visibility:visible;opacity:1;color:var(--ink)}.summary .card.success .value{color:var(--ok)}.summary .card.danger .value{color:var(--bad)}.summary .card.warning .value{color:var(--warn)}.summary .approved{color:var(--ok)}.recommendation-summary,.results,.findings{overflow-x:auto}.recommendation-summary table,.results table,.findings table{min-width:760px;table-layout:auto}.recommendation-summary th,.results th,.findings th{width:auto;white-space:nowrap}.identity table,.evidence table{table-layout:fixed}.identity th,.evidence th{width:220px}.identity td,.evidence td{overflow-wrap:anywhere}
+#assessment-table{min-width:1000px;table-layout:fixed}#assessment-table th:nth-child(1){width:9%}#assessment-table th:nth-child(2){width:40%}#assessment-table th:nth-child(3){width:8%}#assessment-table th:nth-child(4){width:12%}#assessment-table th:nth-child(5){width:17%}#assessment-table th:nth-child(6){width:14%}#assessment-table td{overflow-wrap:anywhere}.recommendation-summary table{min-width:900px}
 </style>''')
     if str(audit.get("mode", "")).lower() == "demo":
         html_doc = html_doc.replace("</style>", '''

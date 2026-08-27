@@ -1128,8 +1128,16 @@ def _fs_scan_legacy(res):
 def c_world_writable(ctx, p):
     files = _fs_scan(ctx)["world_files"]
     if files:
-        return "fail", "%d world-writable file(s), e.g. %s" % (
-            len(files), ", ".join(files[:5]))
+        evidence = []
+        for path in files[:6]:
+            try:
+                st = os.lstat(path)
+                evidence.append("%s (%s uid=%d gid=%d)" %
+                                (path, fmt_mode(st.st_mode), st.st_uid, st.st_gid))
+            except OSError as exc:
+                evidence.append("%s (stat error: %s)" % (path, exc))
+        return "fail", "%d world-writable file(s): %s" % (
+            len(files), "; ".join(evidence))
     return "pass", "no world-writable files found"
 
 
@@ -1333,6 +1341,17 @@ def c_svc_enabled(ctx, p):
     pkgs = p.get("packages") or []
     if not units and not pkgs:
         return "error", "rule has no units/packages configured (incomplete catalog)"
+    if p.get("requires_config") == "journal-upload":
+        configured = False
+        for path in ("/etc/systemd/journal-upload.conf",
+                     "/etc/systemd/journal-upload.conf.d/ohbs-image.conf"):
+            for line in readlines(path):
+                if re.match(r"^\s*(URL|UploadServer)\s*=\s*\S+", line):
+                    configured = True
+                    break
+        if not configured:
+            return ("manual", "journal-upload endpoint is site-specific and is not "
+                    "configured; provide URL/certificate policy at deployment time")
     # Conditional rule ("... when <service> is in use", e.g. CIS 2.3.2.2
     # systemd-timesyncd): when neither the unit nor its provider package
     # exists, the service is simply not in use on this host — another time
@@ -1493,7 +1512,8 @@ def f_svc_enabled(ctx, p):
             return False, "cannot install %s: %s" % (", ".join(missing), err)
     # CIS 6.2.1.2.3 special case: journal-upload needs a receiver to be
     # active — bootstrap the loopback self-upload first.
-    if any("systemd-journal-upload.service" == u for u in (p.get("units") or [])):
+    if any("systemd-journal-upload.service" == u for u in (p.get("units") or [])) \
+            and not p.get("requires_config"):
         ok, err = _bootstrap_journal_upload(ctx)
         if not ok:
             return False, "journal-upload bootstrap failed: %s" % err
@@ -1972,6 +1992,12 @@ def _kv_current(p):
 
 @check("kv_conf")
 def c_kv_conf(ctx, p):
+    conditional_unit = p.get("if_service_active")
+    if conditional_unit and _unit_state(conditional_unit)[1] != "active":
+        return "notapplicable", "%s is not active; alternate logging backend selected" % conditional_unit
+    excluded_unit = p.get("unless_service_active")
+    if excluded_unit and _unit_state(excluded_unit)[1] == "active":
+        return "notapplicable", "%s is active; rsyslog logging backend selected" % excluded_unit
     op = p.get("op", "eq")
 
     if op == "limits_core":
@@ -2929,10 +2955,13 @@ def c_selinux(ctx, p):
             return "pass", "runtime=%s config=%s" % (cur, cfg)
         return "fail", "runtime=%s config=%s (expected %s)" % (cur, cfg, exp)
     if kind == "no_unconfined":
-        o = out("ps -eZ 2>/dev/null | grep -E 'unconfined_service_t' | "
-                "awk '{print $NF}' | sort -u | head -20", 60)
+        # Include the SELinux label, PID and command so an operator can tell
+        # a real unconfined daemon from a short-lived image-build helper.
+        o = out("ps -eZ -o label=,pid=,comm=,args= 2>/dev/null | "
+                "grep -E 'unconfined_service_t' | head -20", 60)
         if o:
-            return "fail", "unconfined services: " + ", ".join(o.split())
+            return "fail", "unconfined services (label pid command): " + \
+                "; ".join(line.strip() for line in o.splitlines() if line.strip())
         return "pass", "no unconfined services running"
     return "error", "unknown selinux kind %s" % kind
 
@@ -2975,6 +3004,16 @@ def f_selinux(ctx, p):
         set_kv_in_file(ctx, "/etc/selinux/config", "SELINUX", target, sep="=")
         rc, cur, _ = sh(["getenforce"], 30)
         cur_l = (cur or "").strip().lower()
+        if cur_l == "disabled" and target == "enforcing":
+            # A disabled kernel cannot perform a trustworthy online relabel.
+            # Stage the first boot in permissive mode so policy is loaded and
+            # SSH remains available.  The image pipeline then relabels the
+            # live filesystem and promotes to enforcing before re-audit.
+            set_kv_in_file(ctx, "/etc/selinux/config", "SELINUX",
+                           "permissive", sep="=")
+            sh(["rm", "-f", "/.autorelabel"], 30)
+            return True, ("SELINUX=permissive staged; post-reboot relabel and "
+                          "promotion to enforcing required")
         if cur_l == "disabled":
             return True, ("SELINUX=%s written; reboot required "
                           "(no relabel needed)" % target)
@@ -4186,8 +4225,16 @@ def _ua_sticky_bit(ctx):
 def _ua_unowned(ctx):
     paths = _fs_scan(ctx)["unowned"]
     if paths:
-        return "fail", "%d unowned/ungrouped path(s), e.g. %s" % (
-            len(paths), ", ".join(paths[:4]))
+        evidence = []
+        for path in paths[:6]:
+            try:
+                st = os.lstat(path)
+                evidence.append("%s (uid=%d gid=%d mode=%s)" %
+                                (path, st.st_uid, st.st_gid, fmt_mode(st.st_mode)))
+            except OSError as exc:
+                evidence.append("%s (stat error: %s)" % (path, exc))
+        return "fail", "%d unowned/ungrouped path(s): %s" % (
+            len(paths), "; ".join(evidence))
     return "pass", "no unowned or ungrouped files or directories"
 
 
@@ -4546,6 +4593,15 @@ def c_info_only(ctx, p):
 
 @check("manual")
 def c_manual(ctx, p):
+    policy = p.get("site_policy")
+    if isinstance(policy, dict) and policy.get("approved") is True:
+        reason = str(policy.get("reason") or "").strip()
+        owner = str(policy.get("owner") or "").strip()
+        reviewed = str(policy.get("reviewed_at") or "").strip()
+        if reason and owner and reviewed:
+            return "pass", ("approved by site policy; owner=%s reviewed_at=%s; %s" %
+                            (owner, reviewed, reason))
+        return "manual", "site policy approval is incomplete; reason, owner and reviewed_at are required"
     return "manual", "manual assessment required; see the Audit procedure in the benchmark"
 
 # ==========================================================================

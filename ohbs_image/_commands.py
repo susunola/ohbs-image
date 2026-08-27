@@ -373,13 +373,22 @@ def cmd_build(args: argparse.Namespace) -> int:
     signed = False
 
     if success:
+        rep = _save_build_report(r, image_name, result.stdout_lines, workdir)
+        # The marker is emitted by the definitive post-lock scan. Prefer its
+        # score over an earlier human-readable re-audit line from Ansible so
+        # CLI, provenance, lineage, manifest, and HTML all describe one state.
+        if rep is not None:
+            try:
+                final_doc = json.loads(rep.read_text(encoding="utf-8"))
+                final_score = (final_doc.get("summary") or {}).get("all", {}).get("score")
+                if isinstance(final_score, (int, float)):
+                    score = float(final_score)
+            except (OSError, ValueError, AttributeError):
+                pass
         write_build_checkpoint(r, "snapshot-created", {
             "image_name": image_name, "image_ids": image_ids, "score": score,
             "sbom_sha256": sbom_sha, "sbom_packages": sbom_count,
         })
-
-    if success:
-        rep = _save_build_report(r, image_name, result.stdout_lines, workdir)
         # An exit code alone is not enough evidence to distribute a hardened
         # image.  A real build must identify the snapshot and archive its
         # structured audit result before it is recorded as successful.

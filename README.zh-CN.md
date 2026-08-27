@@ -349,6 +349,14 @@ level = 1                                 # 1 或 2
 # rules_exclude = ["1.1.2.2.4"]           # 优先级高于 rules_include
 # 单条规则参数覆写（渲染时深度合并进规则目录）：
 # [ohbs.overrides."5.2.2"]
+#
+# 对站点相关 Manual 控制提供显式审批证据。只有字段完整时才转为 pass，
+# 否则仍保持 Manual；审批信息会写入逐条规则 JSON 证据。
+# [site_policy.controls."2.1.24"]
+# approved = true
+# reason = "监听服务符合 SEC-NET-004 白名单"
+# owner = "security-platform"
+# reviewed_at = "2026-08-27"
 # ssh_max_auth_tries = 4
 
 [cloud]
@@ -393,7 +401,7 @@ benchmark = "CIS-v1.0.0"
 | | `winrm_password_env` | string | Windows Admin 密码环境变量名（仅 Windows） |
 | `[meta]` | `os_tag` | string | 产出镜像标签值 |
 | | `benchmark` | string | CIS benchmark 版本标签 |
-| | `ssh_port` | int | SSH 端口（默认 22；TencentOS profile 默认 36000） |
+| | `ssh_port` | int | SSH 端口（默认 22；当前 TencentOS 3/4 公共镜像均为 22） |
 | | `ssh_timeout` | string | Packer SSH 超时（默认 "10m"） |
 | | `ssh_debug_password` | string | 设置 root 密码以便 VNC 排查（默认不设置） |
 

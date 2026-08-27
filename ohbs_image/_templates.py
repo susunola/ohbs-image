@@ -229,6 +229,20 @@ build {
       "  sudo mount -o remount,rw / >/dev/null 2>&1 && echo \"[ssh-guard] / remounted rw\" || echo \"[ssh-guard] WARN: / remount rw failed\"",
       "fi",
       "echo \"[ssh-guard] VERIFY: root options=$(findmnt -no OPTIONS / 2>/dev/null)\"",
+      "# Preserve the ephemeral Packer key across the hardened reboot. Some",
+      "# cloud images regenerate root's authorized_keys during boot, while CIS",
+      "# sshd settings use first-value-wins drop-ins. Keep a root-only copy and",
+      "# restore it in the pre-sshd oneshot; the final provisioner removes it.",
+      "sudo install -d -m 0700 -o root -g root /var/lib/ohbs-image-build",
+      "if [ -s /root/.ssh/authorized_keys ]; then sudo chattr -i /root/.ssh/authorized_keys 2>/dev/null || true; sudo install -m 0600 -o root -g root /root/.ssh/authorized_keys /var/lib/ohbs-image-build/authorized_keys; sudo chattr +i /root/.ssh/authorized_keys 2>/dev/null || true; echo '[ssh-guard] build key preserved and protected'; else echo '[ssh-guard] WARN: root authorized_keys missing'; fi",
+      "sudo tee /etc/ssh/sshd_config.d/00-ohbs-image-build.conf >/dev/null <<'SSHBUILD'",
+      "PubkeyAuthentication yes",
+      "PermitRootLogin prohibit-password",
+      "AuthorizedKeysFile .ssh/authorized_keys",
+      "SSHBUILD",
+      "if sudo sshd -T -o RequiredRSASize=2048 >/dev/null 2>&1; then echo 'RequiredRSASize 2048' | sudo tee -a /etc/ssh/sshd_config.d/00-ohbs-image-build.conf >/dev/null; else echo '[ssh-guard] RequiredRSASize unsupported by this OpenSSH — skipped'; fi",
+      "sudo chmod 0600 /etc/ssh/sshd_config.d/00-ohbs-image-build.conf",
+      "sudo sshd -t || { echo '[ssh-guard] ERROR: temporary build ssh policy invalid'; exit 1; }",
       "# Install a post-boot oneshot that re-opens the SSH port after reboot.",
       "# Runs BEFORE sshd (Before=sshd.service) so the port is already open when",
       "# sshd accepts; logs to /var/log/ohbs-image-ssh-guard.log so a still-failing",
@@ -260,6 +274,16 @@ build {
       "mount -o remount,rw / >/dev/null 2>&1 && echo \"[ssh-guard-boot] root remounted rw\" || echo \"[ssh-guard-boot] WARN: root remount rw failed\"",
       "mount -o remount,rw /opt >/dev/null 2>&1 || true",
       "echo \"[ssh-guard-boot] root=$(findmnt -no OPTIONS / 2>/dev/null)\"",
+      "install -d -m 0700 -o root -g root /root/.ssh",
+      "if [ -s /var/lib/ohbs-image-build/authorized_keys ]; then install -m 0600 -o root -g root /var/lib/ohbs-image-build/authorized_keys /root/.ssh/authorized_keys && echo '[ssh-guard-boot] build key restored'; else echo '[ssh-guard-boot] WARN: preserved build key missing'; fi",
+      "cat > /etc/ssh/sshd_config.d/00-ohbs-image-build.conf <<'SSHBUILD'",
+      "PubkeyAuthentication yes",
+      "PermitRootLogin prohibit-password",
+      "AuthorizedKeysFile .ssh/authorized_keys",
+      "SSHBUILD",
+      "if sshd -T -o RequiredRSASize=2048 >/dev/null 2>&1; then echo 'RequiredRSASize 2048' >> /etc/ssh/sshd_config.d/00-ohbs-image-build.conf; else echo '[ssh-guard-boot] RequiredRSASize unsupported — skipped'; fi",
+      "chmod 0600 /etc/ssh/sshd_config.d/00-ohbs-image-build.conf",
+      "sshd -t && echo '[ssh-guard-boot] build ssh policy valid' || echo '[ssh-guard-boot] ERROR: build ssh policy invalid'",
       "SSH_PORT=$(sshd -T 2>/dev/null | awk '/^port /{print $2; exit}')",
       "[ -z \"$SSH_PORT\" ] && SSH_PORT=$(awk '/^[Pp]ort[ \\t]+[0-9]+/{print $2; exit}' /etc/ssh/sshd_config)",
       "[ -z \"$SSH_PORT\" ] && SSH_PORT=22",
@@ -309,9 +333,10 @@ build {
       "# full restorecon in EARLY boot, before network/sshd — observed as a",
       "# multi-minute-to-infinite i/o timeout loop after reboot.  Remove the",
       "# marker so the permissive boot needs NO relabel; with permissive the",
-      "# missing file labels are tolerated, and the mark service only recreates",
-      "# the marker during a SELinux-disabled boot (which this is no longer).",
-      "if [ -f /.autorelabel ]; then sudo rm -f /.autorelabel && echo \"[ssh-guard] removed stale /.autorelabel (boot relabel suppressed)\" || echo \"[ssh-guard] WARN: could not remove /.autorelabel\"; else echo \"[ssh-guard] no stale /.autorelabel present\"; fi",
+      "# missing file labels are tolerated.  L2 deliberately switches to",
+      "# enforcing, however, and MUST keep the marker: without the relabel sshd",
+      "# starts in kernel_t and authenticates keys but cannot open a session.",
+      "if [ -f /.autorelabel ] && ! sudo grep -Eqi '^SELINUX=enforcing([[:space:]]|$)' /etc/selinux/config; then sudo rm -f /.autorelabel && echo \"[ssh-guard] removed stale /.autorelabel (permissive boot relabel suppressed)\" || echo \"[ssh-guard] WARN: could not remove /.autorelabel\"; elif [ -f /.autorelabel ]; then echo \"[ssh-guard] preserving /.autorelabel for enforcing boot\"; else echo \"[ssh-guard] no stale /.autorelabel present\"; fi",
       "echo \"[ssh-guard] VERIFY: selinux=$(sudo getenforce 2>/dev/null) config=$(sudo grep ^SELINUX= /etc/selinux/config 2>/dev/null) autorelabel=$([ -f /.autorelabel ] && echo PRESENT || echo absent)\"",
       "# Ensure key-based root login survives CIS hardening (PermitRootLogin no)",
       "if sudo sshd -T 2>/dev/null | grep -qi '^permitrootlogin no'; then",
@@ -363,10 +388,14 @@ build {
     # accepts.  The connect window is start_retry_timeout (default "a few
     # minutes" — observed ~5 min give-up of i/o timeout retries), NOT
     # max_retries (which only retries command execution).  Raise it so a
-    # slow-but-healthy boot no longer looks like a dead instance.  25m also
-    # covers an unexpected single SELinux autorelabel pass + its auto-reboot.
-    start_retry_timeout = "25m"
-    max_retries         = 40
+    # slow-but-healthy boot no longer looks like a dead instance.  TencentOS
+    # Online restorecon plus the one-transition marker-service mask prevents
+    # that boot-time relabel.  Twenty minutes still leaves ample room for a
+    # slow cloud reboot while bounding a genuinely broken enforcing boot.
+    start_retry_timeout = "20m"
+    # start_retry_timeout already bounds the reconnect loop.  Retrying this
+    # whole provisioner would multiply that window (formerly 45m x 41).
+    max_retries         = 0
     # Upload to /opt (not /tmp): systemd-tmpfiles on the freshly rebooted
     # image may purge /tmp (tmp.conf D-type cleanup), which made the
     # reconnect probe fail with 'bash: script: Permission denied' (126).
@@ -384,6 +413,25 @@ build {
     remote_path  = "__REMOTE_DIR__/ohbs-image-fix-logperms.sh"
     inline = [
       "set +e",
+      "# Ensure hostname resolves BEFORE the first sudo call.  CIS hardening",
+      "# may leave /etc/hosts without the short hostname; each sudo can then",
+      "# block on DNS and make this otherwise-small provisioner take minutes.",
+      "__HOSTS_FIX_HCL__",
+      "# Clear transition artifacts left by older builds before promotion/audit.",
+      "sudo systemctl unmask selinux-autorelabel-mark.service >/dev/null 2>&1 || true",
+      "sudo rm -f /.autorelabel",
+      "# Safe disabled -> enforcing transition: boot once with policy loaded in",
+      "# permissive mode, relabel the live filesystem, then stage enforcing",
+      "# for a second controlled reboot. Never setenforce in-place: services",
+      "# started before the transition retain wrong domains and become unusable.",
+      "case '__CIS_LEVEL__' in L2|level2*) OHBS_IS_L2=1 ;; *) OHBS_IS_L2=0 ;; esac",
+      "if [ \"$OHBS_IS_L2\" = 1 ] && [ \"$(sudo getenforce 2>/dev/null)\" = 'Permissive' ]; then",
+      "  echo '[ohbs-image] SELinux L2 promotion: full relabel under permissive policy'",
+      "  sudo chattr -i /root/.ssh/authorized_keys 2>/dev/null || true",
+      "  sudo timeout 1200s fixfiles -f -F relabel || { echo '[ohbs-image] SELinux relabel FAILED'; exit 1; }",
+      "  sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config",
+      "  echo \"[ohbs-image] SELinux enforcing staged: runtime=$(sudo getenforce) config=$(sudo grep '^SELINUX=' /etc/selinux/config)\"",
+      "fi",
       "# Post-reboot state evidence: if SELinux autorelabel ran at boot it would",
       "# have consumed (deleted) /.autorelabel; if the marker is still here the",
       "# boot skipped relabel entirely (desired).  sshd active confirms the",
@@ -395,7 +443,7 @@ build {
       "# start; the journal excerpt surfaces the real reason if start fails.",
       "echo \"[ohbs-image] auditd: active=$(sudo systemctl is-active auditd 2>/dev/null) enabled=$(sudo systemctl is-enabled auditd 2>&1)\"",
       "if ! sudo systemctl is-active --quiet auditd 2>/dev/null; then",
-      "  sudo systemctl start auditd >/dev/null 2>&1 && echo '[ohbs-image] auditd started OK' || { echo '[ohbs-image] auditd START FAILED:'; sudo journalctl -u auditd -n 8 --no-pager 2>&1 | tail -8; }",
+      "  sudo timeout 90s systemctl start auditd >/dev/null 2>&1 && echo '[ohbs-image] auditd started OK' || { echo '[ohbs-image] auditd START FAILED or timed out:'; sudo journalctl -u auditd -n 8 --no-pager 2>&1 | tail -8; }",
       "  echo \"[ohbs-image] auditd after start: $(sudo systemctl is-active auditd 2>/dev/null)\"",
       "fi",
       "# auditd may be active yet its rules are not in the kernel: the service's",
@@ -403,21 +451,86 @@ build {
       "# boot while the service still reports active.  Force a reload and echo",
       "# the rule count so a missing ruleset is visible in the build log.",
       "if sudo systemctl is-active --quiet auditd 2>/dev/null; then",
-      "  sudo augenrules --load >/dev/null 2>&1 && echo \"[ohbs-image] audit rules reloaded: $(sudo auditctl -l 2>/dev/null | grep -c . ) rule(s)\" || { echo '[ohbs-image] WARN: augenrules --load failed:'; sudo journalctl -u auditd -n 6 --no-pager 2>&1 | tail -6; }",
+      "  sudo timeout 90s augenrules --load >/dev/null 2>&1 && echo \"[ohbs-image] audit rules reloaded: $(sudo auditctl -l 2>/dev/null | grep -c . ) rule(s)\" || { echo '[ohbs-image] WARN: augenrules --load failed or timed out:'; sudo journalctl -u auditd -n 6 --no-pager 2>&1 | tail -6; }",
       "fi",
-      "# Ensure hostname resolves BEFORE any sudo call.  CIS hardening may",
-      "# leave /etc/hosts without the short hostname, which makes sudo PAM",
-      "# hang on DNS (5-30s per call).  Packer runs as root: no sudo needed.",
-      "__HOSTS_FIX_HCL__",
+      "# Some TencentOS 4 images regenerate /dev/shm before local-fs applies",
+      "# the hardened fstab options.  Make the configured policy live now so",
+      "# the final verification measures the image's actual boot state.",
+      "if grep -E '[[:space:]]/dev/shm[[:space:]].*noexec' /etc/fstab >/dev/null 2>&1; then",
+      "  sudo mount -o remount,nodev,nosuid,noexec /dev/shm >/dev/null 2>&1 || echo '[ohbs-image] WARN: /dev/shm hardened remount failed'",
+      "  echo \"[ohbs-image] /dev/shm options: $(findmnt -no OPTIONS /dev/shm 2>/dev/null)\"",
+      "fi",
       "sudo find /var/log/ -type f -perm /g+wx,o+rwx -exec chmod g-wx,o-rwx {} + 2>/dev/null",
-      "# Reboot may revert ForwardToSyslog to yes (RPM / init-script overwrite).",
-      "# 6.2.2.3 wants yes when rsyslog is present; but 6.2.2.1 already fails",
-      "# because rsyslog is not detected, so 6.2.2.3 is not assessed. Safe to fix.",
-      "sudo sed -i 's/^ForwardToSyslog=yes$/ForwardToSyslog=no/' /etc/systemd/journald.conf 2>/dev/null || true",
+      "# Select one coherent logging backend.  When rsyslog is installed and",
+      "# active, CIS 6.2.2.3 requires forwarding; otherwise the journald-only",
+      "# profile requires forwarding disabled (6.2.1.1.4).",
+      "sudo install -d -m 0755 /etc/systemd/journald.conf.d",
+      "if sudo systemctl is-active --quiet rsyslog 2>/dev/null; then printf '[Journal]\\nForwardToSyslog=yes\\n' | sudo tee /etc/systemd/journald.conf.d/60-ohbs-cis.conf >/dev/null; else printf '[Journal]\\nForwardToSyslog=no\\n' | sudo tee /etc/systemd/journald.conf.d/60-ohbs-cis.conf >/dev/null; fi",
+      "sudo chmod 0644 /etc/systemd/journald.conf.d/60-ohbs-cis.conf",
+      "sudo systemctl restart systemd-journald >/dev/null 2>&1 || echo '[ohbs-image] WARN: journald restart failed'",
+      "# Tencent Cloud's barad agent recreates pid/log files as 0666 after boot.",
+      "# Install a convergent boot service and also fix the live files now.",
+      "sudo tee /usr/local/sbin/ohbs-cloud-agent-permissions >/dev/null <<'OHBS_CLOUD_PERMS'",
+      "#!/bin/sh",
+      "chmod 0644 /run/.barad_agent.pid 2>/dev/null || true",
+      "find /usr/local/qcloud/monitor -type f \\( -name executor.log -o -name dispatcher.log \\) -exec chmod 0640 {} + 2>/dev/null || true",
+      "OHBS_CLOUD_PERMS",
+      "sudo chmod 0755 /usr/local/sbin/ohbs-cloud-agent-permissions",
+      "sudo tee /etc/systemd/system/ohbs-cloud-agent-permissions.service >/dev/null <<'OHBS_CLOUD_UNIT'",
+      "[Unit]",
+      "Description=Converge Tencent Cloud agent runtime file permissions",
+      "After=network-online.target",
+      "[Service]",
+      "Type=oneshot",
+      "ExecStart=/usr/local/sbin/ohbs-cloud-agent-permissions",
+      "[Install]",
+      "WantedBy=multi-user.target",
+      "OHBS_CLOUD_UNIT",
+      "sudo tee /etc/systemd/system/ohbs-cloud-agent-permissions.timer >/dev/null <<'OHBS_CLOUD_TIMER'",
+      "[Unit]",
+      "Description=Periodically converge Tencent Cloud agent runtime file permissions",
+      "[Timer]",
+      "OnBootSec=30s",
+      "OnUnitActiveSec=5min",
+      "Persistent=true",
+      "Unit=ohbs-cloud-agent-permissions.service",
+      "[Install]",
+      "WantedBy=timers.target",
+      "OHBS_CLOUD_TIMER",
+      "sudo systemctl enable ohbs-cloud-agent-permissions.service >/dev/null 2>&1 || true",
+      "sudo systemctl enable ohbs-cloud-agent-permissions.timer >/dev/null 2>&1 || true",
+      "sudo /usr/local/sbin/ohbs-cloud-agent-permissions",
       "# systemd-journal-remote creates /var/lib/private/systemd/journal-upload",
       "# with unowned uid/gid; the CIS unowned-files scan flags it post-reboot.",
       "sudo chown -R root:root /var/lib/private/systemd/ 2>/dev/null || true",
       "echo fix-logperms done"
+    ]
+  }
+
+  # 5.6 A second controlled reboot is required after an L2 disabled ->
+  #     permissive relabel. It starts every service directly in its enforcing
+  #     SELinux domain; an in-place setenforce leaves sshd/auditd/TAT in stale
+  #     domains. The extra reboot is harmless for L1 and keeps one template.
+  provisioner "shell" {
+    pause_before = "5s"
+    remote_path  = "__REMOTE_DIR__/ohbs-image-final-selinux-reboot.sh"
+    inline       = ["sudo shutdown -r +1"]
+  }
+
+  provisioner "shell" {
+    pause_before        = "90s"
+    expect_disconnect   = true
+    start_retry_timeout = "20m"
+    max_retries         = 0
+    remote_path         = "__REMOTE_DIR__/ohbs-image-final-reconnected.sh"
+    inline = [
+      "case '__CIS_LEVEL__' in L2|level2*) OHBS_IS_L2=1 ;; *) OHBS_IS_L2=0 ;; esac",
+      "[ \"$OHBS_IS_L2\" != 1 ] || [ \"$(sudo getenforce 2>/dev/null)\" = 'Enforcing' ] || { echo '[ohbs-image] L2 requires SELinux enforcing after final reboot'; exit 1; }",
+      "echo \"[ohbs-image] final boot: selinux=$(sudo getenforce 2>/dev/null) sshd=$(sudo systemctl is-active sshd 2>/dev/null)\"",
+      "sudo systemctl reset-failed auditd >/dev/null 2>&1 || true",
+      "sudo timeout 90s systemctl start auditd >/dev/null 2>&1 || true",
+      "if grep -E '[[:space:]]/dev/shm[[:space:]].*noexec' /etc/fstab >/dev/null 2>&1; then sudo mount -o remount,nodev,nosuid,noexec /dev/shm >/dev/null 2>&1 || true; fi",
+      "echo \"[ohbs-image] final services: auditd=$(sudo systemctl is-active auditd 2>/dev/null) shm=$(findmnt -no OPTIONS /dev/shm 2>/dev/null)\""
     ]
   }
 
@@ -441,21 +554,11 @@ build {
   }
 
   # 7. Cleanup package cache before snapshot.
-  #    Also re-lock SSH to the CIS target state: the ssh-guard step above
-  #    temporarily restored key-based root login so Packer could reconnect
-  #    after reboot; the final image must ship hardened (PermitRootLogin no
-  #    per CIS 5.1.22/5.2.10).  The dedicated 'ohbsimage' build user (sudo,
-  #    same authorized_keys) remains the supported admin channel.
   provisioner "shell" {
     pause_before = "10s"
     remote_path  = "__REMOTE_DIR__/ohbs-image-cleanup.sh"
     inline = [
       "__CLEAN_CMD__",
-      "# Re-lock root login for the final image (CIS 5.1.22/5.2.10).  Do NOT",
-      "# reload sshd here: the running daemon keeps the current policy so",
-      "# Packer can still reconnect for the remaining provisioners; the new",
-      "# config takes effect on the first boot of any instance from the image.",
-      "for f in /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf; do [ -f \"$f\" ] || continue; sudo sed -i 's/^[ \\t]*PermitRootLogin[ \\t].*/PermitRootLogin no/' \"$f\"; done",
       "# Keep the engine + rule catalog in the image so the report's re-scan",
       "# instructions work; drop only the transient staging playbooks.",
       "sudo mv /opt/ohbs-image-ansible/staging/roles /opt/ohbs-image-ansible/roles 2>/dev/null || true",
@@ -483,13 +586,13 @@ build {
     remote_path  = "__REMOTE_DIR__/ohbs-image-collect-audit.sh"
     inline = [
       "set +e",
-      "SRC=$(ls -dt /tmp/cis-*/result.json 2>/dev/null | head -1)",
+      "SRC=$(ls -dt /tmp/cis-*/result.json /tmp/ohbs-cis-*/result.json /tmp/ohbs-tencentos*-*/result.json 2>/dev/null | head -1)",
       "if [ -n \"$SRC\" ] && [ -f \"$SRC\" ]; then",
       "  sudo install -m 0600 -o root -g root \"$SRC\" /opt/ohbs-image-AUDIT-RESULT.json",
       "  sudo rm -rf \"$(dirname \"$SRC\")\"",
       "  echo \"[ohbs-image] saved audit result to /opt/ohbs-image-AUDIT-RESULT.json\"",
       "else",
-      "  echo \"[ohbs-image] WARNING: no /tmp/cis-*/result.json found; banner/report will lack audit details\"",
+      "  echo \"[ohbs-image] WARNING: no retained CIS result.json found; banner/report will lack audit details\"",
       "  sudo install -m 0600 -o root -g root /dev/null /opt/ohbs-image-AUDIT-RESULT.json 2>/dev/null || true",
       "fi",
       "true"
@@ -527,14 +630,34 @@ build {
       "else",
       "  echo '[ohbs-image] WARNING: engine not found under /opt/ohbs-image-ansible/roles/cis-*/files; final-state re-scan skipped, keeping pre-finalize audit'",
       "fi",
-      "# Archive the audit JSON on the BUILD MACHINE too: emit it as one",
-      "# gzipped+base64 line that ohbs-image extracts from the packer log and",
-      "# stores under ~/.ohbs-image/reports/<image>.<run-id>.json (the in-image copy at",
-      "# /opt stays — drift/verify-image read it as the baseline).",
-      "echo \"__CIS_IMAGE_AUDIT_B64__$(sudo gzip -c /opt/ohbs-image-AUDIT-RESULT.json 2>/dev/null | base64 -w0)\""
+      "echo '[ohbs-image] pre-lock final-state audit refreshed; definitive audit follows root relock'"
     ]
   }
 __IDEMPOTENCY_BLOCK____SMOKE_TEST_BLOCK____SUPPLY_CHAIN_BLOCK____TEST_COMPONENTS_BLOCK__
+
+  # This must be the final provisioner.  sshd evaluates PermitRootLogin for
+  # each new connection, so locking root earlier prevents later provisioners
+  # from authenticating even when the daemon has not been reloaded.
+  provisioner "shell" {
+    pause_before = "2s"
+    remote_path  = "__REMOTE_DIR__/ohbs-image-relock-root.sh"
+    inline = [
+      "sudo chattr -i /root/.ssh/authorized_keys 2>/dev/null || true",
+      "sudo rm -f /etc/ssh/sshd_config.d/00-ohbs-image-build.conf /var/lib/ohbs-image-build/authorized_keys",
+      "for f in /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf; do [ -f \"$f\" ] || continue; sudo sed -i 's/^[ \\t]*PermitRootLogin[ \\t].*/PermitRootLogin no/' \"$f\"; done",
+      "for f in /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf; do [ -f \"$f\" ] || continue; sudo chown root:root \"$f\"; sudo chmod 0600 \"$f\"; done",
+      "sudo find /var/log/ -type f -perm /g+wx,o+rwx -exec chmod g-wx,o-rwx {} + 2>/dev/null || true",
+      "sudo /usr/local/sbin/ohbs-cloud-agent-permissions 2>/dev/null || true",
+      "sudo chown -R root:root /var/lib/private/systemd/ 2>/dev/null || true",
+      "echo '[ohbs-image] final SSH policy: root login disabled; ohbsimage admin remains available'",
+      "ENG=$(ls -d /opt/ohbs-image-ansible/roles/cis-*/files 2>/dev/null | head -1)",
+      "if [ -n \"$ENG\" ] && [ -f \"$ENG/ohbs_engine.py\" ]; then",
+      "  CAT=\"$ENG/rules.json\"; [ -f \"$ENG/__IMAGE_CATALOG__\" ] && CAT=\"$ENG/__IMAGE_CATALOG__\";",
+      "  sudo /opt/ohbs-image-ansible/bin/python \"$ENG/ohbs_engine.py\" --catalog \"$CAT\" --mode scan --profile '__CIS_PROFILE_SHORT__' --out /tmp/cis-definitive-scan.json >/dev/null 2>&1 && sudo install -m 0600 -o root -g root /tmp/cis-definitive-scan.json /opt/ohbs-image-AUDIT-RESULT.json && sudo rm -f /tmp/cis-definitive-scan.json && echo '[ohbs-image] definitive post-lock audit refreshed' || echo '[ohbs-image] WARNING: definitive post-lock audit failed; keeping pre-lock audit'",
+      "fi",
+      "echo \"__CIS_IMAGE_AUDIT_B64__$(sudo gzip -c /opt/ohbs-image-AUDIT-RESULT.json 2>/dev/null | base64 -w0)\""
+    ]
+  }
 }
 """
 
@@ -1187,38 +1310,22 @@ _bar "banner perms"
 sudo chmod 0644 /etc/ohbs-image/banner
 _bar "motd"
 
-# 2. /etc/motd — post-login message (with build metadata)
+# 2. /etc/motd — CIS-safe post-login warning. Product and OS metadata lives
+#    in /opt/ohbs-image-REPORT.md and `ohbs-image-info`; CIS 1.7 forbids OS
+#    references in login banners, including image names containing an OS name.
 {
-    cat /etc/ohbs-image/banner
-    printf '\n'
-    printf '\x1b[1mImage:\x1b[0m     %s\n' "__IMAGE_NAME__"
-    printf '\x1b[1mSource:\x1b[0m    %s\n' "__SOURCE_IMAGE__"
-    printf '\x1b[1mOS/Level:\x1b[0m  %s / %s\n' "__IMAGE_OS__" "__CIS_LEVEL__"
-    printf '\x1b[1mBenchmark:\x1b[0m %s\n' "__IMAGE_BENCHMARK__"
-    printf '\x1b[1mBuilt:\x1b[0m     %s by ohbs-image %s\n\n' "$BUILD_TS" "__CIS_IMAGE_VERSION__"
-    printf '\x1b[33m[ REPORT  ]\x1b[0m cat /opt/ohbs-image-REPORT.md     (or run: ohbs-image-info)\n'
-    printf '\x1b[33m[ ADMIN   ]\x1b[0m ssh ohbsimage@<host>            (root login disabled per CIS 5.1.22)\n'
-    printf '\x1b[33m[ ESCALATE]\x1b[0m sudo -i                        (NOPASSWD via /etc/sudoers.d/ohbsimage-build)\n'
+    printf 'Authorized uses only. All activity may be monitored and reported.\n'
+    printf 'Build and compliance evidence: /opt/ohbs-image-REPORT.md\n'
 } | sudo tee /etc/motd > /dev/null
 _bar "motd perms"
 sudo chmod 0644 /etc/motd
 
 _bar "issue + issue.net"
-# 3. /etc/issue, /etc/issue.net — console
-#    colour escape sequences render as garbage on serial consoles).
-{
-    printf 'ohbs-image  OHBS-HARDENED IMAGE BUILDER  --  %s\n' "__IMAGE_NAME__"
-    printf 'OS/Level: %s / %s   Benchmark: %s\n' "__IMAGE_OS__" "__CIS_LEVEL__" "__IMAGE_BENCHMARK__"
-    printf 'Built:    %s   by ohbs-image %s\n' "$BUILD_TS" "__CIS_IMAGE_VERSION__"
-    printf 'Report:   /opt/ohbs-image-REPORT.md  (run "ohbs-image-info")\n'
-    printf 'Admin:    ssh ohbsimage@<host>      (root login disabled per CIS)\n'
-} | sudo tee /etc/issue      > /dev/null
+# 3. /etc/issue, /etc/issue.net — pre-authentication text must not disclose
+#    OS, kernel, image, benchmark, or terminal escape metadata.
+printf 'Authorized uses only. All activity may be monitored and reported.\n' | sudo tee /etc/issue > /dev/null
 _bar "issue.net"
-{
-    printf 'ohbs-image  OHBS-HARDENED IMAGE BUILDER  --  %s\n' "__IMAGE_NAME__"
-    printf 'OS/Level: %s / %s   Built: %s by ohbs-image %s\n' "__IMAGE_OS__" "__CIS_LEVEL__" "$BUILD_TS" "__CIS_IMAGE_VERSION__"
-    printf 'Report: /opt/ohbs-image-REPORT.md\n'
-} | sudo tee /etc/issue.net  > /dev/null
+printf 'Authorized uses only. All activity may be monitored and reported.\n' | sudo tee /etc/issue.net > /dev/null
 _bar "issue perms"
 sudo chmod 0644 /etc/issue /etc/issue.net
 
@@ -1245,7 +1352,7 @@ sudo tee /etc/ssh/sshd_config.d/99-ohbs-image-banner.conf > /dev/null <<'SSHD_EO
 Banner /etc/ohbs-image/banner
 SSHD_EOF
 _bar "sshd drop-in perms"
-sudo chmod 0644 /etc/ssh/sshd_config.d/99-ohbs-image-banner.conf
+sudo chmod 0600 /etc/ssh/sshd_config.d/99-ohbs-image-banner.conf
 
 # 5. /opt/ohbs-image-REPORT.md — what was done to the base image
 _bar "generate REPORT.md"

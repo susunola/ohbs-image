@@ -16,7 +16,7 @@ Windows profiles used `S5.LARGE4` (4 vCPU / 8 GB).
 | **Ubuntu 22.04** | `S5.MEDIUM2` | `img-487zeit5` | `img-jd3gct8o` (91.5%) | `img-rx4n84w4` (92.1%) |
 | **Ubuntu 24.04** | `S5.MEDIUM2` | `img-mmytdhbn` | `img-7ncjcq10` (95.9%) | `img-j9m1fn0u` (96.5%) |
 | **TencentOS 3** | `S5.MEDIUM2` | `img-eb30mz89` | `img-ip62dj1k` (95.7%) | `img-joo4xcis` (94.2%) |
-| **TencentOS 4** | `S5.MEDIUM2` | `img-9qrfy1xt` | `img-ipw57gea` (96.9%) | `img-fs0hh75w` (96.7%) |
+| **TencentOS 4** | `S5.MEDIUM2` | `img-6n21msk1` | `img-ipw57gea` (96.9%) | `img-fs0hh75w` (96.7%) |
 | **Windows Server 2016** | `S5.LARGE4` | EN `img-1eckhm4t` · CN `img-9id7emv7` | EN `img-lw9onsqo` (99.7%) · CN `img-bm2kusug` (99.7%) | EN `img-gnedt90i` (99.7%) · CN `img-4t7nd0ne` (99.7%) |
 | **Windows Server 2019** | `S5.LARGE4` | EN `img-bhvhr6pr` · CN `img-mmy6qctz` | EN `img-9dfarngo` (99.6%) · CN `img-2h1qdi5c` (99.6%) | EN `img-5gfx1ybo` (99.7%) · CN `img-8u7us60c` (99.7%) |
 | **Windows Server 2022** | `S5.LARGE4` | EN `img-9tzezztj` · CN `img-m07ny34j` | EN `img-b9iwlu30` (99.7%) · CN `img-5fwbryp2` (99.7%) | EN `img-8r09mpwq` (99.7%) · CN `img-q5zih0bo` (99.7%) |
