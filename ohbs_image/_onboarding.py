@@ -463,8 +463,7 @@ def _check_cloud_instance(r: ResolvedConfig, sid: str, skey: str, tok: str | Non
     """Instance type purchasability/stock in the build zone (39–40)."""
     checks: list[DoctorCheck] = []
     resp = _safe_tc("cvm", "DescribeZoneInstanceConfigInfos", "2017-03-12",
-                    {"Filters": [{"Name": "zone", "Values": [r.zone]}],
-                     "InstanceChargeType": "POSTPAID_BY_HOUR"},
+                    {"Filters": [{"Name": "zone", "Values": [r.zone]}]},
                     r, sid, skey, tok)
     if resp is None:
         checks.append(DoctorCheck("cloud.instance_type", "skip",
@@ -473,7 +472,12 @@ def _check_cloud_instance(r: ResolvedConfig, sid: str, skey: str, tok: str | Non
                                   "Instance stock check unavailable (API error)", group="cloud"))
         return checks
     configs = resp.get("Response", {}).get("InstanceTypeQuotaSet", [])
-    purchasable = {str(x.get("InstanceType")) for x in configs if isinstance(x, dict)}
+    purchasable = {
+        str(x.get("InstanceType")) for x in configs
+        if isinstance(x, dict)
+        and str(x.get("InstanceChargeType", "")) in ("", "POSTPAID_BY_HOUR")
+        and str(x.get("Status", "")).upper() not in ("SOLD_OUT", "UNAVAILABLE")
+    }
     available = r.instance_type in purchasable
     checks.append(DoctorCheck(
         "cloud.instance_type", "pass" if available else "fail",

@@ -7,6 +7,16 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Added
+- **Public evidence index** — portable acceptance, SLO, proof, benchmark,
+  compliance, and release JSON can now be rendered into a self-contained HTML
+  index plus a stable JSON contract. Every entry carries its source SHA-256;
+  missing and incomplete evidence remains explicit.
+- **Stable core contract gate** — CI now snapshots the public CLI surface,
+  OpenAPI operations, versioned schemas, provider/extension protocols, and
+  evidence schema identifiers. Intentional compatible changes require an
+  explicit reviewed snapshot update; silent drift fails the build.
+
 ## [0.20.0] - 2026-08-27
 
 ### Added

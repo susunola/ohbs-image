@@ -243,6 +243,13 @@ verify it with `ohbs-image proof record|verify|report`; incomplete coverage is
 reported as incomplete rather than promoted as evidence. See
 [`docs/production-proof.md`](docs/production-proof.md).
 
+Publish portable acceptance, SLO, proof, benchmark and release artifacts as a
+hash-addressed static index with `scripts/build_evidence_index.py`; see
+[`docs/public-evidence-index.md`](docs/public-evidence-index.md). Stable CLI,
+OpenAPI, schema and plugin boundaries are protected by an explicit contract
+snapshot documented in
+[`docs/core-contract-stability.md`](docs/core-contract-stability.md).
+
 Generate technical 等保 2.0 or 信创 readiness evidence with
 `ohbs-image compliance assess`. Reports preserve missing/manual controls and
 never claim certification; scope and limitations are documented in

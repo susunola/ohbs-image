@@ -29,14 +29,37 @@ def test_discover_subnets_normalizes_cloud_response(monkeypatch):
 def test_discover_images_filters_profile(monkeypatch):
     monkeypatch.setenv("TENCENTCLOUD_SECRET_ID", "sid")
     monkeypatch.setenv("TENCENTCLOUD_SECRET_KEY", "key")
-    monkeypatch.setattr("ohbs_image._tc3_api", lambda *a, **k: {
+    def fake_api(*args, **kwargs):
+        assert args[4] == {"Limit": 100}
+        return {
         "Response": {"ImageSet": [
-            {"ImageId": "img-u", "ImageName": "Ubuntu Server 24.04", "OsName": "Ubuntu"},
+            {"ImageId": "img-u", "ImageName": "Ubuntu Server 24.04", "OsName": "Ubuntu",
+             "ImageType": "PUBLIC_IMAGE"},
+            {"ImageId": "img-private", "ImageName": "Ubuntu Server 24.04 private",
+             "OsName": "Ubuntu", "ImageType": "PRIVATE_IMAGE"},
             {"ImageId": "img-r", "ImageName": "RHEL 9", "OsName": "RHEL"},
-        ]}})
+        ]}}
+    monkeypatch.setattr("ohbs_image._tc3_api", fake_api)
     rows = discover_resources("images", "ap-guangzhou", profile="ubuntu2404")
     assert [row["id"] for row in rows] == ["img-u"]
     assert set(rows[0]) == {"id", "name", "os", "architecture", "state", "created_at"}
+
+
+def test_discover_images_matches_tencentos_major_without_digit_collisions(monkeypatch):
+    monkeypatch.setenv("TENCENTCLOUD_SECRET_ID", "sid")
+    monkeypatch.setenv("TENCENTCLOUD_SECRET_KEY", "key")
+    monkeypatch.setattr("ohbs_image._tc3_api", lambda *args, **kwargs: {
+        "Response": {"ImageSet": [
+            {"ImageId": "img-tos3", "ImageName": "TencentOS Server 3.3 (TK4)",
+             "OsName": "TencentOS Server 3.3 (TK4)", "ImageType": "PUBLIC_IMAGE"},
+            {"ImageId": "img-tos4", "ImageName": "TencentOS Server 4 for x86_64",
+             "OsName": "TencentOS Server 4 for x86_64", "ImageType": "PUBLIC_IMAGE"},
+        ]}}
+    )
+
+    rows = discover_resources("images", "ap-guangzhou", profile="tencentos4")
+
+    assert [row["id"] for row in rows] == ["img-tos4"]
 
 
 def test_discover_v1_json_contract(monkeypatch, capsys):
@@ -65,12 +88,17 @@ def test_discover_instance_types_filters_and_normalizes(monkeypatch):
     def fake_api(service, action, version, region, params, sid, key, token):
         assert (service, action, version, region) == (
             "cvm", "DescribeZoneInstanceConfigInfos", "2017-03-12", "ap-guangzhou")
-        assert params["InstanceChargeType"] == "POSTPAID_BY_HOUR"
+        assert "InstanceChargeType" not in params
         assert params["Filters"] == [{"Name": "zone", "Values": ["ap-guangzhou-3"]}]
         return {"Response": {"InstanceTypeQuotaSet": [
-            {"InstanceType": "S5.MEDIUM2", "Cpu": 2, "Memory": 4, "GPU": 0, "Status": "AVAILABLE"},
-            {"InstanceType": "S5.LARGE8", "Cpu": 4, "Memory": 8, "GPU": 0, "Status": "AVAILABLE"},
-            {"InstanceType": "S5.LARGE4", "Cpu": 4, "Memory": 4, "GPU": 0, "Status": "SOLD_OUT"},
+            {"InstanceType": "S5.MEDIUM2", "Cpu": 2, "Memory": 4, "GPU": 0,
+             "Status": "AVAILABLE", "InstanceChargeType": "PREPAID"},
+            {"InstanceType": "S5.MEDIUM2", "Cpu": 2, "Memory": 4, "GPU": 0,
+             "Status": "AVAILABLE", "InstanceChargeType": "POSTPAID_BY_HOUR"},
+            {"InstanceType": "S5.LARGE8", "Cpu": 4, "Memory": 8, "GPU": 0,
+             "Status": "AVAILABLE", "InstanceChargeType": "POSTPAID_BY_HOUR"},
+            {"InstanceType": "S5.LARGE4", "Cpu": 4, "Memory": 4, "GPU": 0,
+             "Status": "SOLD_OUT", "InstanceChargeType": "POSTPAID_BY_HOUR"},
         ]}}
 
     monkeypatch.setattr("ohbs_image._tc3_api", fake_api)

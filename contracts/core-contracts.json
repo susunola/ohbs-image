@@ -1,0 +1,138 @@
+{
+  "cli": {
+    "top_level_commands": [
+      "ancestry",
+      "audit",
+      "benchmark",
+      "build",
+      "catalog",
+      "channel",
+      "check-source",
+      "clean",
+      "cleanup",
+      "cleanup-images",
+      "cleanup-runs",
+      "compliance",
+      "config",
+      "configure",
+      "consumer",
+      "cve",
+      "discover",
+      "distribution",
+      "doctor",
+      "dr",
+      "drift",
+      "engine",
+      "event",
+      "extension",
+      "guide",
+      "images",
+      "init",
+      "launch",
+      "list",
+      "pending",
+      "plan",
+      "policy",
+      "preflight",
+      "promote",
+      "proof",
+      "provider",
+      "quickstart",
+      "registry",
+      "report",
+      "rollback",
+      "run",
+      "scan",
+      "serve",
+      "state",
+      "test",
+      "try",
+      "upgrade",
+      "validate",
+      "verify",
+      "verify-image",
+      "verify-release",
+      "worker"
+    ]
+  },
+  "compatibility_policy": "schemas/COMPATIBILITY.md",
+  "contract_files": {
+    "api/openapi.yaml": {
+      "schema_id": "",
+      "sha256": "78495d797a127a7c78d7bb09e7774193175cfe278c1f165be1d110b5c6fccd44"
+    },
+    "schemas/v1/artifact.schema.json": {
+      "schema_id": "https://ohbs-image.dev/schemas/v1/artifact.schema.json",
+      "sha256": "8b9cc6a8556c511a3596c120bcf4b9e2876d0230bb9788226312f39d968efedd"
+    },
+    "schemas/v1/channel.schema.json": {
+      "schema_id": "https://ohbs-image.dev/schemas/v1/channel.schema.json",
+      "sha256": "391f0011ef4e3f59809301ffc50e84edfa87cfdc6235b658d08bf8258f87ca0a"
+    },
+    "schemas/v1/operation.schema.json": {
+      "schema_id": "https://ohbs-image.dev/schemas/v1/operation.schema.json",
+      "sha256": "ada9de4d618d3aa317fbdcebd2d251c0aa90db76b2e9c558d2c16deb3dfe60dd"
+    },
+    "schemas/v1/policy.schema.json": {
+      "schema_id": "https://ohbs-image.dev/schemas/v1/policy.schema.json",
+      "sha256": "aa748c6cab1fdd5373ada502f6964ae1cc7386cc7f21e76d0fe46d62bea8f93c"
+    },
+    "schemas/v1/rule-quality.schema.json": {
+      "schema_id": "https://ohbs-image.dev/v1/rule-quality.schema.json",
+      "sha256": "b4f8e4b4230a9bc0849ab863528af4ebf849acd85b0fdfc9e3d18e8545b6b7d5"
+    }
+  },
+  "document_schemas": [
+    "https://ohbs-image.dev/artifact-registry/v1",
+    "https://ohbs-image.dev/artifact/v1",
+    "https://ohbs-image.dev/benchmark/v1",
+    "https://ohbs-image.dev/guide/v1",
+    "https://ohbs-image.dev/run-slo/v1"
+  ],
+  "extensions": {
+    "api_version": "1.0",
+    "entry_points": {
+      "distributor": "ohbs_image.distributors",
+      "feed": "ohbs_image.feeds",
+      "notifier": "ohbs_image.notifiers",
+      "scanner": "ohbs_image.scanners",
+      "signer": "ohbs_image.signers"
+    },
+    "required_methods": {
+      "distributor": "distribute",
+      "feed": "poll",
+      "notifier": "notify",
+      "scanner": "scan",
+      "signer": "sign"
+    }
+  },
+  "openapi": {
+    "operation_ids": [
+      "getArtifact",
+      "getArtifactImpact",
+      "getErrorCatalog",
+      "getHealth",
+      "getMetrics",
+      "getRun",
+      "listArtifacts",
+      "listDescendants",
+      "listRebuildRequests",
+      "listRuns",
+      "promoteChannel",
+      "resolveChannel"
+    ],
+    "version": "1.0.0"
+  },
+  "provider": {
+    "api_version": "1.0",
+    "capabilities": [
+      "compute",
+      "discovery",
+      "distribution",
+      "images",
+      "networking"
+    ],
+    "entry_point": "ohbs_image.providers"
+  },
+  "snapshot_version": 1
+}

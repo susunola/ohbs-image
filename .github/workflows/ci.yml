@@ -78,6 +78,9 @@ jobs:
       - name: Verify documentation links and CLI examples
         run: python3 scripts/check_docs.py
 
+      - name: Verify stable core contracts
+        run: python3 scripts/check_core_contracts.py
+
       # rules.json canonical-format guard: every role's rules.json must use the
       # single canonical layout produced by scripts/format_rules.py. This keeps
       # bulk edits minimal and stops hand-edits from silently re-diverging into
