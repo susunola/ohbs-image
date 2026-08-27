@@ -22,7 +22,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: console
-          image: ghcr.io/susunola/ohbs-image:0.19.1
+          image: ghcr.io/susunola/ohbs-image:0.20.0
           imagePullPolicy: IfNotPresent
           args: ["serve", "--host", "0.0.0.0", "--port", "8181", "--rbac", "/run/ohbs-secrets/rbac.json"]
           ports:

@@ -7,7 +7,14 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-08-27
+
 ### Added
+- **Role-based CLI discovery** — `ohbs-image guide` now gives builders,
+  security reviewers, platform operators, and image consumers a short,
+  task-oriented path through the product. The guide is offline,
+  configuration-free, and exposes a stable JSON contract for automation;
+  the default help surface puts these starting journeys first.
 - **Verifiable platform assurance** — an append-only hash-chain proof ledger,
   deterministic scale/recovery exercises, and strict 30/90-day evidence gates
   prevent synthetic runs or incomplete observation windows from being reported
