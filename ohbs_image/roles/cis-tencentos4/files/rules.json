@@ -2107,7 +2107,7 @@
         "nftables.service"
       ],
       "packages": []
-    },
+  },
     "risk": "disruptive",
     "page": 283
   },
@@ -2251,7 +2251,9 @@
       "units": [
         "nftables.service"
       ],
-      "packages": []
+      "packages": [],
+      "unless_service_active": "firewalld.service",
+      "unless_service_present": "firewalld.service"
     },
     "risk": "safe",
     "page": 307,

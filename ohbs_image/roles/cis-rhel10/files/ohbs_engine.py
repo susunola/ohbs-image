@@ -82,6 +82,10 @@ class Ctx(object):
         # RLock: _install_pkgs() takes it too, and pkg_* fixes reach
         # _install_pkgs while _apply_one already holds this lock.
         self._pkg_lock = threading.RLock()
+        # authselect and PAM operate on one shared profile/stack.  Multiple
+        # rules may select the profile, enable features and regenerate the
+        # same files, so concurrent fixes can overwrite each other's state.
+        self._pam_lock = threading.RLock()
         self._svc_lock = threading.Lock()
         self._svc_queue = set()      # services to restart en-masse after apply
 
@@ -1341,6 +1345,18 @@ def c_svc_enabled(ctx, p):
     pkgs = p.get("packages") or []
     if not units and not pkgs:
         return "error", "rule has no units/packages configured (incomplete catalog)"
+    # Some CIS firewall subsections are alternative implementations.  When
+    # firewalld is the active backend, the nftables-service subsection must
+    # not be assessed as an additional requirement (firewalld still uses the
+    # nftables kernel backend without nftables.service running).
+    alternate_present = p.get("unless_service_present")
+    if alternate_present and unit_exists(alternate_present):
+        return ("notapplicable",
+                "%s is present; alternate service scheme selected" % alternate_present)
+    alternate = p.get("unless_service_active")
+    if alternate and _unit_state(alternate)[1] == "active":
+        return ("notapplicable",
+                "%s is active; alternate service scheme selected" % alternate)
     if p.get("requires_config") == "journal-upload":
         configured = False
         for path in ("/etc/systemd/journal-upload.conf",
@@ -1500,6 +1516,12 @@ def _bootstrap_journal_upload(ctx):
 
 @fix("svc_enabled")
 def f_svc_enabled(ctx, p):
+    alternate_present = p.get("unless_service_present")
+    if alternate_present and unit_exists(alternate_present):
+        return True, "%s present; alternate service scheme selected — nothing to do" % alternate_present
+    alternate = p.get("unless_service_active")
+    if alternate and _unit_state(alternate)[1] == "active":
+        return True, "%s active; alternate service scheme selected — nothing to do" % alternate
     # Conditional rule not in use on this host (see c_svc_enabled): do NOT
     # install/enable anything — the control is covered by another daemon.
     if p.get("if_in_use") and not any(unit_exists(u) for u in (p.get("units") or [])):
@@ -2534,6 +2556,26 @@ def c_authselect_feature(ctx, p):
         return "fail", "no authselect profile is selected"
     if p["feature"] in o:
         return "pass", "profile includes %s" % p["feature"]
+    # TencentOS 4 authselect custom profiles reject otherwise standard
+    # feature names ("Unknown profile feature [with-faillock]").  The
+    # security control is still satisfied when the equivalent PAM module is
+    # present in the effective stack; report that platform-specific evidence
+    # instead of a false negative based only on authselect metadata.
+    feature_modules = {
+        "with-faillock": "pam_faillock.so",
+        "with-pwhistory": "pam_pwhistory.so",
+    }
+    module = feature_modules.get(p["feature"])
+    if module:
+        hits = []
+        for path in _pam_paths(ctx):
+            if any(module in line and not line.lstrip().startswith("#")
+                   for line in readlines(path)):
+                hits.append(os.path.basename(path))
+        if hits:
+            return ("pass", "%s active in effective PAM stack (%s); "
+                    "authselect profile does not expose feature metadata" %
+                    (module, ", ".join(sorted(set(hits)))))
     return "fail", "profile does not include %s" % p["feature"]
 
 
@@ -2543,6 +2585,20 @@ def f_authselect_feature(ctx, p):
         return False, "authselect is not installed"
     rc, o, e = sh(["authselect", "enable-feature", p["feature"]], 60)
     if rc != 0:
+        feature_modules = {
+            "with-faillock": "pam_faillock.so",
+            "with-pwhistory": "pam_pwhistory.so",
+        }
+        module = feature_modules.get(p["feature"])
+        if module and "Unknown profile feature" in (o + e):
+            changed, detail = f_pam_module(ctx, {"module": module})
+            status, evidence = c_authselect_feature(ctx, p)
+            if status == "pass":
+                return True, ("authselect feature unsupported; applied "
+                              "equivalent PAM module: %s; %s" %
+                              (detail, evidence))
+            return False, ("authselect feature unsupported and PAM fallback "
+                           "did not verify: %s" % evidence)
         return False, "authselect enable-feature failed: %s" % (e or o)[:200]
     sh(["authselect", "apply-changes"], 60)
     ctx.invalidate("pam_paths")
@@ -5325,6 +5381,9 @@ def main():
                        "pkg_not_installed", "pkg_installed", "pkg_removed",
                        "pkg_audit", "pkg_firewall", "pkg_password"):
                 with ctx._pkg_lock:
+                    return run_rule(ctx, rule)
+            if fam.startswith("pam_") or fam.startswith("authselect_"):
+                with ctx._pam_lock:
                     return run_rule(ctx, rule)
             return run_rule(ctx, rule)
 
