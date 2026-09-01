@@ -46,7 +46,7 @@ jobs:
       # --owner susunola` — customers' security reviews can check the tool
       # that hardens their images is itself unmodified.
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2, pinned 2026-08-24
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v2, pinned 2026-08-24
         with:
           subject-path: |
             dist/*.whl
