@@ -27,9 +27,16 @@ COPY --from=build /src/dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl
 
 # The source files the check reads at runtime. Keep the scripts/ layout so
-# check_readme.py resolves its default README path (repo root) correctly.
+# check_readme.py resolves its default README path (repo root) correctly. Copy
+# the whole scripts/ directory, not just check_readme.py: the gate scripts
+# share helpers (scripts/_cli_introspection.py) that must resolve at import.
 COPY README.md /app/README.md
-COPY scripts/check_readme.py /app/scripts/check_readme.py
+COPY scripts/ /app/scripts/
+# check_readme.py also guards counts declared in pyproject.toml and the
+# profile list in ohbs_image/__init__.py, so those source files have to be
+# present next to the installed package (the wheel alone is not enough).
+COPY pyproject.toml /app/pyproject.toml
+COPY ohbs_image/__init__.py /app/ohbs_image/__init__.py
 
 ENTRYPOINT ["python", "scripts/check_readme.py"]
 
