@@ -27,6 +27,8 @@ import re
 import sys
 from pathlib import Path
 
+from _cli_introspection import registered_subcommands as _cli_registered_subcommands
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Must stay in sync with the profiles dict in ohbs_image/_profiles.py — the
@@ -43,12 +45,7 @@ _PROFILE_NAMES = (
 def registered_subcommands() -> set[str]:
     """Return the set of subcommand names the CLI actually registers."""
     import ohbs_image
-    parser = ohbs_image.build_parser()
-    subparsers = parser._subparsers
-    assert subparsers is not None
-    group_actions = subparsers._group_actions
-    choices = group_actions[0].choices if group_actions else None
-    return set(choices or {})
+    return _cli_registered_subcommands(ohbs_image.build_parser())
 
 
 def readme_documented_subcommands(readme_text: str,

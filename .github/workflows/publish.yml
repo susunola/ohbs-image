@@ -62,9 +62,23 @@ jobs:
             gh release create "${GITHUB_REF_NAME}" --verify-tag --generate-notes
           gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
 
+      # pypa/gh-action-pypi-publish runs twine over every file in its
+      # packages-dir, so dist/ must not be handed to it directly: it also holds
+      # SHA256SUMS and sbom.cdx.json, and twine aborts with
+      # `InvalidDistribution: Unknown distribution format: 'SHA256SUMS'` (this
+      # is how v0.20.0 reached GitHub but never reached PyPI).
+      - name: Isolate distributions for upload
+        run: |
+          mkdir -p dist-publish
+          cp dist/*.whl dist/*.tar.gz dist-publish/
+
+      - name: Verify upload directory holds only distributions
+        run: python scripts/check_publish_dist.py dist-publish
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1, pinned 2026-08-23
         with:
+          packages-dir: dist-publish
           # Trusted publishing is used automatically when no token is given.
           # Enable it once at
           #   https://pypi.org/manage/account/publishing/

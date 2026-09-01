@@ -103,8 +103,12 @@ def build_document(entries: list[dict[str, Any]], generated_at: str) -> dict[str
     }
 
 
+def esc(value: Any) -> str:
+    """Escape a value for safe interpolation into the evidence index HTML."""
+    return html.escape(str(value), quote=True)
+
+
 def render_html(document: dict[str, Any], title: str) -> str:
-    esc = lambda value: html.escape(str(value), quote=True)
     rows = []
     for item in document["evidence"]:
         link = (f'<a href="{esc(item["url"])}">open</a>' if item["url"] else "—")

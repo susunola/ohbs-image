@@ -1008,7 +1008,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_vrf_rel.set_defaults(func=cmd_verify_release)
 
     # Deprecated flat aliases of the verify group (scheduled for removal in
-    # 0.21.0): keep parsing identically, but warn and point at the group form.
+    # 0.22.0): keep parsing identically, but warn and point at the group form.
     p_vrf_img_alias = sub.add_parser(
         "verify-image", parents=[common],
         help="[deprecated] use 'ohbs-image verify image'")
@@ -1149,7 +1149,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_clnruns.set_defaults(func=cmd_cleanup_runs)
 
     # Deprecated flat aliases of the cleanup group (scheduled for removal in
-    # 0.21.0): keep parsing identically, but warn and point at the group form.
+    # 0.22.0): keep parsing identically, but warn and point at the group form.
     p_clnimg_alias = sub.add_parser(
         "cleanup-images",
         help="[deprecated] use 'ohbs-image cleanup images'")
@@ -1223,11 +1223,11 @@ def _deprecated_alias(alias: str, replacement: str,
     verify/cleanup convergence — the flat forms (`verify-image`,
     `verify-release`, `cleanup-images`, `cleanup-runs`, and the flat `verify`
     default) still work, but print a removal-window notice to stderr before
-    dispatching to the real handler. Scheduled for removal in 0.21.0.
+    dispatching to the real handler. Scheduled for removal in 0.22.0.
     """
     def _wrapped(args: argparse.Namespace) -> int:
         print(f"warning: '{alias}' is deprecated, use 'ohbs-image {replacement}' "
-              "(scheduled for removal in 0.21.0)", file=sys.stderr)
+              "(scheduled for removal in 0.22.0)", file=sys.stderr)
         return func(args)
     return _wrapped
 
@@ -1236,10 +1236,10 @@ def _deprecation_prog(argv: list[str] | None) -> None:
     """Roadmap D-92/93 — keep the pre-rebrand entry name as a deprecated alias.
 
     `cis-image` (the pre-0.16.25 package name) still works but prints a
-    deprecation notice; it is scheduled for removal in 0.21.0.
+    deprecation notice; it is scheduled for removal in 0.22.0.
     """
     first = argv[0] if argv else sys.argv[0]
     name = os.path.basename(str(first)).lower()
     if name in ("cis-image", "cis_image"):
         print("warning: 'cis-image' is deprecated, use 'ohbs-image' "
-              "(scheduled for removal in 0.21.0)", file=sys.stderr)
+              "(scheduled for removal in 0.22.0)", file=sys.stderr)

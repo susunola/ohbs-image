@@ -16,7 +16,7 @@ Covered here:
 - D-119 plan --diff-last
 - D-120 plan never calls write APIs
 - verify/cleanup subcommand-group convergence (flat legacy names stay
-  registered as deprecated aliases, removal window 0.21.0)
+  registered as deprecated aliases, removal window 0.22.0)
 """
 from __future__ import annotations
 
@@ -100,7 +100,7 @@ class TestDeprecatedEntryAlias:
     def test_cis_image_alias_warns(self, capsys):
         _deprecation_prog(["cis-image", "list"])
         err = capsys.readouterr().err
-        assert "cis-image" in err and "deprecated" in err and "0.21.0" in err
+        assert "cis-image" in err and "deprecated" in err and "0.22.0" in err
 
     def test_ohbs_image_name_is_silent(self, capsys):
         _deprecation_prog(["ohbs-image", "list"])
@@ -377,7 +377,7 @@ class TestPlanNeverMutates:
 # ---------------------------------------------- verify/cleanup convergence
 class TestVerifyCleanupGroups:
     """`verify` and `cleanup` are subcommand groups. The flat legacy names
-    remain registered as deprecated aliases (removal window 0.21.0), and the
+    remain registered as deprecated aliases (removal window 0.22.0), and the
     bare `verify` (no subcommand) is the group default — still parsing its
     legacy flags, but printing a deprecation notice before dispatch."""
 
@@ -460,7 +460,7 @@ class TestVerifyCleanupGroups:
 class TestDeprecatedAliasWrapper:
     """_deprecated_alias() is the shared wrapper for the converged verify/
     cleanup flat names: it warns on stderr with the replacement and the
-    0.21.0 removal window, then dispatches to the real handler."""
+    0.22.0 removal window, then dispatches to the real handler."""
 
     def test_warns_on_stderr_with_replacement_and_window(self, capsys):
         calls = []
@@ -477,7 +477,7 @@ class TestDeprecatedAliasWrapper:
         assert "verify-image" in captured.err
         assert "deprecated" in captured.err
         assert "ohbs-image verify image" in captured.err
-        assert "0.21.0" in captured.err
+        assert "0.22.0" in captured.err
 
     def test_bare_verify_and_cleanup_aliases_share_the_wrapper(self, capsys):
         parser = build_parser()

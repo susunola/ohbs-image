@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.20.0-blue?logo=pypi&logoColor=white" alt="Version 0.20.0">
+  <img src="https://img.shields.io/badge/version-0.21.0-blue?logo=pypi&logoColor=white" alt="Version 0.21.0">
   <img src="https://img.shields.io/badge/python-3.11_|_3.12_|_3.13_|_3.14-blue?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/profiles-13-orange" alt="13 profiles">
   <img src="https://img.shields.io/badge/platform-Tencent%20Cloud-0052D9" alt="Tencent Cloud">
@@ -146,7 +146,7 @@ export WINRM_PASSWORD=xxxx   # Windows builds only
 
 ```
 ══════════════════════════════════════════════════════════
-  ohbs-image 0.20.0 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.21.0 — tencentos3 (L1) → ap-guangzhou-4
 ══════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: Launching instance (S5.MEDIUM2)...
 [packer]  tencentcloud-cvm: Provisioning with ansible-local...
@@ -415,7 +415,8 @@ ohbs-image cleanup images --apply                 # actually delete (default = d
 ohbs-image cleanup runs --older-than 24           # find tagged orphaned build/probe CVMs (dry run)
 ohbs-image cleanup runs --older-than 24 --apply   # actually terminate the tagged CVMs (hours must be > 0)
 ohbs-image cleanup runs --include-legacy --apply  # explicitly include pre-manifest probes after review
-# --- deprecated flat aliases (removal planned in 0.21.0) ---
+# --- deprecated flat aliases (removal planned in 0.22.0; extended from 0.21.0
+#     because v0.20.0 never reached PyPI, so the notice had not reached users) ---
 ohbs-image verify --provenance <file>         # [deprecated] use `ohbs-image verify provenance`
 ohbs-image verify-image --image <img-id>      # [deprecated] use `ohbs-image verify image`
 ohbs-image verify-release --image img-xxx     # [deprecated] use `ohbs-image verify release`

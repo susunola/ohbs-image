@@ -20,15 +20,17 @@ def _sha(path: Path) -> str:
 
 def current_contracts() -> dict[str, Any]:
     sys.path.insert(0, str(ROOT))
+    from _cli_introspection import registered_subcommands
+
     from ohbs_image import build_parser
     from ohbs_image._benchmark import BENCHMARK_SCHEMA
-    from ohbs_image._extensions import EXTENSION_API_VERSION, ENTRY_POINT_GROUPS, REQUIRED_METHODS
+    from ohbs_image._extensions import ENTRY_POINT_GROUPS, EXTENSION_API_VERSION, REQUIRED_METHODS
     from ohbs_image._guide import GUIDE_SCHEMA
     from ohbs_image._providers import ENTRY_POINT_GROUP, PROVIDER_API_VERSION, ProviderCapabilities
     from ohbs_image._registry import ARTIFACT_SCHEMA, REGISTRY_SCHEMA
     from ohbs_image._slo import SLO_SCHEMA
 
-    subcommands = sorted(build_parser()._subparsers._group_actions[0].choices)
+    subcommands = sorted(registered_subcommands(build_parser()))
     contract_files = [ROOT / "api" / "openapi.yaml", *sorted((ROOT / "schemas" / "v1").glob("*.json"))]
     files: dict[str, Any] = {}
     for path in contract_files:
