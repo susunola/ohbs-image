@@ -146,8 +146,12 @@ def check_profile_count_in_packaging() -> list[str]:
             errors.append(f"pyproject.toml description should say "
                           f"{expected} OS profiles")
 
-    init_text = (REPO_ROOT / "ohbs_image" / "__init__.py").read_text(
-        encoding="utf-8")
+    # Source-tree guard: skipped where only the installed package is available
+    # (the Docker check-readme stage verifies the wheel, not the checkout).
+    init_file = REPO_ROOT / "ohbs_image" / "__init__.py"
+    if not init_file.exists():
+        return errors
+    init_text = init_file.read_text(encoding="utf-8")
     m = _INIT_OS_RE.search(init_text)
     if m is None:
         errors.append("ohbs_image/__init__.py docstring has no "

@@ -35,8 +35,10 @@ COPY scripts/ /app/scripts/
 # check_readme.py also guards counts declared in pyproject.toml and the
 # profile list in ohbs_image/__init__.py, so those source files have to be
 # present next to the installed package (the wheel alone is not enough).
+# NB: do NOT copy ohbs_image/ here. `python3 -c` from /app puts the working
+# directory on sys.path, so a partial source tree would shadow the installed
+# wheel and break the packaged-artifact checks below.
 COPY pyproject.toml /app/pyproject.toml
-COPY ohbs_image/__init__.py /app/ohbs_image/__init__.py
 
 ENTRYPOINT ["python", "scripts/check_readme.py"]
 
