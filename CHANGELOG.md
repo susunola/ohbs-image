@@ -7,6 +7,36 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-02
+
+### Added
+- **`ohbs-image policy simulate`** — dry-run a candidate policy bundle against
+  every registered artifact (or a selected subset) and report what it would
+  allow, deny, newly allow and newly deny versus an optional baseline. Reads
+  only; never quarantines, rolls back or mutates. `--fail-on-newly-denied`
+  turns it into a CI gate. Answers "what breaks if I ship this policy?" before
+  the policy is published rather than after.
+- **`ohbs-image policy exceptions`** — show every time-bounded exception's
+  expiry posture as active / expiring / expired, with `--within-days` to flag
+  what lapses soon and `--fail-on-expired` for CI. Exceptions were already
+  expiry-aware at *evaluation* time, so a lapsed waiver silently stopped
+  applying with nothing telling its owner; this is the missing visibility half.
+- Simulation results are order-independent. Registry reads (SQLite or a
+  filesystem glob) do not guarantee row order, and the result carries a
+  `document_hash` — artifacts are now sorted before evaluation, so two runs
+  over identical inputs produce one identical document instead of two digests.
+
+### Fixed
+- **Deprecation notices promised a removal their own contract forbids.** The
+  flat aliases (`verify-image`, `verify-release`, `cleanup-images`,
+  `cleanup-runs`, the flat `verify` default) and the pre-rebrand `cis-image`
+  entry name were advertised as "scheduled for removal in 0.22.0", but those
+  names are frozen as top-level commands in `contracts/core-contracts.json`,
+  and `docs/core-contract-stability.md` requires a new major contract version
+  plus a documented migration path to remove one. The notices now target
+  **1.0.0**, matching the documented policy. This is a text-only change: the
+  aliases keep working exactly as before.
+
 ## [0.21.0] - 2026-09-01
 
 > First installable release of the 0.20.x feature line. v0.20.0 was tagged and

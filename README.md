@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.21.0-blue?logo=pypi&logoColor=white" alt="Version 0.21.0">
+  <img src="https://img.shields.io/badge/version-0.22.0-blue?logo=pypi&logoColor=white" alt="Version 0.22.0">
   <img src="https://img.shields.io/badge/python-3.11_|_3.12_|_3.13_|_3.14-blue?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/profiles-13-orange" alt="13 profiles">
   <img src="https://img.shields.io/badge/platform-Tencent%20Cloud-0052D9" alt="Tencent Cloud">
@@ -146,7 +146,7 @@ export WINRM_PASSWORD=xxxx   # Windows builds only
 
 ```
 ══════════════════════════════════════════════════════════
-  ohbs-image 0.21.0 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.22.0 — tencentos3 (L1) → ap-guangzhou-4
 ══════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: Launching instance (S5.MEDIUM2)...
 [packer]  tencentcloud-cvm: Provisioning with ansible-local...
@@ -366,6 +366,12 @@ ohbs-image channel list [--bucket PROFILE] [--output json]
 ohbs-image policy verify organization-policy.json
 ohbs-image policy explain organization-policy.json --environment production --artifact-id IMAGE_ID
 ohbs-image policy check IMAGE_ID --bundle organization-policy.json --environment production
+ohbs-image policy simulate new-policy.json --environment production  # dry run: no writes, no quarantine
+ohbs-image policy simulate new-policy.json --environment production --baseline current.json  # diff transitions
+ohbs-image policy simulate new-policy.json --environment production --fail-on-newly-denied   # CI gate
+ohbs-image policy exceptions organization-policy.json                 # active / expiring / expired
+ohbs-image policy exceptions organization-policy.json --within-days 14  # flag what lapses soon
+ohbs-image policy exceptions organization-policy.json --fail-on-expired # CI gate on lapsed waivers
 ohbs-image consumer resolve PROFILE stable --policy organization-policy.json --environment production
 ohbs-image consumer resolve PROFILE stable --policy organization-policy.json --output terraform
 ohbs-image channel promote PROFILE stable IMAGE_ID --policy organization-policy.json  # enforced gate
@@ -415,8 +421,11 @@ ohbs-image cleanup images --apply                 # actually delete (default = d
 ohbs-image cleanup runs --older-than 24           # find tagged orphaned build/probe CVMs (dry run)
 ohbs-image cleanup runs --older-than 24 --apply   # actually terminate the tagged CVMs (hours must be > 0)
 ohbs-image cleanup runs --include-legacy --apply  # explicitly include pre-manifest probes after review
-# --- deprecated flat aliases (removal planned in 0.22.0; extended from 0.21.0
-#     because v0.20.0 never reached PyPI, so the notice had not reached users) ---
+# --- deprecated flat aliases ---
+# These names are frozen in contracts/core-contracts.json as top-level commands,
+# and docs/core-contract-stability.md requires a new major contract version plus a
+# documented migration path to remove one. They therefore stay supported through
+# the 0.x line and will be removed in 1.0.0, not in a minor release.
 ohbs-image verify --provenance <file>         # [deprecated] use `ohbs-image verify provenance`
 ohbs-image verify-image --image <img-id>      # [deprecated] use `ohbs-image verify image`
 ohbs-image verify-release --image img-xxx     # [deprecated] use `ohbs-image verify release`

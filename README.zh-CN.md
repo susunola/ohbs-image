@@ -124,7 +124,7 @@ ohbs-image clean
 
 ```
 ════════════════════════════════════════════════════════
-  ohbs-image 0.21.0 — tencentos3 (L1) → ap-guangzhou-4
+  ohbs-image 0.22.0 — tencentos3 (L1) → ap-guangzhou-4
 ════════════════════════════════════════════════════════
 [packer]  tencentcloud-cvm: output will be in this color
 [packer]  ==> tencentcloud-cvm: Creating temporary keypair...
@@ -253,11 +253,11 @@ ohbs-image guide consumer    # 解析并验证可部署镜像
 | `ohbs-image verify provenance --provenance <file>` | 校验 SLSA 来源签名 |
 | `ohbs-image verify provenance --image <img-id>` | 按镜像 ID 定位来源记录 |
 | `ohbs-image verify image --image <img-id>` | 对产出镜像做干净启动验收 |
-| `ohbs-image verify --provenance <file>` | [已弃用] 请使用 `ohbs-image verify provenance`（计划 0.22.0 移除） |
-| `ohbs-image verify-image --image <img-id>` | [已弃用] 请使用 `ohbs-image verify image`（计划 0.22.0 移除） |
-| `ohbs-image verify-release --image <id>` | [已弃用] 请使用 `ohbs-image verify release`（计划 0.22.0 移除） |
-| `ohbs-image cleanup-images [--older-than 30]` | [已弃用] 请使用 `ohbs-image cleanup images`（计划 0.22.0 移除） |
-| `ohbs-image cleanup-runs --older-than 24` | [已弃用] 请使用 `ohbs-image cleanup runs`（计划 0.22.0 移除） |
+| `ohbs-image verify --provenance <file>` | [已弃用] 请使用 `ohbs-image verify provenance`（1.0.0 移除） |
+| `ohbs-image verify-image --image <img-id>` | [已弃用] 请使用 `ohbs-image verify image`（1.0.0 移除） |
+| `ohbs-image verify-release --image <id>` | [已弃用] 请使用 `ohbs-image verify release`（1.0.0 移除） |
+| `ohbs-image cleanup-images [--older-than 30]` | [已弃用] 请使用 `ohbs-image cleanup images`（1.0.0 移除） |
+| `ohbs-image cleanup-runs --older-than 24` | [已弃用] 请使用 `ohbs-image cleanup runs`（1.0.0 移除） |
 | `ohbs-image drift --host <ip> [--image <id>]` | 实例配置漂移检测（对比镜像基线） |
 | `ohbs-image drift --host <ip> --save-baseline` | 保存当前主机扫描为漂移基线 |
 | `ohbs-image check-source` | 源镜像刷新检测（是否需要重建） |

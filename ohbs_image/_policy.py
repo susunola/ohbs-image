@@ -4,7 +4,7 @@ import argparse
 import json
 import re
 import subprocess
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +14,7 @@ from ._reports import _atomic_write_bytes
 
 POLICY_SCHEMA = "https://ohbs-image.dev/policy-bundle/v1"
 DECISION_SCHEMA = "https://ohbs-image.dev/policy-decision/v1"
+POLICY_EXCEPTIONS_SCHEMA = "https://ohbs-image.dev/policy-exceptions/v1"
 _CONTROL_NAMES = {"status", "attestation", "score", "freshness", "critical_cves"}
 _SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 
@@ -236,6 +237,64 @@ def explain_policy(
     return result
 
 
+def policy_exceptions(doc: dict[str, Any], environment: str = "", *,
+                      within_days: int = 0, now: datetime | None = None) -> dict[str, Any]:
+    """Summarise every exception's expiry posture without mutating anything.
+
+    Exceptions are already expiry-aware at *evaluation* time (``_active_exceptions``
+    drops expired ones), which means an exception silently stops waiving a control
+    with nothing telling its owner. This is the missing half: a view of what is
+    active, what is about to lapse, and what has already lapsed.
+    """
+    failures = verify_policy(doc)
+    if failures:
+        raise ValueError("invalid policy: " + "; ".join(failures))
+    if within_days < 0:
+        raise ValueError("within_days must not be negative")
+    current = now or datetime.now(UTC)
+    horizon = current + timedelta(days=within_days) if within_days else None
+    rows: list[dict[str, Any]] = []
+    for item in doc.get("exceptions", []):
+        if not isinstance(item, dict):
+            continue
+        if environment and item.get("environment") not in {None, "", environment}:
+            continue
+        # verify_policy guarantees expires_at is present and ISO-8601.
+        expires = datetime.fromisoformat(str(item["expires_at"]).replace("Z", "+00:00"))
+        if expires <= current:
+            status = "expired"
+        elif horizon is not None and expires <= horizon:
+            status = "expiring"
+        else:
+            status = "active"
+        rows.append({
+            "id": item.get("id"),
+            "status": status,
+            "controls": item.get("controls", []),
+            "owner": item.get("owner"),
+            "approved_by": item.get("approved_by"),
+            "artifact_id": item.get("artifact_id"),
+            "environment": item.get("environment"),
+            "expires_at": item.get("expires_at"),
+            "remaining_days": (expires - current).days,
+        })
+    rows.sort(key=lambda row: (str(row["expires_at"]), str(row["id"])))
+    counts = {state: sum(1 for row in rows if row["status"] == state)
+              for state in ("active", "expiring", "expired")}
+    result: dict[str, Any] = {
+        "schema": POLICY_EXCEPTIONS_SCHEMA,
+        "policy_id": doc.get("policy_id"),
+        "policy_version": doc.get("version"),
+        "environment": environment or None,
+        "within_days": within_days,
+        "evaluated_at": current.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "summary": {**counts, "total": len(rows)},
+        "exceptions": rows,
+    }
+    result["document_hash"] = _hash(result)
+    return result
+
+
 def evaluate_policy(doc: dict[str, Any], artifact: dict[str, Any], environment: str, *,
                     now: datetime | None = None) -> dict[str, Any]:
     current = now or datetime.now(UTC)
@@ -364,4 +423,43 @@ def cmd_policy_explain(args: argparse.Namespace) -> int:
             print(f"{control['control']}: {control['value']}  <- {control['source']}")
         for item in explanation["exceptions"]:
             print(f"exception {item['id']}: {item['status']}")
+    return 0
+
+
+def cmd_policy_exceptions(args: argparse.Namespace) -> int:
+    try:
+        bundle = Path(args.bundle)
+        doc = load_policy(bundle)
+        # Validate before trust: gpg-verifying a structurally invalid bundle
+        # would report a trust failure for what is really a schema error.
+        failures = verify_policy(doc)
+        if failures:
+            raise ValueError("invalid policy: " + "; ".join(failures))
+        signer = _enforce_policy_trust(bundle.resolve(), doc)
+        report = policy_exceptions(doc, args.environment or "",
+                                   within_days=args.within_days)
+        if signer:
+            report["policy_signer_fingerprint"] = signer
+            report["document_hash"] = _hash(report)
+    except (OSError, ValueError) as exc:
+        fail(str(exc))
+        return 2
+    if args.output == "json":
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        scope = report["environment"] or "all environments"
+        horizon = f" within {args.within_days}d" if args.within_days else ""
+        print(f"Policy {report['policy_id']}@{report['policy_version']}  ({scope})")
+        if not report["exceptions"]:
+            print("no exceptions")
+        for item in report["exceptions"]:
+            controls = ",".join(str(name) for name in item["controls"])
+            print(f"{item['status']:9s} {item['id']:<16s} {controls:<28s} "
+                  f"{item['expires_at']}  ({item['remaining_days']}d)")
+        summary = report["summary"]
+        print(f"{summary['total']} exception(s){horizon}: "
+              f"{summary['active']} active, {summary['expiring']} expiring, "
+              f"{summary['expired']} expired")
+    if args.fail_on_expired and report["summary"]["expired"]:
+        return 1
     return 0

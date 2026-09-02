@@ -75,13 +75,19 @@ from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
 from ._metrics import cmd_report_metrics, cmd_report_trends
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
-from ._policy import cmd_policy_check, cmd_policy_explain, cmd_policy_verify
+from ._policy import (
+    cmd_policy_check,
+    cmd_policy_exceptions,
+    cmd_policy_explain,
+    cmd_policy_verify,
+)
 from ._policy_registry import (
     cmd_policy_list,
     cmd_policy_publish,
     cmd_policy_resolve,
     cmd_policy_revoke,
 )
+from ._policy_simulation import cmd_policy_simulate
 from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES
 from ._proof import cmd_proof_record, cmd_proof_report, cmd_proof_verify
 from ._providers import cmd_provider_list, cmd_provider_verify
@@ -717,6 +723,42 @@ def build_parser() -> argparse.ArgumentParser:
     p_policy_explain.add_argument("--artifact-id", default="")
     p_policy_explain.add_argument("--output", choices=["text", "json"], default="text")
     p_policy_explain.set_defaults(func=cmd_policy_explain)
+    p_policy_exceptions = policy_sub.add_parser(
+        "exceptions", help="Show exception expiry posture (active / expiring / expired)"
+    )
+    p_policy_exceptions.add_argument("bundle")
+    p_policy_exceptions.add_argument(
+        "--environment", default="", help="Restrict to exceptions in this environment"
+    )
+    p_policy_exceptions.add_argument(
+        "--within-days", type=int, default=0,
+        help="Flag exceptions expiring within this many days as 'expiring' (0 disables)"
+    )
+    p_policy_exceptions.add_argument(
+        "--fail-on-expired", action="store_true",
+        help="Exit 1 when any exception has already expired"
+    )
+    p_policy_exceptions.add_argument("--output", choices=["text", "json"], default="text")
+    p_policy_exceptions.set_defaults(func=cmd_policy_exceptions)
+    p_policy_simulate = policy_sub.add_parser(
+        "simulate", help="Dry-run a candidate policy against registered artifacts"
+    )
+    p_policy_simulate.add_argument("bundle")
+    p_policy_simulate.add_argument("--environment", required=True)
+    p_policy_simulate.add_argument(
+        "--baseline", default="",
+        help="Currently active policy to diff against (reports newly allowed/denied)"
+    )
+    p_policy_simulate.add_argument(
+        "--artifact", action="append", default=[],
+        help="Simulate only this artifact (repeatable; default: every registered artifact)"
+    )
+    p_policy_simulate.add_argument(
+        "--fail-on-newly-denied", action="store_true",
+        help="Exit 1 when the candidate newly denies any artifact versus the baseline"
+    )
+    p_policy_simulate.add_argument("--output", choices=["text", "json"], default="text")
+    p_policy_simulate.set_defaults(func=cmd_policy_simulate)
     p_policy_publish = policy_sub.add_parser("publish", help="Publish an immutable policy version")
     p_policy_publish.add_argument("bundle")
     p_policy_publish.add_argument("--actor", required=True)
@@ -1007,8 +1049,11 @@ def build_parser() -> argparse.ArgumentParser:
                            help="Approved image ID (e.g. img-xxxx)")
     p_vrf_rel.set_defaults(func=cmd_verify_release)
 
-    # Deprecated flat aliases of the verify group (scheduled for removal in
-    # 0.22.0): keep parsing identically, but warn and point at the group form.
+    # Deprecated flat aliases of the verify group. These names are frozen in
+    # contracts/core-contracts.json, and removing a top-level command requires a
+    # new major contract version (docs/core-contract-stability.md), so they are
+    # scheduled for removal in 1.0.0 rather than a minor release. They keep
+    # parsing identically, but warn and point at the group form.
     p_vrf_img_alias = sub.add_parser(
         "verify-image", parents=[common],
         help="[deprecated] use 'ohbs-image verify image'")
@@ -1149,7 +1194,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_clnruns.set_defaults(func=cmd_cleanup_runs)
 
     # Deprecated flat aliases of the cleanup group (scheduled for removal in
-    # 0.22.0): keep parsing identically, but warn and point at the group form.
+    # 1.0.0 — see the verify aliases above for why not a minor release): keep
+    # parsing identically, but warn and point at the group form.
     p_clnimg_alias = sub.add_parser(
         "cleanup-images",
         help="[deprecated] use 'ohbs-image cleanup images'")
@@ -1223,11 +1269,11 @@ def _deprecated_alias(alias: str, replacement: str,
     verify/cleanup convergence — the flat forms (`verify-image`,
     `verify-release`, `cleanup-images`, `cleanup-runs`, and the flat `verify`
     default) still work, but print a removal-window notice to stderr before
-    dispatching to the real handler. Scheduled for removal in 0.22.0.
+    dispatching to the real handler. Scheduled for removal in 1.0.0.
     """
     def _wrapped(args: argparse.Namespace) -> int:
         print(f"warning: '{alias}' is deprecated, use 'ohbs-image {replacement}' "
-              "(scheduled for removal in 0.22.0)", file=sys.stderr)
+              "(scheduled for removal in 1.0.0)", file=sys.stderr)
         return func(args)
     return _wrapped
 
@@ -1236,10 +1282,10 @@ def _deprecation_prog(argv: list[str] | None) -> None:
     """Roadmap D-92/93 — keep the pre-rebrand entry name as a deprecated alias.
 
     `cis-image` (the pre-0.16.25 package name) still works but prints a
-    deprecation notice; it is scheduled for removal in 0.22.0.
+    deprecation notice; it is scheduled for removal in 1.0.0.
     """
     first = argv[0] if argv else sys.argv[0]
     name = os.path.basename(str(first)).lower()
     if name in ("cis-image", "cis_image"):
         print("warning: 'cis-image' is deprecated, use 'ohbs-image' "
-              "(scheduled for removal in 0.22.0)", file=sys.stderr)
+              "(scheduled for removal in 1.0.0)", file=sys.stderr)
