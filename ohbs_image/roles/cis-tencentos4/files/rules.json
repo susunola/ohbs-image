@@ -2107,7 +2107,7 @@
         "nftables.service"
       ],
       "packages": []
-  },
+    },
     "risk": "disruptive",
     "page": 283
   },

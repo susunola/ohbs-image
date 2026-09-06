@@ -67,9 +67,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=REPO_ROOT)
     args = parser.parse_args(argv)
     sys.path.insert(0, str(args.root))
+    from _cli_introspection import registered_subcommands
+
     from ohbs_image import build_parser
 
-    commands = set(build_parser()._subparsers._group_actions[0].choices)
+    commands = registered_subcommands(build_parser())
     errors = check_documents(args.root, commands)
     for error in errors:
         print(error, file=sys.stderr)

@@ -7,6 +7,43 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-02
+
+### Added
+- **`ohbs-image policy simulate`** — dry-run a candidate policy bundle against
+  every registered artifact (or a selected subset) and report what it would
+  allow, deny, newly allow and newly deny versus an optional baseline. Reads
+  only; never quarantines, rolls back or mutates. `--fail-on-newly-denied`
+  turns it into a CI gate. Answers "what breaks if I ship this policy?" before
+  the policy is published rather than after.
+- **`ohbs-image policy exceptions`** — show every time-bounded exception's
+  expiry posture as active / expiring / expired, with `--within-days` to flag
+  what lapses soon and `--fail-on-expired` for CI. Exceptions were already
+  expiry-aware at *evaluation* time, so a lapsed waiver silently stopped
+  applying with nothing telling its owner; this is the missing visibility half.
+- Simulation results are order-independent. Registry reads (SQLite or a
+  filesystem glob) do not guarantee row order, and the result carries a
+  `document_hash` — artifacts are now sorted before evaluation, so two runs
+  over identical inputs produce one identical document instead of two digests.
+
+### Fixed
+- **Deprecation notices promised a removal their own contract forbids.** The
+  flat aliases (`verify-image`, `verify-release`, `cleanup-images`,
+  `cleanup-runs`, the flat `verify` default) and the pre-rebrand `cis-image`
+  entry name were advertised as "scheduled for removal in 0.22.0", but those
+  names are frozen as top-level commands in `contracts/core-contracts.json`,
+  and `docs/core-contract-stability.md` requires a new major contract version
+  plus a documented migration path to remove one. The notices now target
+  **1.0.0**, matching the documented policy. This is a text-only change: the
+  aliases keep working exactly as before.
+
+## [0.21.0] - 2026-09-01
+
+> First installable release of the 0.20.x feature line. v0.20.0 was tagged and
+> published as a GitHub Release, but its PyPI upload aborted (see Fixed), so
+> `pip install ohbs-image` kept serving 0.19.1. If you are on 0.19.1, this is
+> the release that actually delivers the 0.20.0 feature set.
+
 ### Added
 - **Release-level Native fault matrix** — cancellation, snapshot failure,
   asynchronous image failure, cross-region sync failure and cleanup now have
@@ -34,6 +71,34 @@ can be traced across rebuilds.
   OpenAPI operations, versioned schemas, provider/extension protocols, and
   evidence schema identifiers. Intentional compatible changes require an
   explicit reviewed snapshot update; silent drift fails the build.
+- **PyPI upload directory gate** (`scripts/check_publish_dist.py`) — fails a
+  release when the upload directory holds anything but wheels and sdists, so a
+  stray manifest file can no longer abort a publish after the GitHub Release
+  has already been cut.
+
+### Fixed
+- **Release pipeline: v0.20.0 never reached PyPI.** `build_release_manifest.py`
+  wrote `SHA256SUMS` and `sbom.cdx.json` into `dist/`, and
+  `pypa/gh-action-pypi-publish` validates every file it is handed — the run
+  aborted with `InvalidDistribution: Unknown distribution format: 'SHA256SUMS'`
+  after the GitHub Release had already been published. Releases now copy the
+  wheel and sdist into a clean `dist-publish/` directory for upload.
+- **TencentOS 4 `rules.json` canonical format** — the audit-race fix landed with
+  non-canonical indentation, which had turned CI red on every push since (the
+  `Verify rules.json canonical format` gate).
+- **Ansible payload upload** — the role payload is transferred as a single
+  archive instead of many small files.
+
+### Changed
+- **CI lint and type gates now cover `scripts/`** — the gate scripts themselves
+  were previously unlinted and untype-checked, so errors in them silently
+  weakened the very checks CI depends on. Ruff and mypy now run over
+  `ohbs_image`, `tests`, and `scripts`.
+- **Deprecated flat aliases keep working** — `verify-image`, `verify-release`,
+  `cleanup-images`, `cleanup-runs`, the flat `verify` default, and the
+  pre-rebrand `cis-image` entry name remain available; their removal window
+  moves from 0.21.0 to 0.22.0. v0.20.0 never reached PyPI, so the deprecation
+  notice had not actually reached users yet.
 
 ## [0.20.0] - 2026-08-27
 

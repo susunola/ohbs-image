@@ -48,12 +48,14 @@ jobs:
           version: "1.16.0"
 
       - name: Run ruff (lint)
-        # Tests are linted too — a dead variable or broken import in tests/
-        # previously reached main because CI only checked ohbs_image/.
-        run: ruff check ohbs_image tests
+        # Tests and scripts are linted too — a dead variable or broken import
+        # in tests/ or scripts/ previously reached main because CI only checked
+        # ohbs_image/. scripts/ holds the gate checks themselves, so a lint
+        # error there silently weakened the very gates CI relies on.
+        run: ruff check ohbs_image tests scripts
 
       - name: Run mypy (type-check)
-        run: mypy ohbs_image --ignore-missing-imports
+        run: mypy ohbs_image scripts --ignore-missing-imports
 
       # Version single-source guard: ohbs_image/_logging.py VERSION must equal
       # what the installed CLI reports (rebuild.sh relies on the same check).
