@@ -126,6 +126,10 @@ def discover_resources(kind: str, region: str, *, zone: str = "",
                 continue
             name = str(row.get("ImageName", ""))
             haystack = f"{name} {row.get('OsName', '')}".lower()
+            if profile in ("rocky9", "rocky10"):
+                major = profile.removeprefix("rocky")
+                if not re.search(rf"rocky(?:\s+linux)?\s+{major}(?:\D|$)", haystack):
+                    continue
             if profile in ("tencentos3", "tencentos4"):
                 major = profile[-1]
                 # Match the OS major next to the product name. A generic

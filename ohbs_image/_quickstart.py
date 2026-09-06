@@ -77,7 +77,7 @@ def _pick_source_image(region: str, profile: str) -> str:
     """Newest matching public source image for *profile* (read-only)."""
     rows = discover_resources("images", region, profile=profile)
     usable = [r for r in rows if r.get("id")
-              and str(r.get("state", "")).upper() != "UNAVAILABLE"]
+              and str(r.get("state", "")).upper() == "NORMAL"]
     if not usable:
         raise ConfigError(
             f"no matching source image for profile {profile} in {region} "
