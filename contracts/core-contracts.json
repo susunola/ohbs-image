@@ -3,6 +3,7 @@
     "top_level_commands": [
       "ancestry",
       "audit",
+      "baseline",
       "benchmark",
       "build",
       "catalog",
@@ -30,6 +31,7 @@
       "init",
       "launch",
       "list",
+      "native",
       "pending",
       "plan",
       "policy",

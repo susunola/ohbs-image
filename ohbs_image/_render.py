@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
 import json
 import os
@@ -36,6 +37,32 @@ from ._templates import (
     TEST_COMPONENTS_LINUX_BLOCK,
     TEST_COMPONENTS_WIN_BLOCK,
 )
+
+
+def _write_deterministic_tar_gz(source: Path, target: Path,
+                                *, arcname: str) -> None:
+    """Write a byte-stable archive suitable for content-addressed transfer."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    def normalize(info: tarfile.TarInfo) -> tarfile.TarInfo:
+        info.mtime = 0
+        info.uid = 0
+        info.gid = 0
+        info.uname = "root"
+        info.gname = "root"
+        info.pax_headers = {}
+        return info
+
+    with (
+        target.open("wb") as raw,
+        gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed,
+        tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as bundle,
+    ):
+        bundle.add(source, arcname=arcname, recursive=False, filter=normalize)
+        for path in sorted(source.rglob("*"), key=lambda item: item.as_posix()):
+            relative = path.relative_to(source)
+            bundle.add(path, arcname=str(Path(arcname) / relative),
+                       recursive=False, filter=normalize)
 
 
 def _bundle_role(workdir: Path, role_dir: str) -> None:
@@ -611,14 +638,31 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
                .replace("__ASSUME_ROLE_BLOCK__", assume_role_block)
                .replace("__EXTRA_ARGS_BLOCK__", extra_block))
     else:
+        expected_tag = str(p["os_tag"])
+        if r.image_os_tag != expected_tag:
+            raise ConfigError(f"OS identity mismatch: profile expects {expected_tag}, "
+                              f"metadata declares {r.image_os_tag}")
+        expected_id, expected_version = expected_tag.split("-", 1)
+        guest_id = "tencentos|tlinux" if expected_id == "tencentos" else expected_id
+        version_pattern = expected_version if expected_id == "ubuntu" else expected_version + "|" + expected_version + ".*"
+        identity_inline = json.dumps([
+            "set -eu",
+            "echo '==> ohbs-image version: __VERSION__'",
+            ". /etc/os-release",
+            f"case \"$ID\" in {guest_id}) ;; *) echo 'OS identity mismatch: distribution'; exit 1 ;; esac",
+            f"case \"$VERSION_ID\" in {version_pattern}) ;; *) echo 'OS identity mismatch: version'; exit 1 ;; esac",
+            "printf '[ohbs-image] verified guest identity: %s %s\\n' \"$ID\" \"$VERSION_ID\"",
+        ], indent=4)
         # Substitute the build's actual metadata into the finalize provisioner
         # so the in-image banner/report show the right source/level/OS.
         hcl = (HCL_LINUX_TEMPLATE
+               .replace("__IDENTITY_CHECK_INLINE__", identity_inline)
                .replace("__CLEAN_CMD__", str(p["clean_cmd"]))
                .replace("__VERSION__", VERSION)
                .replace("__SOURCE_IMAGE__", r.source_image_id)
                .replace("__IMAGE_NAME__", image_name)
                .replace("__IMAGE_OS__", r.image_os_tag)
+               .replace("__OS_TAG__", r.image_os_tag)
                .replace("__CIS_LEVEL__", r.cis_level_tag)
                .replace("__IMAGE_BENCHMARK__", r.image_benchmark)
                .replace("__IMAGE_CATALOG__", r.catalog_basename)
@@ -679,8 +723,9 @@ def render_all(workdir: Path, r: ResolvedConfig, scan: bool = False,
         # On TencentCloud that transfer can stall even while SSH remains healthy.
         # Build one archive at render time so the file provisioner performs one
         # bounded upload and the guest extracts the complete, immutable payload.
-        with tarfile.open(workdir / "packer" / "ansible-bundle.tar.gz", "w:gz") as bundle:
-            bundle.add(workdir / "ansible", arcname="ansible")
+        _write_deterministic_tar_gz(
+            workdir / "ansible", workdir / "packer" / "ansible-bundle.tar.gz",
+            arcname="ansible")
 
     # 5. Install script (Linux only)
     if family != "windows":

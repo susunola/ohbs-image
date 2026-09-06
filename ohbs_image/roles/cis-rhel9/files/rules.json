@@ -1017,7 +1017,7 @@
       "params": [
         {
           "key": "kernel.yama.ptrace_scope",
-          "value": "1"
+          "value": "(1|2)"
         }
       ]
     },
@@ -3581,7 +3581,7 @@
     "params": {
       "key": "logfile",
       "value": "/var/log/sudo.log",
-      "op": "eq"
+      "op": "kv"
     },
     "risk": "safe",
     "page": 566,
@@ -4776,7 +4776,8 @@
       "units": [
         "systemd-journal-upload.service"
       ],
-      "packages": []
+      "packages": [],
+      "requires_config": "journal-upload"
     },
     "risk": "safe",
     "page": 748,
@@ -4825,7 +4826,8 @@
       "key": "ForwardToSyslog",
       "sep": "=",
       "value": "no",
-      "op": "eq"
+      "op": "eq",
+      "unless_service_active": "rsyslog.service"
     },
     "risk": "safe",
     "page": 752,

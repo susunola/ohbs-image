@@ -34,7 +34,7 @@
 > **Repository / CLI / package:** `ohbs-image` · Full name: **oh baseline image** — part of the **oh baseline** (ohbs) family.
 **Config-driven golden-image builder for Tencent Cloud.** ohbs-image launches a short-lived CVM, applies CIS hardening from its bundled ohbs-os engine, re-audits against a configurable score gate, and captures the result as a custom image — fully repeatable and auditable, every time. Built for DevOps and security teams that need hardened base images they can trust in CI pipelines, Auto Scaling launch templates, and Terraform image references.
 
-Zero pip dependencies. 13 OS profiles across Linux and Windows. Build-time gate with configurable score threshold. All roles ship inside the package — no Galaxy, no network drift.
+Zero pip dependencies. 14 OS profiles across Linux and Windows. Build-time gate with configurable score threshold. All roles ship inside the package — no Galaxy, no network drift.
 
 Beyond the build itself, ohbs-image covers the full **build → test → distribute** governance loop:
 
@@ -207,6 +207,16 @@ ohbs-image --version
 ---
 
 ## Commands
+
+Accuracy baselines can be packaged and verified without cloud access:
+
+```bash
+ohbs-image baseline create --matrix tests/golden-matrix-tencent-linux.json \
+  --run build-record.json --rule-ledger rule-ledger.json --output baseline.json
+ohbs-image baseline verify baseline.json
+```
+
+The bundle pins matrix inputs and SHA-256 hashes every run and rule ledger; verification fails on nested evidence changes. Coverage uses `pass / (pass + fail + error)` and reports manual, not-scored, and not-applicable controls separately.
 
 Not sure where to begin? Ask the CLI for the path that matches your role:
 
@@ -535,7 +545,7 @@ may be partial — only the merged result must be complete and valid.
 [build]
 profile             = "tencentos3"
 #   Linux: ubuntu2004 | ubuntu2204 | ubuntu2404 |
-#          rhel8 | rhel9 | rhel10 | rocky9 |
+#          rhel8 | rhel9 | rhel10 | rocky9 | rocky10 |
 #          tencentos3 | tencentos4
 #   Windows: win2016 | win2019 | win2022 | win2025
 region              = "ap-guangzhou"
@@ -555,6 +565,15 @@ associate_public_ip = false              # use a private VPC runner or bastion f
 # #   [build.packer]
 # #   disk_type = "CLOUD_SSD"
 # #   disk_size = 100
+
+# Optional Native Engine phase caps. Omitted phases use max_build_minutes only.
+# [native.phase_timeout_minutes]
+# launch = 10
+# connect = 15
+# provision = 90
+# reboot = 20
+# snapshot = 30
+# sync = 45
 
 [image]
 name_prefix  = "tencentos3-cis"
@@ -634,6 +653,7 @@ benchmark = "CIS-v1.0.0"
 | | `spot` | bool | Use a spot instance for the build VM (`instance_charge_type=SPOTPAID`; up to ~90% cheaper, may be repossessed mid-build, default `false`) |
 | | `instance_name` | string | Optional explicit name for the temporary build CVM (empty = Packer auto-generates) |
 | | `packer` | table | Passthrough of arbitrary `tencentcloud-cvm` Packer builder args (e.g. `disk_type`, `disk_size`, `data_disks`), injected verbatim into the generated HCL source block |
+| `[native.phase_timeout_minutes]` | `launch`, `connect`, `provision`, `reboot`, `snapshot`, `sync` | int | Optional per-phase Native Engine cap in minutes (`1`–`1440`). Each configured cap is intersected with the remaining global `max_build_minutes`; omitted phases preserve global-only behavior. |
 | `[image]` | `name_prefix` | string | Output image name prefix |
 | | `name` | string | Fixed image name (empty = auto `prefix-level-timestamp`) |
 | | `copy_regions` | []string | Regions to replicate (empty = skip) |
@@ -682,6 +702,128 @@ benchmark = "CIS-v1.0.0"
 
 Four phases executed inside the ephemeral CVM. Packer uploads one compressed
 Ansible bundle, extracts it, and runs `ansible-playbook` locally:
+
+The controller boundary is selectable with `--builder packer|native|auto`.
+`packer` remains the default; `auto` selects native for supported Tencent Cloud
+Linux configurations and safely falls back to Packer for Windows, assume-role,
+or unmapped provider arguments. OHBS Native Engine compiles the compatible HCL
+surface into a cloud-neutral `BuildSpec` v3, emits `native/build-spec.json` and a
+versioned `native/plan.json`, then runs it through injected Provider and
+Communicator contracts. The first production Provider is Tencent Cloud CVM;
+Windows remains Packer-only.
+
+```bash
+ohbs-image validate --builder native --config ohbs-image.toml
+ohbs-image build --builder native --dry-run --config ohbs-image.toml
+ohbs-image build --builder native --config ohbs-image.toml
+# Opt-in run-scoped /32 ingress, removed in finally
+ohbs-image build --builder native --temporary-ingress --config ohbs-image.toml
+# Retain an explicitly requested failed build, then resume the verified journal
+ohbs-image build --builder native --native-retain-on-failure --config ohbs-image.toml
+ohbs-image build --builder native --native-resume RUN_ID --config ohbs-image.toml
+# Discover exact run-tagged leftovers (read-only by default), then clean only
+# the resources whose cloud and local identities agree.
+ohbs-image native reconcile RUN_ID --config ohbs-image.toml --output json
+ohbs-image native reconcile RUN_ID --config ohbs-image.toml --apply
+# Compare OHBS rule results with independent JSON/XCCDF evidence. The overlap
+# gate exposes rule-ID/denominator gaps instead of treating them as failures.
+ohbs-image native audit-compare internal-audit.json external-xccdf.xml \
+  --min-overlap-percent 80 --output audit-comparison.json
+```
+
+Native resume is deliberately explicit: the journal verifies the run ID, source
+image, image name, canonical compiled-BuildSpec digest, retained instance and
+private-key path. A raw-HCL hash from an older compiler is not accepted as the
+same execution plan.
+New builds also maintain a private, atomic marker inside the guest; a provisioner
+is skipped only when the local journal and remote marker agree. Missing markers
+cause a safe rerun, while an identity mismatch aborts recovery. The default
+failure path still deletes the temporary CVM and key to avoid accidental cloud
+cost.
+Inline-shell hashes cover the exact generated UTF-8 script bytes uploaded and
+verified by `sha256sum`, not an intermediate JSON command representation.
+The keypair is journaled immediately after creation, before `RunInstances`, to
+close the key-only crash window. Native execution also converts SIGINT/SIGTERM
+into its normal failure path, restores the caller's signal handlers before
+cleanup, and emits the same cleanup/build evidence as other failures.
+While cloud or guest operations are in flight, a thread-safe atomic journal
+heartbeat refreshes every 15 seconds across launch, connect, provision,
+snapshot, image sync and cleanup. Heartbeats never alter phase identity or
+completed checkpoints. Build records retain heartbeat writes/errors and a
+secret-free structured failure (`category`, `code`, `retryable`, `phase`, and
+exception type) for phase-aware automation.
+Optional `[native.phase_timeout_minutes]` limits launch, connect, ordinary
+provisioners, reboot provisioners, snapshot and cross-region sync independently.
+The effective deadline is always the smaller of the phase cap and the remaining
+global build budget, and `phase_budget_seconds` records what each phase received.
+
+Every native run also writes `native/build-record.json`: a secret-free,
+versioned record containing the exact target, BuildSpec digest, provisioner
+content digests, produced image IDs, per-phase durations, cleanup outcome,
+per-provisioner completed/recovered/failed results and durations, Tencent API
+request IDs, and a source-image fact snapshot. Tencent API evidence also records
+each logical call's end-to-end latency, actual attempt count and final status;
+`api_summary` exposes total calls/attempts/retries, failures, total latency,
+P95/max latency and the five slowest calls without persisting error messages or
+credentials.
+The generated Ansible archive is byte-deterministic, so identical roles and
+configuration produce the same content digest. Native builds may reuse only
+this OHBS-generated archive from the image's SHA-256 cache, and revalidate it
+before every hit. Arbitrary files and shell scripts bypass the persistent cache.
+`provider_evidence.transfer_cache` records eligible files, hits, misses,
+uploaded bytes and bytes saved.
+If image creation succeeds but the ephemeral instance or key cannot be cleaned
+up, the command returns a non-retryable provider failure instead of hiding a
+billable leak. The record still preserves the image IDs and lists each remaining
+cloud resource by type and ID for explicit cleanup.
+`native reconcile` is cleanup-only: it never rebuilds an image. Instance
+discovery requires the exact `managed_by`, `ephemeral`, and `run_id` tags;
+keypairs require a matching local run record plus an exact cloud ID. Its
+`--apply` mode terminates verified instances before deleting the recorded key,
+and writes `native/reconcile-RUN_ID.json` as owner-readable evidence.
+`native audit-compare` records SHA-256 identities for both inputs and separates
+rule-level agreements, status conflicts, unknown statuses, internal-only rules,
+and external-only rules. If both inputs identify their benchmark, a mismatch is
+always non-comparable; optional minimum overlap turns mapping/denominator drift
+into a CI gate without pretending unmatched rules failed.
+Tencent Cloud launches use a stable run-scoped `ClientToken`; source and copied
+images must be observed in `NORMAL` state before success. Cross-region image
+readiness checks run concurrently, and SSH connections are multiplexed within
+the ephemeral key directory to reduce repeated handshake latency. Each build
+also owns an isolated hashed `known_hosts` file: first contact uses OpenSSH TOFU
+and any later host-key change is rejected. SSH compression is enabled for text
+and command output. Remote commands are retried only when the transport proves
+that no session was established; an authenticated ambiguous disconnect is never
+blindly replayed. Provisioners that expect a reboot/disconnect emit a remote-start
+sentinel first, so authentication or pre-session failures cannot be mistaken for a
+successfully triggered reboot.
+
+Native Tencent builds also reject source/output images whose reported OS major
+version or architecture contradicts the selected profile, verify that
+cloud-init support is not lost, and reconcile an ambiguous `CreateImage`
+network outcome by adopting exactly one newly observed image with the requested
+unique name. The definitive guest audit pins the configured benchmark and the
+SHA-256 of the actual active `rules.json`. Delivery-report coverage uses only
+recommendations applicable to the selected L1/L2 Server profile and explains
+automatic pass, remediated pass, manual, not-applicable, environment-limited,
+true-failure, pending-reboot, missing-implementation, and scoped-out counts.
+
+The native implementation is layered for multi-cloud expansion:
+
+```text
+native/spec.py + compiler.py       # cloud-neutral versioned IR
+native/executor.py                 # orchestration; imports no cloud provider
+native/journal.py                  # durable resume state
+native/evidence.py                 # build facts, timings and cleanup evidence
+native/communicator/ssh.py         # transport implementation
+native/providers/tencentcloud.py   # CVM lifecycle implementation
+native/providers/registry.py       # capability discovery and future providers
+```
+
+`ohbs-image provider list --output json` reports general provider maturity and
+the separate Native Engine lifecycle capabilities. A provider contract or
+discovery adapter is not advertised as production native-build support until it
+registers the complete lifecycle capability set.
 
 1. **Install** — provisions `ansible-core` via the OS package manager + pip.
 2. **Harden** — runs the bundled ohbs-os engine (`ohbs_engine.py` + `rules.json`). Variables: `cis_mode: apply`, `cis_profile: L1/L2`.
@@ -795,6 +937,7 @@ upload stalls while keeping the controller free of an `ansible-core` dependency.
 | `rhel9` | RHEL 9 | root | dnf | `roles/cis-rhel9/` |
 | `rhel10` | RHEL 10 | root | dnf | `roles/cis-rhel10/` |
 | `rocky9` | Rocky Linux 9 | root | dnf | `roles/cis-rocky9/` |
+| `rocky10` | Rocky Linux 10 | root | dnf | `roles/cis-rocky10/` |
 | `tencentos3` | TencentOS Server 3 | root | dnf | `roles/cis-tencentos3/` |
 | `tencentos4` | TencentOS Server 4 | root | dnf | `roles/cis-tencentos4/` |
 

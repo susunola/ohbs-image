@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from datetime import UTC, datetime
@@ -17,9 +19,11 @@ import ohbs_image
 
 from ._audit import _drift_diff, _write_sarif, _write_xccdf
 from ._build_checkpoints import write_build_checkpoint as _write_build_checkpoint
+from ._builder import native_plan, select_builder, validate_native
 from ._capacity import apply_capacity, load_capacity_plan, select_capacity
-from ._config import ResolvedConfig, load_config, load_config_layered, resolve
+from ._config import PackerResult, ResolvedConfig, load_config, load_config_layered, resolve
 from ._logging import VERSION, ConfigError, banner, fail, info, logger, ok, warn
+from ._native import run_native
 from ._packer import (
     _extract_image_ids,
     _extract_sbom_count,
@@ -33,11 +37,13 @@ from ._profiles import DEFAULT_WORKDIR, PROFILE_NAMES_HELP, PROFILES, SAMPLE_CON
 from ._registry import register_release
 from ._reports import (
     _atomic_write_bytes,
+    _audit_identity_failures,
     _find_provenance,
     _missing_build_evidence,
     _save_build_report,
     _send_notification,
 )
+from ._tc_cloud import _create_temporary_ingress, _delete_temporary_ingress
 
 _RUN_LEASE_HEARTBEAT_SECONDS = 300
 
@@ -144,14 +150,18 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 def _load_resolve_preflight(config_path: str, workdir: str,
-                            overlays: list[str] | None = None
+                            overlays: list[str] | None = None,
+                            builder: str = "packer"
                             ) -> tuple[ResolvedConfig, Path] | None:
     """Load config, resolve, run preflight. Returns (ResolvedConfig, workdir) or None on failure."""
     r = _load_resolved(config_path, overlays)
     if r is None:
         return None
 
-    if not run_preflight(r):
+    effective_builder = select_builder(r, builder)
+    if builder == "auto":
+        info(f"Builder auto-selection: {effective_builder}")
+    if not run_preflight(r, builder=effective_builder):
         return None
 
     # v0.16.5: resolve the render dir to an ABSOLUTE path BEFORE rendering.
@@ -181,7 +191,8 @@ def _prep_for(args: argparse.Namespace) -> tuple[ResolvedConfig, Path] | None:
         wd.mkdir(parents=True, exist_ok=True)
         return r, wd
     return ohbs_image._load_resolve_preflight(
-        args.config, args.workdir, getattr(args, "overlay", None))
+        args.config, args.workdir, getattr(args, "overlay", None),
+        vars(args).get("builder", "packer"))
 
 
 def _load_resolved(config_path: str,
@@ -203,7 +214,8 @@ def _load_resolved(config_path: str,
 def cmd_preflight(args: argparse.Namespace) -> int:
     """Run pre-flight checks."""
     result = ohbs_image._load_resolve_preflight(args.config, args.workdir,
-                                                getattr(args, "overlay", None))
+                                                getattr(args, "overlay", None),
+                                                vars(args).get("builder", "packer"))
     return 0 if result is not None else 1
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -213,14 +225,25 @@ def cmd_validate(args: argparse.Namespace) -> int:
         return 1
     r, workdir = prep
 
-    ohbs_image.render_all(workdir, r)
+    image_name = ohbs_image.render_all(workdir, r)
 
-    if vars(args).get("dry_run", False):
+    requested_builder = vars(args).get("builder", "packer")
+    builder = select_builder(r, requested_builder)
+    if requested_builder == "auto":
+        info(f"Builder auto-selection: {builder}")
+    if vars(args).get("dry_run", False) and builder != "native":
         info("--dry-run: rendered working directory only; packer validate skipped")
         return 0
 
     banner("validate")
     info(f"Rendered working directory: {workdir}")
+    if builder == "native":
+        result = validate_native(workdir, r, image_name)
+        for line in result.stdout_lines:
+            info(line) if result.exit_code == 0 else fail(line)
+        if result.exit_code == 0:
+            ok("native build plan validated")
+        return result.exit_code
     info("Running packer init + packer validate ...")
     result = ohbs_image.run_packer(workdir, "validate", quiet=args.quiet, debug=args.debug)
 
@@ -267,7 +290,8 @@ def cmd_build(args: argparse.Namespace) -> int:
     if prep is None:
         return 1
     r, workdir = prep
-    requested_run_id = vars(args).get("run_id", "")
+    native_resume = vars(args).get("native_resume", "")
+    requested_run_id = native_resume or vars(args).get("run_id", "")
     if requested_run_id and (not isinstance(requested_run_id, str)
                              or not re.fullmatch(r"[0-9a-f-]{36}", requested_run_id)):
         fail("invalid internal run ID")
@@ -278,6 +302,7 @@ def cmd_build(args: argparse.Namespace) -> int:
         try:
             capacity = select_capacity(load_capacity_plan(Path(capacity_plan)))
             apply_capacity(r, capacity)
+            r._native_capacity_decision = capacity
             write_build_checkpoint(r, "capacity-selected", capacity)
             if capacity["fallback_used"]:
                 warn(f"Capacity fallback selected {r.instance_type} in {r.zone} ({r.region})")
@@ -311,6 +336,23 @@ def cmd_build(args: argparse.Namespace) -> int:
     # records match the actual image (recomputing _image_name() here would
     # roll the timestamp forward).
     image_name = ohbs_image.render_all(workdir, r)
+    requested_builder = vars(args).get("builder", "packer")
+    builder = select_builder(r, requested_builder)
+    if requested_builder == "auto":
+        info(f"Builder auto-selection: {builder}")
+    if native_resume:
+        if builder != "native":
+            fail("--native-resume requires --builder native")
+            return 2
+        try:
+            resume_doc = json.loads(
+                (workdir / "native" / "journal.json").read_text(encoding="utf-8"))
+            image_name = str(resume_doc["image_name"])
+        except (OSError, KeyError, ValueError, TypeError):
+            fail("native resume journal is missing or invalid in the selected workdir")
+            return 1
+    if builder == "native":
+        native_plan(workdir, r, image_name)
     write_build_checkpoint(r, "rendered", {"image_name": image_name})
 
     if vars(args).get("dry_run", False):
@@ -339,7 +381,7 @@ def cmd_build(args: argparse.Namespace) -> int:
 
     banner("build")
     info(f"Rendered working directory: {workdir}")
-    info(f"Running packer build (CIS Level {r.level}, profile={r.profile_name}) ...")
+    info(f"Running {builder} build (CIS Level {r.level}, profile={r.profile_name}) ...")
     info(f"Build time budget: {r.max_build_minutes} minutes")
     ohbs_image._write_run_manifest(r, status="active", phase="packer-build")
 
@@ -347,10 +389,29 @@ def cmd_build(args: argparse.Namespace) -> int:
     heartbeat_stop, heartbeat_worker = _start_run_lease_heartbeat(r)
     # Cost tracking: the build VM's billed lifetime is the Packer wall time.
     _t0 = time.monotonic()
+    temporary_ingress: dict[str, str] | None = None
     try:
-        result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True, debug=args.debug,
-                            log_file=args.log_file, timeout=_build_timeout(args, r))
+        if vars(args).get("temporary_ingress", False):
+            temporary_ingress = _create_temporary_ingress(r)
+        if builder == "native":
+            result = run_native(
+                workdir, r, image_name, timeout=_build_timeout(args, r),
+                emit=None if args.quiet else info,
+                resume=bool(native_resume),
+                retain_on_failure=vars(args).get("native_retain_on_failure", False),
+            )
+            if args.quiet and result.exit_code:
+                print("\n".join(result.stdout_lines[-40:]), file=sys.stderr)
+        else:
+            result = ohbs_image.run_packer(workdir, "build", quiet=args.quiet, capture=True,
+                                debug=args.debug, log_file=args.log_file,
+                                timeout=_build_timeout(args, r))
+    except ConfigError as exc:
+        fail(str(exc))
+        result = PackerResult(
+            1, [str(exc)], failure_category="configuration", retryable=False)
     finally:
+        _delete_temporary_ingress(r, temporary_ingress)
         heartbeat_stop.set()
         heartbeat_worker.join(timeout=5)
     _build_seconds = time.monotonic() - _t0
@@ -377,14 +438,20 @@ def cmd_build(args: argparse.Namespace) -> int:
         # The marker is emitted by the definitive post-lock scan. Prefer its
         # score over an earlier human-readable re-audit line from Ansible so
         # CLI, provenance, lineage, manifest, and HTML all describe one state.
+        identity_failures: list[str] = []
         if rep is not None:
             try:
                 final_doc = json.loads(rep.read_text(encoding="utf-8"))
                 final_score = (final_doc.get("summary") or {}).get("all", {}).get("score")
                 if isinstance(final_score, (int, float)):
                     score = float(final_score)
+                catalog = workdir / "ansible" / "roles" / r.role_dir / "files" / "rules.json"
+                catalog_sha256 = hashlib.sha256(catalog.read_bytes()).hexdigest() \
+                    if catalog.is_file() else ""
+                identity_failures = _audit_identity_failures(
+                    final_doc, r, catalog_sha256)
             except (OSError, ValueError, AttributeError):
-                pass
+                identity_failures = ["unreadable audit identity"]
         write_build_checkpoint(r, "snapshot-created", {
             "image_name": image_name, "image_ids": image_ids, "score": score,
             "sbom_sha256": sbom_sha, "sbom_packages": sbom_count,
@@ -392,10 +459,10 @@ def cmd_build(args: argparse.Namespace) -> int:
         # An exit code alone is not enough evidence to distribute a hardened
         # image.  A real build must identify the snapshot and archive its
         # structured audit result before it is recorded as successful.
-        missing = _missing_build_evidence(image_ids, score, rep)
+        missing = _missing_build_evidence(image_ids, score, rep) + identity_failures
         verifiable = not isinstance(r, ResolvedConfig) or not missing
         if not verifiable:
-            fail("packer exited successfully but build output is not verifiable: "
+            fail(f"{builder} exited successfully but build output is not verifiable: "
                  + ", ".join(missing))
             ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
                                         sbom_sha=sbom_sha, sbom_count=sbom_count)
@@ -406,7 +473,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             _close_build_log(_fh)
             return 1
 
-        ok("packer build succeeded")
+        ok(f"{builder} build succeeded")
         if image_ids:
             ok(f"Output image ID(s): {', '.join(image_ids)}")
         if score is not None:
@@ -523,14 +590,15 @@ def cmd_build(args: argparse.Namespace) -> int:
                  + ", ".join(r.image_share_org_units))
         write_build_checkpoint(r, "distributed", {"share_accounts": r.image_share_accounts})
     else:
-        fail("packer build failed (see output above)")
+        fail(f"{builder} build failed (see output above)")
         ohbs_image._record_lineage(r, image_ids, image_name, score, ok=False,
                         sbom_sha=sbom_sha, sbom_count=sbom_count)
 
     if not success:
         _write_build_result(args, r, status="failed", image_name=image_name,
                             image_ids=image_ids, score=score, report=rep,
-                            provenance=prov, signed=signed, reason="packer build failed")
+                            provenance=prov, signed=signed,
+                            reason=f"{builder} build failed")
     # [notify] — WeCom webhook; never affects the exit code.
     _send_notification(r, success, image_ids, score, image_name)
 
@@ -832,6 +900,15 @@ def cmd_verify_image(args: argparse.Namespace, image_id: str | None = None,
             doc = ohbs_image._probe_scan(r, ip, ssh_port, ssh_user, r.level, key_path=key_path)
         if "error" in doc and "summary" not in doc:
             fail(f"Fresh-boot scan failed: {doc.get('error', 'unknown error')}")
+            return 1
+        try:
+            catalog_path = ohbs_image._catalog_path(r.role_dir, r.image_benchmark)
+            catalog_sha256 = hashlib.sha256(catalog_path.read_bytes()).hexdigest()
+        except OSError:
+            catalog_sha256 = ""
+        identity_failures = _audit_identity_failures(doc, r, catalog_sha256)
+        if identity_failures:
+            fail("Fresh-boot scan identity mismatch: " + ", ".join(identity_failures))
             return 1
         score = (doc.get("summary") or {}).get("all", {}).get("score")
         fails = (doc.get("summary") or {}).get("all", {}).get("fail", 0)

@@ -6,7 +6,7 @@ Spins up an ephemeral CVM, applies the bundled ohbs-os engine role for CIS
 hardening, and captures the result as a custom image.  All configuration is
 driven by ohbs-image.toml — no manual template editing.
 
-Supported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9,
+Supported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9/10,
               TencentOS 3/4, Windows Server 2016/2019/2022/2025
 
 Engine:  Bundled ohbs_engine.py (Linux) / ohbs_engine.ps1 (Windows).
@@ -110,6 +110,9 @@ from ._audit import (
     _write_xccdf,
     cmd_audit,
 )
+from ._builder import NativePlan as NativePlan
+from ._builder import native_plan as native_plan
+from ._builder import validate_native as validate_native
 from ._catalog import _catalog_basename, _catalog_path
 from ._catalog_tools import cmd_catalog_list, cmd_catalog_verify
 from ._cli import build_parser, main
@@ -171,6 +174,9 @@ from ._logging import (
     warn,
 )
 from ._models import BuildSpec, DeliveryReportView, ReleasePolicy, RunContext
+from ._native import NativeProvisioner as NativeProvisioner
+from ._native import parse_native_provisioners as parse_native_provisioners
+from ._native import run_native as run_native
 from ._onboarding import cmd_configure, cmd_doctor, cmd_plan
 from ._packer import (
     PACKER_TIMEOUT_MINUTES,

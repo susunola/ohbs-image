@@ -7,6 +7,13 @@ from collections.abc import Callable, Iterable
 
 import ohbs_image
 
+from ._accuracy_baseline import (
+    cmd_baseline_create,
+    cmd_baseline_explain,
+    cmd_baseline_ledger,
+    cmd_baseline_summarize,
+    cmd_baseline_verify,
+)
 from ._ancestry import (
     cmd_ancestry_descendants,
     cmd_ancestry_impact,
@@ -15,7 +22,8 @@ from ._ancestry import (
     cmd_ancestry_verify,
 )
 from ._audit import cmd_audit
-from ._benchmark import cmd_benchmark_compare, cmd_benchmark_run
+from ._audit_compare import cmd_native_audit_compare
+from ._benchmark import cmd_benchmark_compare, cmd_benchmark_phases, cmd_benchmark_run
 from ._build_checkpoints import cmd_run_checkpoints
 from ._catalog_tools import cmd_catalog_list, cmd_catalog_verify
 from ._channels import cmd_channel_list, cmd_channel_promote, cmd_channel_resolve
@@ -73,7 +81,9 @@ from ._extensions import ENTRY_POINT_GROUPS, cmd_extension_list, cmd_extension_v
 from ._guide import JOURNEYS, cmd_guide
 from ._launch import cmd_launch, cmd_run_resume
 from ._logging import VERSION, _setup_logging, disable_color, fail
+from ._maturity import cmd_proof_maturity
 from ._metrics import cmd_report_metrics, cmd_report_trends
+from ._native_reconcile import cmd_native_reconcile, cmd_native_sweep
 from ._onboarding import DOCTOR_GROUPS, cmd_configure, cmd_doctor, cmd_plan, set_non_interactive
 from ._policy import cmd_policy_check, cmd_policy_explain, cmd_policy_verify
 from ._policy_registry import (
@@ -131,10 +141,10 @@ COMMAND_GROUPS: dict[str, list[str]] = {
     "start here": ["guide", "try", "launch", "quickstart"],
     "build lifecycle": [
         "init", "configure", "doctor", "discover", "plan", "preflight", "benchmark",
-        "validate", "build", "scan", "test",
+        "validate", "build", "scan", "test", "baseline",
     ],
     "manage & evidence": [
-        "run", "state", "config", "registry", "ancestry", "channel", "policy", "compliance", "consumer", "distribution", "event", "cve", "dr", "provider", "extension", "proof", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
+        "run", "state", "native", "config", "registry", "ancestry", "channel", "policy", "compliance", "consumer", "distribution", "event", "cve", "dr", "provider", "extension", "proof", "upgrade", "worker", "serve", "report", "catalog", "engine", "list", "images", "clean",
         "verify", "cleanup", "pending", "audit", "drift", "check-source",
         "verify-image", "cleanup-images", "cleanup-runs",
     ],
@@ -194,6 +204,9 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("--dry-run", action="store_true",
                         help="Render and report, but never invoke Packer or any "
                              "write API (roadmap D-99)")
+    common.add_argument("--builder", choices=("packer", "native", "auto"), default="packer",
+                        help="Build controller (default: packer; native is the "
+                             "Tencent Cloud Linux backend; auto safely falls back to Packer)")
 
     parser = argparse.ArgumentParser(
         prog="ohbs-image",
@@ -254,6 +267,10 @@ def build_parser() -> argparse.ArgumentParser:
                             help="instance-types: minimum memory in GiB")
     p_discover.add_argument("--in-stock", action="store_true",
                             help="instance-types: only list types with available stock")
+    p_discover.add_argument("--rank", action="store_true",
+                            help="instance-types: rank candidates using availability and history")
+    p_discover.add_argument("--history", default="",
+                            help="instance-types: JSON build history used by --rank")
     p_discover.add_argument("--output", choices=["text", "json"], default="text")
     p_discover.set_defaults(func=cmd_discover)
 
@@ -291,6 +308,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_proof_report.add_argument("--days", type=int, choices=[30, 90], default=30)
     p_proof_report.add_argument("--html", default="")
     p_proof_report.set_defaults(func=cmd_proof_report)
+    p_proof_maturity = proof_sub.add_parser(
+        "maturity", help="Gate Tencent Cloud production readiness on evidence")
+    for name in ("baseline", "phase", "release", "sweep", "fault-matrix"):
+        p_proof_maturity.add_argument(f"--{name}", required=True)
+    p_proof_maturity.add_argument("--output", default="")
+    p_proof_maturity.set_defaults(func=cmd_proof_maturity)
 
     p_compliance = sub.add_parser("compliance", help="Generate technical compliance evidence packs")
     compliance_sub = p_compliance.add_subparsers(dest="compliance_command")
@@ -312,6 +335,38 @@ def build_parser() -> argparse.ArgumentParser:
     p_benchmark_compare.add_argument("baseline")
     p_benchmark_compare.add_argument("--max-regression-percent", type=float, default=20.0)
     p_benchmark_compare.set_defaults(func=cmd_benchmark_compare)
+    p_benchmark_phases = benchmark_sub.add_parser(
+        "phases", help="Aggregate native build phase P50/P95 and enforce budgets")
+    p_benchmark_phases.add_argument("--record", action="append", required=True)
+    p_benchmark_phases.add_argument("--budgets", default="",
+                                    help="JSON object of phase budget seconds")
+    p_benchmark_phases.add_argument("--output", default="")
+    p_benchmark_phases.set_defaults(func=cmd_benchmark_phases)
+
+    p_baseline = sub.add_parser("baseline", help="Create and verify signed accuracy baselines")
+    baseline_sub = p_baseline.add_subparsers(dest="baseline_command")
+    p_baseline_create = baseline_sub.add_parser("create", help="Create a canonical baseline bundle")
+    p_baseline_create.add_argument("--matrix", required=True)
+    p_baseline_create.add_argument("--run", action="append", default=[])
+    p_baseline_create.add_argument("--rule-ledger", action="append", default=[])
+    p_baseline_create.add_argument("--output", required=True)
+    p_baseline_create.set_defaults(func=cmd_baseline_create)
+    p_baseline_verify = baseline_sub.add_parser("verify", help="Verify all baseline content hashes")
+    p_baseline_verify.add_argument("baseline")
+    p_baseline_verify.set_defaults(func=cmd_baseline_verify)
+    p_baseline_ledger = baseline_sub.add_parser("ledger", help="Export benchmark rule provenance")
+    p_baseline_ledger.add_argument("--profile", choices=sorted(PROFILES), required=True)
+    p_baseline_ledger.add_argument("--output", required=True)
+    p_baseline_ledger.set_defaults(func=cmd_baseline_ledger)
+    p_baseline_summary = baseline_sub.add_parser("summarize", help="Measure repeated-run variance")
+    p_baseline_summary.add_argument("--run", action="append", required=True)
+    p_baseline_summary.add_argument("--output", default="")
+    p_baseline_summary.set_defaults(func=cmd_baseline_summarize)
+    p_baseline_explain = baseline_sub.add_parser("explain", help="Explain every non-pass result")
+    p_baseline_explain.add_argument("audit")
+    p_baseline_explain.add_argument("--rule-ledger", default="")
+    p_baseline_explain.add_argument("--output", default="")
+    p_baseline_explain.set_defaults(func=cmd_baseline_explain)
 
     p_upgrade = sub.add_parser("upgrade", help="Preflight package and state compatibility")
     upgrade_sub = p_upgrade.add_subparsers(dest="upgrade_command")
@@ -445,6 +500,32 @@ def build_parser() -> argparse.ArgumentParser:
                                 help="Mark expired local runs failed; never deletes cloud resources")
     p_st_reconcile.add_argument("--output", choices=["text", "json"], default="text")
     p_st_reconcile.set_defaults(func=cmd_state_reconcile)
+
+    p_native = sub.add_parser(
+        "native", help="Inspect and recover Native Engine lifecycle resources")
+    native_sub = p_native.add_subparsers(dest="native_command")
+    p_native_reconcile = native_sub.add_parser(
+        "reconcile", parents=[common],
+        help="Discover and safely clean one run's orphaned Tencent Cloud resources")
+    p_native_reconcile.add_argument("run_id")
+    p_native_reconcile.add_argument("--apply", action="store_true",
+                                    help="Execute exact cleanup (default: read-only plan)")
+    p_native_reconcile.add_argument("--output", choices=["text", "json"], default="text")
+    p_native_reconcile.set_defaults(func=cmd_native_reconcile)
+    p_native_sweep = native_sub.add_parser(
+        "sweep", parents=[common], help="Find expired OHBS resource leases")
+    p_native_sweep.add_argument("--apply", action="store_true",
+                                help="Terminate only expired, fully tagged CVMs")
+    p_native_sweep.add_argument("--output", choices=["json"], default="json")
+    p_native_sweep.set_defaults(func=cmd_native_sweep)
+    p_native_compare = native_sub.add_parser(
+        "audit-compare",
+        help="Compare OHBS JSON with independent JSON/XCCDF rule results")
+    p_native_compare.add_argument("internal", help="OHBS audit JSON")
+    p_native_compare.add_argument("external", help="Independent JSON or XCCDF/ARF")
+    p_native_compare.add_argument("--min-overlap-percent", type=float, default=0.0)
+    p_native_compare.add_argument("--output", default="", help="Optional JSON evidence path")
+    p_native_compare.set_defaults(func=cmd_native_audit_compare)
     p_st_db = state_sub.add_parser("db", help="Manage the transactional SQLite state backend")
     db_sub = p_st_db.add_subparsers(dest="state_db_command")
     for name, help_text, func in (
@@ -910,7 +991,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_pre = sub.add_parser("preflight", parents=[common], help="Run pre-flight checks")
     p_pre.set_defaults(func=cmd_preflight)
 
-    p_val = sub.add_parser("validate", parents=[common], help="Render + packer validate")
+    p_val = sub.add_parser("validate", parents=[common],
+                           help="Render + validate the selected build controller")
     p_val.add_argument("--quiet", action="store_true",
                        help="Suppress packer output (show only the ohbs-image summary)")
     p_val.add_argument("--debug", action="store_true",
@@ -919,7 +1001,8 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Enable debug logging (same as the global -v)")
     p_val.set_defaults(func=cmd_validate)
 
-    p_bld = sub.add_parser("build", parents=[common], help="Render + packer build (produce image)")
+    p_bld = sub.add_parser("build", parents=[common],
+                           help="Render + run the selected build controller")
     p_bld.add_argument("--quiet", action="store_true",
                        help="Suppress packer output (show only the ohbs-image summary)")
     p_bld.add_argument("--debug", action="store_true",
@@ -938,6 +1021,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_bld.add_argument("--run-id", default="", help=argparse.SUPPRESS)
     p_bld.add_argument("--capacity-plan", default="",
                        help="Select the first purchasable placement from a fallback plan")
+    p_bld.add_argument(
+        "--temporary-ingress", action="store_true",
+        help="Temporarily allow this controller's public IP to the build port; "
+             "the exact run-scoped rule is removed in finally")
+    p_bld.add_argument(
+        "--native-resume", default="", metavar="RUN_ID",
+        help="Resume a retained native build after verifying its journal identity")
+    p_bld.add_argument(
+        "--native-retain-on-failure", action="store_true",
+        help="Retain the failed native CVM/key for explicit resume (may incur cost)")
     p_bld.set_defaults(func=cmd_build)
 
     p_cln = sub.add_parser("clean", parents=[common], help="Remove working directory")

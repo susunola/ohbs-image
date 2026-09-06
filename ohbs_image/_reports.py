@@ -18,6 +18,7 @@ from typing import Any
 
 import ohbs_image
 
+from ._accuracy_baseline import explain_gaps
 from ._config import ResolvedConfig
 from ._logging import VERSION, info, ok, warn
 from ._models import DeliveryReportView
@@ -45,6 +46,59 @@ class _ReportContext:
     run_id: str
     role_dir: str
     attestation_required: bool = True
+
+
+def _coverage_explanation(catalog_rules: list[dict[str, Any]],
+                          results_by_id: dict[str, dict[str, Any]],
+                          *, scoped: bool) -> dict[str, int]:
+    """Explain catalog coverage without treating every non-pass as a failure."""
+    counts = {
+        "automatic_pass": 0, "remediated_pass": 0, "manual": 0,
+        "not_applicable": 0, "environment_limited": 0, "true_failure": 0,
+        "pending_reboot": 0, "implementation_missing": 0,
+        "not_evaluated_scope": 0,
+    }
+    for rule in catalog_rules:
+        rule_id = str(rule.get("id") or "")
+        result = results_by_id.get(rule_id)
+        if not result:
+            counts["not_evaluated_scope" if scoped else "implementation_missing"] += 1
+            continue
+        status = str(result.get("status") or "").lower()
+        apply_status = str(result.get("apply_status") or "").lower()
+        assessment = str(rule.get("assessment") or result.get("assessment") or "").lower()
+        if apply_status == "unsupported":
+            counts["environment_limited"] += 1
+        elif status == "notapplicable":
+            counts["not_applicable"] += 1
+        elif status == "manual" or assessment == "manual":
+            counts["manual"] += 1
+        elif apply_status == "applied_pending":
+            counts["pending_reboot"] += 1
+        elif status == "pass" and apply_status == "applied":
+            counts["remediated_pass"] += 1
+        elif status == "pass":
+            counts["automatic_pass"] += 1
+        elif status in {"fail", "error"}:
+            counts["true_failure"] += 1
+        else:
+            counts["implementation_missing"] += 1
+    return counts
+
+
+def _rules_for_level(catalog_rules: list[dict[str, Any]], level: int) -> list[dict[str, Any]]:
+    """Return the benchmark recommendations applicable to one server profile."""
+    wanted = {1} if level == 1 else {1, 2}
+    selected: list[dict[str, Any]] = []
+    for rule in catalog_rules:
+        levels = rule.get("levels")
+        platforms = rule.get("platforms")
+        if isinstance(levels, list) and not wanted.intersection(levels):
+            continue
+        if isinstance(platforms, list) and platforms and "Server" not in platforms:
+            continue
+        selected.append(rule)
+    return selected
 
 
 def _new_run_id() -> str:
@@ -336,6 +390,21 @@ def _missing_build_evidence(image_ids: list[str], score: float | None,
     return missing
 
 
+def _audit_identity_failures(document: dict[str, Any], r: ResolvedConfig,
+                             catalog_sha256: str) -> list[str]:
+    """Return contradictions between configured and observed audit identity."""
+    failures: list[str] = []
+    if str(document.get("benchmark") or "") != r.image_benchmark:
+        failures.append("audit benchmark identity")
+    expected_profile = f"L{r.level}"
+    if str(document.get("profile") or "").upper() != expected_profile:
+        failures.append("audit CIS level identity")
+    observed_catalog = str(document.get("catalog_sha256") or "")
+    if not catalog_sha256 or observed_catalog != catalog_sha256:
+        failures.append("audit catalog digest")
+    return failures
+
+
 def _cis_rule_order_key(rule_id: object) -> tuple[int, ...]:
     """Sort dotted CIS identifiers numerically (1.2 before 1.10)."""
     text_id = str(rule_id)
@@ -404,9 +473,26 @@ def _save_build_report(r: ResolvedConfig, image_name: str,
     if not raw:
         return None
     try:
-        json.loads(raw)  # don't archive garbage
+        audit_document = json.loads(raw)
+        if not isinstance(audit_document, dict):
+            return None
     except ValueError:
         return None
+    # Persist the exact denominator and gap classification beside the raw
+    # engine result. This makes CLI, JSON and HTML consume one explanation
+    # instead of independently reinterpreting non-pass statuses.
+    try:
+        catalog_path = ohbs_image._catalog_path(r.role_dir, r.image_benchmark)
+        catalog_document = json.loads(catalog_path.read_text(encoding="utf-8"))
+        catalog_rules = catalog_document if isinstance(catalog_document, list) else []
+    except (OSError, json.JSONDecodeError, AttributeError):
+        catalog_rules = []
+    results = audit_document.get("results")
+    if isinstance(results, list):
+        scoped_rules = _rules_for_level(catalog_rules, r.level) if catalog_rules else []
+        audit_document["accuracy_explanation"] = explain_gaps(
+            [item for item in results if isinstance(item, dict)], scoped_rules)
+        raw = (json.dumps(audit_document, indent=2, ensure_ascii=False) + "\n").encode()
     try:
         run_id = r.run_id if isinstance(r, ResolvedConfig) else ""
         suffix = f".{run_id}" if run_id else ""
@@ -490,10 +576,11 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
             assessment_details.append(
                 f'<article class="rule-detail"><h3>{text(rule_id)} · {text(title)}</h3>'
                 f"<dl>{detail_text}</dl></article>")
-    # The engine emits every *selected* rule. The report, like CIS-CAT, is a
-    # catalog document: retain every benchmark recommendation and make rules
-    # outside a scoped run explicit instead of silently omitting them.
-    display_rules = catalog_rules or list(results_by_id.values())
+    # Coverage is measured against the recommendations applicable to this
+    # run's L1/L2 Server profile, not every recommendation in the PDF. Using
+    # the whole catalog as the denominator created false 96–98% gaps.
+    display_rules = (_rules_for_level(catalog_rules, r.level)
+                     if catalog_rules else list(results_by_id.values()))
     assessment_rows.clear()
     evaluated_rules = 0
     not_evaluated_rules = 0
@@ -529,6 +616,31 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
     coverage_cards = (f'<div class="card neutral"><div class="label">Evaluated</div><div class="value">{view.evaluated_rules}</div></div>'
                       f'<div class="card neutral"><div class="label">Not evaluated</div><div class="value">{view.not_evaluated_rules}</div></div>'
                       f'<div class="card neutral"><div class="label">Catalog coverage</div><div class="value">{coverage_s}</div></div>')
+    coverage_breakdown = _coverage_explanation(
+        display_rules, results_by_id,
+        scoped=bool(getattr(r, "rules_include", []) or getattr(r, "rules_exclude", [])))
+    coverage_labels = (
+        ("automatic_pass", "Automatic pass", "Passed without remediation"),
+        ("remediated_pass", "Remediated pass", "Failed initially and passed after repair"),
+        ("manual", "Manual", "Requires operator evidence or site policy"),
+        ("not_applicable", "Not applicable", "Benchmark recommendation does not apply"),
+        ("environment_limited", "Environment limited", "Unsupported by the current cloud/guest environment"),
+        ("true_failure", "True failure", "Evaluated and still failing or errored"),
+        ("pending_reboot", "Pending reboot", "Remediation requires clean-boot verification"),
+        ("implementation_missing", "Implementation missing", "Catalog rule has no trustworthy result"),
+        ("not_evaluated_scope", "Outside selected scope", "Excluded by explicit rule selection"),
+    )
+    coverage_rows = "".join(
+        f"<tr><td>{text(label)}</td><td>{coverage_breakdown[key]}</td>"
+        f"<td>{text(description)}</td></tr>"
+        for key, label, description in coverage_labels if coverage_breakdown[key]
+    )
+    coverage_explanation_html = (
+        '<section class="recommendation-summary"><div class="section-heading"><div>'
+        '<p>COVERAGE EXPLANATION</p><h2>Why coverage is not 100%</h2></div>'
+        f'<strong>{view.total_rules} catalog recommendations</strong></div>'
+        '<table><tr><th>Classification</th><th>Count</th><th>Meaning</th></tr>'
+        f'{coverage_rows}</table></section>') if coverage_rows else ""
     results_html = ("<section id=\"assessment-results\" class=\"results\"><div class=\"section-heading\"><div><p>ASSESSMENT RESULTS</p>"
                     "<h2>Recommendation results</h2></div><strong>"
                     f"{view.total_rules} recommendations · {view.evaluated_rules} evaluated ({coverage_s})</strong></div>"
@@ -573,7 +685,8 @@ def _write_build_html_report(r: ResolvedConfig | _ReportContext, image_ids: list
     # the identity close used to make the whole report nest under Profiles.
     html_doc = html_doc.replace(
         '<section id="evidence"',
-        results_html + findings_html + details_html + '<section id="evidence"',
+        coverage_explanation_html + results_html + findings_html + details_html
+        + '<section id="evidence"',
         1)
     html_doc = html_doc.replace("</style>", '''
 /* Release dossier visual system: static, high-contrast, and print-safe. */

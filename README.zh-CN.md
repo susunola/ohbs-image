@@ -151,6 +151,16 @@ ohbs-image clean
 
 ## 命令
 
+准确性基线可以在不访问云 API 的情况下打包并验证：
+
+```bash
+ohbs-image baseline create --matrix tests/golden-matrix-tencent-linux.json \
+  --run build-record.json --rule-ledger rule-ledger.json --output baseline.json
+ohbs-image baseline verify baseline.json
+```
+
+基线包固定矩阵输入，并对每份运行证据和规则账本计算 SHA-256；任何嵌套证据发生变化都会验证失败。覆盖率统一使用 `pass / (pass + fail + error)`，manual、not-scored 和 not-applicable 单独展示，不计作成功。
+
 ### 该用哪个命令？
 
 四条命令乍看重叠，其实对应镜像生命周期的四个不同时刻 —— 按你*想做什么*来选：
@@ -334,7 +344,7 @@ ohbs-image guide consumer    # 解析并验证可部署镜像
 [build]
 profile             = "tencentos3"
 #   Linux: ubuntu2004 | ubuntu2204 | ubuntu2404 |
-#          rhel8 | rhel9 | rhel10 | rocky9 |
+#          rhel8 | rhel9 | rhel10 | rocky9 | rocky10 |
 #          tencentos3 | tencentos4
 #   Windows: win2016 | win2019 | win2022 | win2025
 region              = "ap-guangzhou"
@@ -440,6 +450,87 @@ benchmark = "CIS-v1.0.0"
 Packer 先将完整 Ansible 内容压缩为单个归档上传到临时 CVM，解压后在实例内
 通过 `ansible-playbook` 执行三个阶段：
 
+构建控制器可通过 `--builder packer|native|auto` 切换，默认仍为 `packer`。
+`auto` 会为受支持的腾讯云 Linux 配置选择 native；Windows、assume-role 或未映射
+provider 参数会安全回退 Packer。OHBS Native Engine 会把兼容 HCL 编译成云无关
+`BuildSpec`，输出 `native/build-spec.json` 与版本化 `native/plan.json`，再通过可注入
+Provider 和 Communicator 契约执行。首个生产 Provider 是腾讯云 CVM；Windows 暂时
+仍只支持 Packer。
+
+```bash
+ohbs-image validate --builder native --config ohbs-image.toml
+ohbs-image build --builder native --dry-run --config ohbs-image.toml
+ohbs-image build --builder native --config ohbs-image.toml
+# 可选：按本次运行临时放行控制器 /32，finally 自动撤销
+ohbs-image build --builder native --temporary-ingress --config ohbs-image.toml
+# 显式保留失败现场，随后用经过身份校验的 journal 恢复
+ohbs-image build --builder native --native-retain-on-failure --config ohbs-image.toml
+ohbs-image build --builder native --native-resume RUN_ID --config ohbs-image.toml
+# 默认只读发现精确 run 标签对应的残留；确认后只清理云端与本地身份一致的资源
+ohbs-image native reconcile RUN_ID --config ohbs-image.toml --output json
+ohbs-image native reconcile RUN_ID --config ohbs-image.toml --apply
+# 对照 OHBS 与独立 JSON/XCCDF 规则结果；overlap 门禁显式暴露 ID/分母差异
+ohbs-image native audit-compare internal-audit.json external-xccdf.xml \
+  --min-overlap-percent 80 --output audit-comparison.json
+```
+
+native 恢复会核验 run ID、源镜像、目标镜像名、规范化编译 BuildSpec 摘要、保留实例与
+私钥路径；旧编译器的原始 HCL 摘要不会再被视为相同执行计划。
+新构建还会在 guest 内维护私有、原子写入的远端 marker；只有本地 journal 与远端
+marker 同时确认完成的 provisioner 才会跳过。marker 缺失时安全重跑，身份不一致时
+拒绝恢复。默认失败路径仍会删除临时 CVM 和密钥，避免意外持续计费。
+inline shell 的摘要现在覆盖最终上传并由 `sha256sum` 验证的 UTF-8 脚本字节，不再对
+中间 JSON 命令数组计算另一种摘要。
+密钥创建完成后会在 `RunInstances` 之前立即写入 journal，关闭“只有密钥、尚未记录”的
+崩溃窗口。Native 执行器还会把 SIGINT/SIGTERM 转入正常失败路径，在清理前恢复调用方
+信号处理器，并输出与其他失败一致的清理和构建证据。
+
+每次 native 运行还会输出 `native/build-record.json`：这是不包含秘密信息的版本化
+构建事实记录，包含目标配置、BuildSpec 摘要、provisioner 内容摘要、产出镜像 ID、
+各阶段耗时、逐 provisioner 的完成/恢复/失败结果与耗时、资源清理结果、腾讯云 API
+RequestId 和源镜像事实快照。腾讯云实例使用按 run ID 稳定派生的 `ClientToken` 保证
+重试幂等；源镜像和复制镜像必须被实际观测为 `NORMAL` 才算成功。跨地域镜像并行
+验收，同一次构建内复用 SSH 连接，减少重复握手耗时。每次构建拥有独立且哈希化的
+`known_hosts` 文件：首次连接采用 OpenSSH TOFU，后续主机密钥变化会被拒绝。
+如果镜像已经创建，但临时实例或密钥清理失败，命令会返回不可自动重试的 Provider
+失败，不再隐藏持续计费泄漏；证据仍保留镜像 ID，并按类型和云端 ID 列出未清理资源，
+便于显式收尾。
+`native reconcile` 只做清理，不会重新构建镜像。实例必须同时匹配精确的
+`managed_by`、`ephemeral`、`run_id` 标签；密钥必须同时存在于匹配 run 的本地记录和
+精确云端 ID。`--apply` 会先终止已核验实例，再删除记录密钥，并把只限所有者读取的
+证据写入 `native/reconcile-RUN_ID.json`。
+`native audit-compare` 会记录两份输入的 SHA-256，并分别列出规则级一致、状态冲突、未知
+状态、仅 OHBS 存在和仅外部工具存在的规则。如果双方都声明 Benchmark，版本不一致时
+始终判定不可比较；可选最小 overlap 会把规则映射/分母漂移变成 CI 门禁，但不会把未
+映射规则伪装成扫描失败。
+文本与命令输出启用 SSH 压缩。只有传输层能证明远端会话尚未建立时才重试命令；认证后
+发生结果不明的断线时绝不盲目重放。
+预期重启/断线的 provisioner 会先输出远端启动哨兵，认证失败或会话建立前失败不会再被
+误判为已经成功触发重启。
+
+腾讯云 Native 构建还会拒绝 OS 主版本或架构与所选 profile 冲突的源/目标镜像，
+确认 cloud-init 能力没有退化，并在 `CreateImage` 响应丢失时只接管一个具有本次唯一
+名称的新镜像。最终 guest audit 会同时锚定配置的 Benchmark 和实际生效
+`rules.json` 的 SHA-256。交付报告的覆盖率分母只包含本次 L1/L2 Server profile 适用
+的推荐项，并分别解释自动通过、修复后通过、人工项、不适用、环境限制、真实失败、
+待重启验证、实现缺失和显式 scope 排除。
+
+native 实现已按多云扩展分层：
+
+```text
+native/spec.py + compiler.py       # 云无关、版本化 IR
+native/executor.py                 # 纯编排，不导入任何云 Provider
+native/journal.py                  # 可恢复执行状态
+native/evidence.py                 # 构建事实、阶段耗时与清理证据
+native/communicator/ssh.py         # 传输实现
+native/providers/tencentcloud.py   # 腾讯云 CVM 生命周期
+native/providers/registry.py       # 能力发现与后续多云 Provider
+```
+
+`ohbs-image provider list --output json` 会分别展示通用 Provider 成熟度与 Native
+Engine 生命周期能力。仅有发现或 API contract 的 Provider 不会被误标为可用于生产
+native 构建，必须注册完整生命周期能力后才会展示支持。
+
 1. **安装** — 通过系统包管理器 + pip 安装 ansible-core。
 2. **加固** — 运行捆绑的 ohbs-os 引擎（`ohbs_engine.py` + `rules.json`）。
    变量：`cis_mode: apply`、`cis_profile: L1/L2`、`cis_platform: server`。
@@ -519,6 +610,7 @@ AK/SK 仅通过环境变量传入（HCL `sensitive = true`）。临时实例打�
 | `rhel9` | RHEL 9 | root | dnf | `roles/cis-rhel9/` |
 | `rhel10` | RHEL 10 | root | dnf | `roles/cis-rhel10/` |
 | `rocky9` | Rocky Linux 9 | root | dnf | `roles/cis-rocky9/` |
+| `rocky10` | Rocky Linux 10 | root | dnf | `roles/cis-rocky10/` |
 | `tencentos3` | TencentOS Server 3 | root | dnf | `roles/cis-tencentos3/` |
 | `tencentos4` | TencentOS Server 4 | root | dnf | `roles/cis-tencentos4/` |
 

@@ -8,6 +8,24 @@ can be traced across rebuilds.
 ## [Unreleased]
 
 ### Added
+- **Release-level Native fault matrix** — cancellation, snapshot failure,
+  asynchronous image failure, cross-region sync failure and cleanup now have
+  explicit lifecycle tests. A sync failure preserves the already-created
+  primary image ID in build evidence instead of losing a billable artifact.
+- **Phase-aware Native lifecycle heartbeat** — the atomic restart journal now
+  refreshes throughout launch, connect, provision, snapshot, sync and cleanup
+  without racing checkpoint writes. Build evidence includes heartbeat health
+  and a secret-free structured failure category/code/retryability/phase/type.
+  Optional per-phase minute caps intersect with the global deadline and are
+  retained as effective `phase_budget_seconds` evidence.
+- **Verified content-addressed Native transfer cache** — deterministic Ansible
+  archives now retain a stable SHA-256 across identical renders. BuildSpec v3
+  marks only that generated non-secret archive cacheable; every image-cache hit
+  is re-hashed, while arbitrary files and scripts bypass persistence. Build
+  evidence reports hits, misses, uploaded bytes and saved bytes.
+- **Native Tencent API SLO evidence** — build records now capture secret-free
+  per-operation latency, RequestId, actual retry attempts and final status, plus
+  aggregate call/failure/retry counts, total/P95/max latency and slowest calls.
 - **Public evidence index** — portable acceptance, SLO, proof, benchmark,
   compliance, and release JSON can now be rendered into a self-contained HTML
   index plus a stable JSON contract. Every entry carries its source SHA-256;

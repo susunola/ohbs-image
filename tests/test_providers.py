@@ -79,7 +79,9 @@ def test_tencent_adapter_delegates_credentials(monkeypatch) -> None:
 
 def test_provider_commands_emit_json(capsys) -> None:
     assert cmd_provider_list(argparse.Namespace(output="json")) == 0
-    assert '"tencentcloud"' in capsys.readouterr().out
+    listing = capsys.readouterr().out
+    assert '"tencentcloud"' in listing
+    assert '"supports_resume": true' in listing
     assert cmd_provider_verify(argparse.Namespace(name="tencentcloud", output="json")) == 0
     assert '"compatible": true' in capsys.readouterr().out
 

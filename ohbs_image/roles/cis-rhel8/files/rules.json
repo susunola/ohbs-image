@@ -1378,10 +1378,11 @@
       "Server",
       "Workstation"
     ],
-    "assessment": "Manual",
+    "assessment": "Automated",
     "family": "crypto_policy",
     "params": {
-      "kind": "no_etm_ssh"
+      "kind": "no_etm_ssh",
+      "use_policy_module": true
     },
     "risk": "safe",
     "page": 240
@@ -4168,7 +4169,7 @@
     "params": {
       "key": "logfile",
       "value": "/var/log/sudo.log",
-      "op": "eq"
+      "op": "kv"
     },
     "risk": "safe",
     "page": 667,
@@ -5294,7 +5295,8 @@
       "key": "ForwardToSyslog",
       "sep": "=",
       "value": "no",
-      "op": "eq"
+      "op": "eq",
+      "unless_service_active": "rsyslog.service"
     },
     "risk": "safe",
     "page": 826
@@ -5409,7 +5411,8 @@
       "units": [
         "systemd-journal-upload.service"
       ],
-      "packages": []
+      "packages": [],
+      "requires_config": "journal-upload"
     },
     "risk": "safe",
     "page": 841,
