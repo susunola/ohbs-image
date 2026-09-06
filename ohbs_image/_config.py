@@ -700,7 +700,8 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         assume_role_arn=assume_role_arn,
         assume_role_session=assume_role_session,
         assume_role_duration=assume_role_duration,
-        image_os_tag=str(meta.get("os_tag", p.get("os_tag", ""))),
+        image_os_tag=str(p.get("os_tag", "")) if meta.get("os_tag") == profile_name
+        else str(meta.get("os_tag", p.get("os_tag", ""))),
         image_benchmark=benchmark,
         catalog_basename=catalog_basename,
         level=level,

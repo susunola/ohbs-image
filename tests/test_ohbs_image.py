@@ -2027,7 +2027,8 @@ def _profile_toml(profile_name: str) -> dict:
         "cis": {"level": 1},
         "cloud": {"secret_id_env": "TENCENTCLOUD_SECRET_ID",
                   "secret_key_env": "TENCENTCLOUD_SECRET_KEY"},
-        "meta": {"os_tag": profile_name, "benchmark": "CIS-v1.0.0"},
+        "meta": {"os_tag": PROFILES[profile_name]["os_tag"],
+                 "benchmark": PROFILES[profile_name]["benchmark"]},
     }
     if family == "windows":
         base["cloud"]["winrm_password_env"] = "WINRM_PASSWORD"
@@ -2274,6 +2275,7 @@ class TestAllProfilesRender:
             data = _make_win_toml(profile_name)
         else:
             valid_toml["build"]["profile"] = profile_name
+            valid_toml["meta"]["os_tag"] = PROFILES[profile_name]["os_tag"]
             data = valid_toml
 
         r = resolve(data)
@@ -2297,6 +2299,7 @@ class TestAllProfilesRender:
             data = _make_win_toml(profile_name)
         else:
             valid_toml["build"]["profile"] = profile_name
+            valid_toml["meta"]["os_tag"] = PROFILES[profile_name]["os_tag"]
             data = valid_toml
 
         r = resolve(data)
@@ -2328,6 +2331,7 @@ class TestAllProfilesRender:
             data = _make_win_toml(profile_name)
         else:
             valid_toml["build"]["profile"] = profile_name
+            valid_toml["meta"]["os_tag"] = PROFILES[profile_name]["os_tag"]
             data = valid_toml
 
         r = resolve(data)
@@ -5512,6 +5516,7 @@ class TestTestComponentsNonRoot:
         (tmp_path / "check.sh").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
         # ubuntu profile → ssh_username = ubuntu
         valid_toml["build"]["profile"] = "ubuntu2204"
+        valid_toml["meta"]["os_tag"] = PROFILES["ubuntu2204"]["os_tag"]
         r = resolve(valid_toml)
         wd = tmp_path / "w"
         render_all(wd, r)

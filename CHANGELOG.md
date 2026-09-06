@@ -7,6 +7,16 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Fixed
+- Linux builds verify the guest distribution and version before provisioning;
+  conflicting profile metadata is rejected, and legacy profile-name tags are
+  normalized to canonical OS tags.
+- Audit comparisons reject empty, unknown and unevaluated evidence. Apply
+  success no longer counts as scan success. Baseline explanations distinguish
+  audit pass rate from catalog result coverage and expose missing/duplicate IDs.
+- Acceptance plans record the source commit, dirty workspace state and config
+  hashes; a focused Rocky 9 L1/L2 matrix supports reproducible validation.
+
 ## [0.22.0] - 2026-09-02
 
 ### Added
