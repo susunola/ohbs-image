@@ -190,7 +190,7 @@ def test_execute_plan_rejects_unsafe_worker_count(tmp_path: Path) -> None:
 def test_execute_plan_owns_one_shared_ingress_rule(tmp_path: Path, monkeypatch) -> None:
     acceptance = module()
     events = []
-    monkeypatch.setattr(acceptance, "load_config", lambda path: {"path": str(path)})
+    monkeypatch.setattr(acceptance, "load_config_layered", lambda paths: {"paths": paths})
     resolved = SimpleNamespace(run_id="")
     monkeypatch.setattr(acceptance, "resolve", lambda data: resolved)
     monkeypatch.setattr(acceptance, "_create_temporary_ingress",

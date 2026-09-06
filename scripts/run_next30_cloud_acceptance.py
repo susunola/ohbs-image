@@ -23,7 +23,7 @@ from threading import Lock
 from typing import Any
 
 from ohbs_image._benchmark import phase_benchmark
-from ohbs_image._config import load_config, resolve
+from ohbs_image._config import load_config, load_config_layered, resolve
 from ohbs_image._tc_cloud import _create_temporary_ingress, _delete_temporary_ingress
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -248,18 +248,29 @@ def write_summary(plan: dict[str, Any], output_root: Path) -> Path:
     return target
 
 
-def execute_plan(plan: dict[str, Any], output_root: Path, *, workers: int = 1) -> int:
+def execute_plan(plan: dict[str, Any], output_root: Path, *, workers: int = 1,
+                 network_config: Path | None = None) -> int:
     if workers < 1 or workers > 8:
         raise ValueError("workers must be between 1 and 8")
     output_root.mkdir(parents=True, exist_ok=True)
     overlay = output_root / "acceptance-overlay.toml"
-    overlay.write_text("[meta]\nverify_boot = true\ndelivery_report_required = true\n", encoding="utf-8")
+    content = "[meta]\nverify_boot = true\ndelivery_report_required = true\n"
+    if network_config is not None:
+        network = load_config(network_config)["build"]
+        content += "\n[build]\n"
+        for name in ("vpc_id", "subnet_id", "security_group_id"):
+            value = network.get(name)
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"network config missing {name}")
+            content += f"{name} = {json.dumps(value)}\n"
+    overlay.write_text(content, encoding="utf-8")
+    plan["overlay_sha256"] = hashlib.sha256(content.encode()).hexdigest()
     failures = 0
     lock = Lock()
     jobs = plan.get("jobs") or []
     if not jobs:
         return 0
-    ingress_config = resolve(load_config(Path(jobs[0]["config"])))
+    ingress_config = resolve(load_config_layered([Path(jobs[0]["config"]), overlay]))
     ingress_config.run_id = str(plan.get("acceptance_id") or uuid.uuid4())
     temporary_ingress = _create_temporary_ingress(ingress_config)
 
@@ -293,6 +304,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--yes", action="store_true")
     parser.add_argument("--workers", type=int, default=1,
                         help="parallel billed builds (1-8; default 1)")
+    parser.add_argument("--network-config", type=Path,
+                        help="override only VPC, subnet and security group for this run")
     parser.add_argument("--summarize", action="store_true",
                         help="summarize existing artifacts without calling cloud APIs")
     parser.add_argument("--preflight", action="store_true",
@@ -330,7 +343,8 @@ def main(argv: list[str] | None = None) -> int:
         print("refusing billed execution: require --execute --yes and OHBS_ALLOW_BILLED_TESTS=1",
               file=sys.stderr)
         return 2
-    return execute_plan(plan, output_root, workers=args.workers)
+    return execute_plan(plan, output_root, workers=args.workers,
+                        network_config=args.network_config)
 
 
 if __name__ == "__main__":
