@@ -78,7 +78,7 @@ def explain_gaps(results: list[dict[str, Any]],
                  rules: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Classify every non-pass without pretending that exclusions are success."""
     catalog = {str(rule.get("id") or ""): rule for rule in (rules or [])}
-    categories = {name: [] for name in ("true_failure", "detector_error", "pending_reboot",
+    categories: dict[str, list[dict[str, Any]]] = {name: [] for name in ("true_failure", "detector_error", "pending_reboot",
                   "environment_limited", "manual", "not_applicable", "not_scored",
                   "implementation_missing")}
     seen: set[str] = set()

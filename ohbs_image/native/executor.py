@@ -280,7 +280,7 @@ def execute_build(
 
         # Journals created before remote markers remain resumable. New journals
         # require local and remote agreement before a provisioner is skipped.
-        if resume and journal.get("remote_marker") == _REMOTE_MARKER:
+        if resume and journal is not None and journal.get("remote_marker") == _REMOTE_MARKER:
             marker_lines = communicator.execute(
                 ip, runtime.ssh_port, active_user, key_path,
                 f"sudo cat {shlex.quote(_REMOTE_MARKER)} 2>/dev/null || true",

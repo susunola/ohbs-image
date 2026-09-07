@@ -302,7 +302,7 @@ def cmd_build(args: argparse.Namespace) -> int:
         try:
             capacity = select_capacity(load_capacity_plan(Path(capacity_plan)))
             apply_capacity(r, capacity)
-            r._native_capacity_decision = capacity
+            vars(r)["_native_capacity_decision"] = capacity
             write_build_checkpoint(r, "capacity-selected", capacity)
             if capacity["fallback_used"]:
                 warn(f"Capacity fallback selected {r.instance_type} in {r.zone} ({r.region})")
