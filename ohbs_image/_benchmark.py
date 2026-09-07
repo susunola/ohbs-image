@@ -16,6 +16,7 @@ from ._providers import load_providers, verify_provider
 from ._state_db import StateDatabase
 
 BENCHMARK_SCHEMA = "https://ohbs-image.dev/benchmark/v1"
+PHASE_BENCHMARK_SCHEMA = "https://ohbs-image.dev/native-phase-benchmark/v1"
 
 
 def _measure(operation: Callable[[int], None], iterations: int, warmups: int) -> dict[str, Any]:
@@ -118,6 +119,37 @@ def compare_benchmarks(current: dict[str, Any], baseline: dict[str, Any],
             "comparisons": comparisons}
 
 
+def phase_benchmark(records: list[dict[str, Any]],
+                    budgets: dict[str, float] | None = None) -> dict[str, Any]:
+    """Aggregate real native build records into phase P50/P95 release evidence."""
+    samples: dict[str, list[float]] = {}
+    for record in records:
+        for phase, raw in (record.get("phase_duration_seconds") or {}).items():
+            samples.setdefault(str(phase), []).append(max(0.0, float(raw)))
+    phases: dict[str, dict[str, Any]] = {}
+    failed = False
+    for phase, values in sorted(samples.items()):
+        ordered = sorted(values)
+        p95 = ordered[max(0, (95 * len(ordered) + 99) // 100 - 1)]
+        budget = (budgets or {}).get(phase)
+        exceeded = budget is not None and p95 > float(budget)
+        failed = failed or exceeded
+        phases[phase] = {"samples": len(values),
+                         "p50_seconds": round(statistics.median(values), 3),
+                         "p95_seconds": round(p95, 3),
+                         "min_seconds": round(ordered[0], 3),
+                         "max_seconds": round(ordered[-1], 3),
+                         "budget_seconds": budget, "budget_exceeded": exceeded}
+    api_calls = [((record.get("provider_evidence") or {}).get("api_summary") or {})
+                 for record in records]
+    return {"schema": PHASE_BENCHMARK_SCHEMA, "records": len(records),
+            "passed": not failed, "phases": phases,
+            "provider_api": {"calls": sum(int(row.get("calls") or 0) for row in api_calls),
+                             "retries": sum(int(row.get("retries") or 0) for row in api_calls),
+                             "failed_calls": sum(int(row.get("failed_calls") or 0)
+                                                 for row in api_calls)}}
+
+
 def cmd_benchmark_run(args: argparse.Namespace) -> int:
     document = run_benchmark(iterations=args.iterations, warmups=args.warmups)
     rendered = json.dumps(document, indent=2, sort_keys=True)
@@ -133,4 +165,15 @@ def cmd_benchmark_compare(args: argparse.Namespace) -> int:
     result = compare_benchmarks(current, baseline,
                                 max_regression_percent=args.max_regression_percent)
     print(json.dumps(result, indent=2, sort_keys=True))
+    return 0 if result["passed"] else 1
+
+
+def cmd_benchmark_phases(args: argparse.Namespace) -> int:
+    records = [json.loads(Path(path).read_text(encoding="utf-8")) for path in args.record]
+    budgets = json.loads(Path(args.budgets).read_text(encoding="utf-8")) if args.budgets else {}
+    result = phase_benchmark(records, budgets)
+    rendered = json.dumps(result, indent=2, sort_keys=True)
+    if args.output:
+        Path(args.output).write_text(rendered + "\n", encoding="utf-8")
+    print(rendered)
     return 0 if result["passed"] else 1

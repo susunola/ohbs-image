@@ -20,6 +20,7 @@ reported in the JSON document written to stdout (or --out).
 import argparse
 import glob as globmod
 import grp
+import hashlib
 import json
 import os
 import pwd
@@ -3223,6 +3224,16 @@ def c_crypto_policy(ctx, p):
         return read(os.path.join(CRYPTO_BACKENDS, name)) or ""
 
     if kind == "no_sha1":
+        # update-crypto-policies is the authority for composed policy modules.
+        # Backend files legitimately contain SHA1 tokens inside deny lists
+        # (notably Java disabledAlgorithms and GnuTLS negative priorities),
+        # which the former substring scan misclassified as permitted.  A
+        # managed active NO-SHA1 module is stronger evidence than grepping its
+        # generated backend syntax.
+        active_modules = {part.upper() for part in cur.split(":")[1:]}
+        module_path = "/etc/crypto-policies/policies/modules/NO-SHA1.pmod"
+        if "NO-SHA1" in active_modules and exists(module_path):
+            return "pass", "NO-SHA1 module is active in crypto policy %s" % cur
         bad = []
         for f in ("openssl.config", "gnutls.config", "opensshserver.config",
                   "openssh.config", "nss.config", "java.config"):
@@ -3233,6 +3244,12 @@ def c_crypto_policy(ctx, p):
         if bad:
             return "fail", "SHA1 still permitted in: " + ", ".join(bad)
         return "pass", "SHA1 is not permitted by the active crypto policy (%s)" % cur
+    if kind == "no_etm_ssh" and p.get("use_policy_module"):
+        active_modules = {part.upper() for part in cur.split(":")[1:]}
+        module_path = "/etc/crypto-policies/policies/modules/NO-SSHETM.pmod"
+        if "NO-SSHETM" in active_modules and exists(module_path):
+            return "pass", "NO-SSHETM module is active in crypto policy %s" % cur
+        return "fail", "NO-SSHETM module is not active in crypto policy %s" % cur
     if kind in ("no_weak_mac", "no_etm_ssh", "no_cbc_ssh", "no_chacha_ssh"):
         # SSH-side hardening: judge the EFFECTIVE sshd config, not the
         # system-wide crypto policy (which may be LEGACY by business
@@ -3271,7 +3288,9 @@ CRYPTO_MODULES = {
     "no_weak_mac": ("NO-WEAKMAC", "mac = -*-64* -HMAC-MD5 -HMAC-SHA1\n"),
     "no_cbc_ssh": ("NO-SSHCBC", "cipher@SSH = -*-CBC\n"),
     "no_chacha_ssh": ("NO-SSHCHACHA20", "cipher@SSH = -CHACHA20-POLY1305\n"),
-    "no_etm_ssh": ("NO-SSHETM", "etm@SSH = DISABLE_ETM\n"),
+    # RHEL 8 crypto-policies predates the tri-state `etm@SSH` property used by
+    # newer releases.  Its supported compatibility property is ssh_etm=0.
+    "no_etm_ssh": ("NO-SSHETM", "ssh_etm = 0\n"),
 }
 
 
@@ -3280,7 +3299,8 @@ def f_crypto_policy(ctx, p):
     if not have("update-crypto-policies"):
         return False, "crypto-policies is not installed"
     kind = p["kind"]
-    if kind in ("no_weak_mac", "no_etm_ssh", "no_cbc_ssh", "no_chacha_ssh"):
+    if kind in ("no_weak_mac", "no_etm_ssh", "no_cbc_ssh", "no_chacha_ssh") \
+            and not p.get("use_policy_module"):
         # SSH-side only — no system-wide policy change, not disruptive.
         return _fix_sshd_crypto(ctx, kind)
     if kind in ("not_legacy", "future_or_fips"):
@@ -5457,10 +5477,16 @@ def main():
     elapsed = time.time() - started
     _summary = summarize(results, len(skipped))
 
+    try:
+        with open(opts.catalog, "rb") as _catalog_file:
+            _catalog_sha256 = hashlib.sha256(_catalog_file.read()).hexdigest()
+    except OSError:
+        _catalog_sha256 = ""
     doc = {
         "schema": 1,
         "engine_version": VERSION,
         "benchmark": opts.benchmark or os.path.basename(opts.catalog),
+        "catalog_sha256": _catalog_sha256,
         "mode": opts.mode,
         "profile": opts.profile,
         "platform": opts.platform,

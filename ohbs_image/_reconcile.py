@@ -47,7 +47,8 @@ def plan_reconciliation(root: Path) -> dict[str, Any]:
             actions.append({"action": "inspect_orphan_resources", "run_id": run_id,
                             "path": str(path), "safe_to_apply": False,
                             "resource_count": len(resources),
-                            "reason": "terminal run still records ephemeral resources"})
+                            "reason": "terminal run still records ephemeral resources",
+                            "next_action": f"ohbs-image native reconcile {run_id}"})
     return {"schema": RECONCILE_SCHEMA, "path": str(root),
             "actions": actions, "count": len(actions),
             "safe_count": sum(bool(item["safe_to_apply"]) for item in actions)}

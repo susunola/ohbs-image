@@ -52,6 +52,26 @@ LINUX_PROFILES = [k for k, v in PROFILES.items() if v.get("family") != "windows"
 WIN_PROFILES = [k for k, v in PROFILES.items() if v.get("family") == "windows"]
 
 
+@pytest.mark.parametrize("guest_id,version,passed", [
+    ("rocky", "9.6", True), ("rocky", "10.0", False), ("rhel", "9.6", False)])
+def test_guest_identity_gate_before_provisioning(tmp_path, guest_id, version, passed):
+    from ohbs_image.native.compiler import compile_hcl_provisioners
+    config = tomllib.loads(SAMPLE_CONFIG)
+    config["build"]["profile"] = "rocky9"
+    config["meta"]["os_tag"] = "rocky-9"
+    config["meta"]["benchmark"] = "CIS-v2.0.0"
+    resolved = resolve(config)
+    render_all(tmp_path / "work", resolved)
+    hcl = (tmp_path / "work/packer/main.pkr.hcl").read_text()
+    first = compile_hcl_provisioners(hcl)[0]
+    release = tmp_path / "os-release"
+    release.write_text(f'ID={guest_id}\nVERSION_ID="{version}"\n')
+    command = "\n".join(first.inline).replace("/etc/os-release", str(release))
+    result = subprocess.run(["bash", "-c", command], capture_output=True, text=True)
+    assert (result.returncode == 0) is passed
+    assert "OS identity mismatch" in result.stdout if not passed else "verified guest" in result.stdout
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -160,11 +180,31 @@ class TestLoadConfig:
 
     def test_max_build_minutes_defaults_to_two_hours(self, valid_toml):
         assert resolve(valid_toml).max_build_minutes == 120
+        assert resolve(valid_toml).native_phase_timeout_minutes == {}
 
     @pytest.mark.parametrize("value", [True, 14, 1441, 120.0])
     def test_max_build_minutes_requires_safe_integer_budget(self, valid_toml, value):
         valid_toml["build"]["max_build_minutes"] = value
         with pytest.raises(ConfigError, match=r"\[build\].max_build_minutes"):
+            resolve(valid_toml)
+
+    def test_native_phase_timeouts_are_explicit_and_typed(self, valid_toml):
+        valid_toml["native"] = {"phase_timeout_minutes": {
+            "launch": 5, "connect": 10, "provision": 60, "reboot": 20,
+            "snapshot": 30, "sync": 40,
+        }}
+        assert resolve(valid_toml).native_phase_timeout_minutes == {
+            "launch": 5, "connect": 10, "provision": 60, "reboot": 20,
+            "snapshot": 30, "sync": 40,
+        }
+
+    @pytest.mark.parametrize(
+        "values", [{"unknown": 5}, {"connect": True}, {"snapshot": 0},
+                   {"sync": 1441}],
+    )
+    def test_native_phase_timeouts_fail_closed(self, valid_toml, values):
+        valid_toml["native"] = {"phase_timeout_minutes": values}
+        with pytest.raises(ConfigError, match=r"\[native\.phase_timeout_minutes\]"):
             resolve(valid_toml)
 
 
@@ -677,12 +717,28 @@ class TestRenderAll:
         assert "OHBS IMAGE" in finalize
         assert "OHBS-HARDENED IMAGE BUILDER" in finalize
         # Bash syntax must be clean (catches missing fi/quote before delivery).
-        import subprocess
         p = subprocess.run(
             ["bash", "-n", str(wd / "packer" / "scripts" / "ohbs-image-finalize.sh")],
             capture_output=True, text=True,
         )
         assert p.returncode == 0, f"bash -n failed: {p.stderr}"
+
+    def test_ansible_bundle_is_byte_stable_and_extractable(self, valid_toml, tmp_path):
+        import tarfile
+
+        r = resolve(valid_toml)
+        first = tmp_path / "first"
+        second = tmp_path / "second"
+        render_all(first, r)
+        render_all(second, r)
+        first_bundle = first / "packer" / "ansible-bundle.tar.gz"
+        second_bundle = second / "packer" / "ansible-bundle.tar.gz"
+        assert hashlib.sha256(first_bundle.read_bytes()).digest() == hashlib.sha256(
+            second_bundle.read_bytes()).digest()
+        with tarfile.open(first_bundle, "r:gz") as archive:
+            names = archive.getnames()
+        assert "ansible/site.yml" in names
+        assert any(name.endswith("/files/rules.json") for name in names)
 
     def test_banner_uses_no_placeholder_markers(self, valid_toml, tmp_path):
         """The ASCII art must not contain runs of underscores that would
@@ -1971,7 +2027,8 @@ def _profile_toml(profile_name: str) -> dict:
         "cis": {"level": 1},
         "cloud": {"secret_id_env": "TENCENTCLOUD_SECRET_ID",
                   "secret_key_env": "TENCENTCLOUD_SECRET_KEY"},
-        "meta": {"os_tag": profile_name, "benchmark": "CIS-v1.0.0"},
+        "meta": {"os_tag": PROFILES[profile_name]["os_tag"],
+                 "benchmark": PROFILES[profile_name]["benchmark"]},
     }
     if family == "windows":
         base["cloud"]["winrm_password_env"] = "WINRM_PASSWORD"
@@ -2088,8 +2145,8 @@ class TestMain:
 # PROFILES integrity checks
 # ---------------------------------------------------------------------------
 class TestProfiles:
-    def test_count_is_13(self):
-        assert len(PROFILES) == 13, f"Expected 13 profiles, got {len(PROFILES)}"
+    def test_count_is_14(self):
+        assert len(PROFILES) == 14, f"Expected 14 profiles, got {len(PROFILES)}"
 
     def test_all_have_os_tag(self):
         for name, p in PROFILES.items():
@@ -2218,6 +2275,7 @@ class TestAllProfilesRender:
             data = _make_win_toml(profile_name)
         else:
             valid_toml["build"]["profile"] = profile_name
+            valid_toml["meta"]["os_tag"] = PROFILES[profile_name]["os_tag"]
             data = valid_toml
 
         r = resolve(data)
@@ -2241,6 +2299,7 @@ class TestAllProfilesRender:
             data = _make_win_toml(profile_name)
         else:
             valid_toml["build"]["profile"] = profile_name
+            valid_toml["meta"]["os_tag"] = PROFILES[profile_name]["os_tag"]
             data = valid_toml
 
         r = resolve(data)
@@ -2272,6 +2331,7 @@ class TestAllProfilesRender:
             data = _make_win_toml(profile_name)
         else:
             valid_toml["build"]["profile"] = profile_name
+            valid_toml["meta"]["os_tag"] = PROFILES[profile_name]["os_tag"]
             data = valid_toml
 
         r = resolve(data)
@@ -3088,10 +3148,14 @@ class TestCleanupImages:
             return R()
         monkeypatch.setattr("ohbs_image.urllib.request.urlopen", flaky)
         monkeypatch.setattr("ohbs_image.time.sleep", lambda *_a: None)
+        attempts = []
         out = ohbs_image._tc3_api("cvm", "DescribeImages", "2017-03-12",
                               "ap-guangzhou", {"ImageIds": ["img-x"]},
-                              "AKIDtest", "sk-test")
+                              "AKIDtest", "sk-test",
+                              attempt_observer=lambda number, outcome:
+                              attempts.append((number, outcome)))
         assert calls["n"] == 3
+        assert attempts == [(1, "retry"), (2, "retry"), (3, "success")]
         assert out["Response"]["ImageSet"] == []
 
     def test_tc3_gives_up_after_max_retries(self, monkeypatch):
@@ -4002,7 +4066,7 @@ class TestRuleIdAndBenchmark:
         import hashlib
         hashes = set()
         for role in ("cis-tencentos4", "cis-tencentos3", "cis-rhel8",
-                     "cis-rhel9", "cis-rhel10", "cis-rocky9",
+                     "cis-rhel9", "cis-rhel10", "cis-rocky9", "cis-rocky10",
                      "cis-ubuntu2004", "cis-ubuntu2204", "cis-ubuntu2404"):
             with open(f"ohbs_image/roles/{role}/files/ohbs_engine.py", "rb") as fh:
                 data = fh.read()
@@ -4290,7 +4354,11 @@ class TestVerifyImage:
         scanned = {}
         monkeypatch.setattr("ohbs_image._probe_scan",
                             lambda *a, **k: scanned.update({"args": a, **k}) or
-                            {"summary": {"all": {"score": 96.0, "fail": 0}}})
+                            {"benchmark": r.image_benchmark, "profile": "L1",
+                             "catalog_sha256": hashlib.sha256(
+                                 ohbs_image._catalog_path(r.role_dir, r.image_benchmark).read_bytes()
+                             ).hexdigest(),
+                             "summary": {"all": {"score": 96.0, "fail": 0}}})
         terminated = []
         monkeypatch.setattr("ohbs_image._probe_terminate",
                             lambda r_, i: terminated.append(i))
@@ -4348,7 +4416,12 @@ class TestVerifyImage:
         monkeypatch.setattr("ohbs_image._probe_public_ip", lambda *a, **k: "1.2.3.4")
         monkeypatch.setattr("ohbs_image._probe_winrm_ready", lambda *a, **k: True)
         monkeypatch.setattr("ohbs_image._probe_scan_windows",
-                            lambda *a, **k: {"summary": {"all": {"score": 96.0, "fail": 0}}})
+                            lambda *a, **k: {
+                                "benchmark": r.image_benchmark, "profile": "L1",
+                                "catalog_sha256": hashlib.sha256(
+                                    ohbs_image._catalog_path(
+                                        r.role_dir, r.image_benchmark).read_bytes()).hexdigest(),
+                                "summary": {"all": {"score": 96.0, "fail": 0}}})
         terminated = []
         monkeypatch.setattr("ohbs_image._probe_terminate", lambda r_, i: terminated.append(i))
         monkeypatch.setattr("ohbs_image._write_run_manifest", lambda *a, **k: None)
@@ -4571,6 +4644,7 @@ class TestAttestationPolicy:
         monkeypatch.setattr("ohbs_image.run_packer", lambda *a, **k: PackerResult(
             exit_code=0, stdout_lines=["Created image ID: img-new", "Score: 95%"]))
         monkeypatch.setattr("ohbs_image._commands._save_build_report", lambda *a: report)
+        monkeypatch.setattr("ohbs_image._commands._audit_identity_failures", lambda *a: [])
         monkeypatch.setattr("ohbs_image._write_provenance", lambda *a, **k: provenance)
         monkeypatch.setattr("ohbs_image._share_images", lambda *a: shared.append(a))
         result = tmp_path / "result.json"
@@ -4652,7 +4726,9 @@ class TestProvenanceSbom:
         assert "Scores by recommendation group" not in text
         assert "Catalog coverage" in text
         assert "Not evaluated" in text
-        assert '<section class="recommendation-summary">' not in text
+        assert '<section class="recommendation-summary">' in text
+        assert "Why coverage is not 100%" in text
+        assert "Implementation missing" in text
         assert 'id="audit-filter"' in text
         assert 'id="audit-search"' in text
         assert "Ensure cramfs kernel module is not available" in text
@@ -5440,6 +5516,7 @@ class TestTestComponentsNonRoot:
         (tmp_path / "check.sh").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
         # ubuntu profile → ssh_username = ubuntu
         valid_toml["build"]["profile"] = "ubuntu2204"
+        valid_toml["meta"]["os_tag"] = PROFILES["ubuntu2204"]["os_tag"]
         r = resolve(valid_toml)
         wd = tmp_path / "w"
         render_all(wd, r)
@@ -5523,7 +5600,12 @@ class TestVerifyImageMinScoreFallback:
         monkeypatch.setattr("ohbs_image._probe_public_ip", lambda *a, **k: "1.2.3.4")
         monkeypatch.setattr("ohbs_image._probe_ssh_ready", lambda *a, **k: True)
         monkeypatch.setattr("ohbs_image._probe_scan",
-                            lambda *a, **k: {"summary": {"all": {"score": 40.0, "fail": 9}}})
+                            lambda *a, **k: {
+                                "benchmark": r.image_benchmark, "profile": "L1",
+                                "catalog_sha256": hashlib.sha256(
+                                    ohbs_image._catalog_path(
+                                        r.role_dir, r.image_benchmark).read_bytes()).hexdigest(),
+                                "summary": {"all": {"score": 40.0, "fail": 9}}})
         monkeypatch.setattr("ohbs_image._probe_terminate", lambda *a, **k: None)
         args = mock.MagicMock(config="c", workdir="w", image="img-new", min_score=0)
         assert cmd_verify_image(args) == 0  # 40 < 85, but the gate is disabled
@@ -6242,7 +6324,7 @@ class TestOutputYmlListsSkippedManual:
     def test_all_output_ymls_include_skipped_manual(self):
         import glob as _g
         outputs = sorted(_g.glob("ohbs_image/roles/cis-*/tasks/output.yml"))
-        assert len(outputs) == 13
+        assert len(outputs) == len(PROFILES)
         for p in outputs:
             content = Path(p).read_text(encoding="utf-8")
             assert "skipped_manual" in content, p
@@ -6332,7 +6414,8 @@ class TestLinuxRunYmlSurvivesEngineCrash:
         import glob as _g
         linux = [p for p in _g.glob("ohbs_image/roles/cis-*/tasks/run.yml")
                  if "cis-win" not in p]
-        assert len(linux) == 9
+        assert len(linux) == len([p for p in PROFILES.values()
+                                  if p.get("family", "") != "windows"])
         for p in linux:
             content = Path(p).read_text(encoding="utf-8")
             assert "failed_when: false" in content, p
@@ -6378,7 +6461,8 @@ class TestPreflightRangeValidation:
         import glob as _g
         linux = [p for p in _g.glob("ohbs_image/roles/cis-*/tasks/preflight.yml")
                  if "cis-win" not in p]
-        assert len(linux) == 9
+        assert len(linux) == len([p for p in PROFILES.values()
+                                  if p.get("family", "") != "windows"])
         for p in linux:
             content = Path(p).read_text(encoding="utf-8")
             assert "Validate cis_min_score range" in content, p

@@ -10,7 +10,7 @@ import check_readme  # noqa: E402
 
 import ohbs_image  # noqa: E402
 
-ALL_CMDS = {"ancestry", "audit", "benchmark", "build", "catalog", "channel", "check-source", "clean", "cleanup", "cleanup-images", "cleanup-runs", "compliance", "config", "configure", "consumer", "cve", "discover", "distribution", "doctor", "dr", "drift", "engine", "event", "extension", "guide", "launch", "plan", "policy", "promote", "proof", "provider", "registry", "report", "rollback", "run", "serve", "state", "upgrade", "verify-release",
+ALL_CMDS = {"ancestry", "audit", "baseline", "benchmark", "build", "catalog", "channel", "check-source", "clean", "cleanup", "cleanup-images", "cleanup-runs", "compliance", "config", "configure", "consumer", "cve", "discover", "distribution", "doctor", "dr", "drift", "engine", "event", "extension", "guide", "launch", "native", "plan", "policy", "promote", "proof", "provider", "registry", "report", "rollback", "run", "serve", "state", "upgrade", "verify-release",
             "images", "init", "list", "pending", "preflight", "quickstart", "scan", "test",
             "try", "validate", "verify", "verify-image", "worker"}
 
@@ -138,7 +138,7 @@ class TestCheckProfileCountInPackaging:
             encoding="utf-8")
         (tmp_path / "ohbs_image").mkdir()
         (tmp_path / "ohbs_image" / "__init__.py").write_text(
-            '"""\nSupported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9,\n'
+            '"""\nSupported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9/10,\n'
             '              TencentOS 3/4, Windows Server '
             '2016/2019/2022/2025\n"""\n',
             encoding="utf-8")
@@ -259,10 +259,10 @@ class TestMainCheckTranslations:
                 encoding="utf-8")
         monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
         (tmp_path / "pyproject.toml").write_text(
-            'description = "13 OS profiles"\n', encoding="utf-8")
+            'description = "14 OS profiles"\n', encoding="utf-8")
         (tmp_path / "ohbs_image").mkdir()
         (tmp_path / "ohbs_image" / "__init__.py").write_text(
-            '"""\nSupported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9,\n'
+            '"""\nSupported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9/10,\n'
             '              TencentOS 3/4, Windows Server '
             '2016/2019/2022/2025\n"""\n',
             encoding="utf-8")
@@ -289,10 +289,10 @@ class TestMainCheckTranslations:
                 "`ohbs-image init` and `ohbs-image build`\n", encoding="utf-8")
         monkeypatch.setattr(check_readme, "REPO_ROOT", tmp_path)
         (tmp_path / "pyproject.toml").write_text(
-            'description = "13 OS profiles"\n', encoding="utf-8")
+            'description = "14 OS profiles"\n', encoding="utf-8")
         (tmp_path / "ohbs_image").mkdir()
         (tmp_path / "ohbs_image" / "__init__.py").write_text(
-            '"""\nSupported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9,\n'
+            '"""\nSupported OS: Ubuntu 20/22/24, RHEL 8/9/10, Rocky 9/10,\n'
             '              TencentOS 3/4, Windows Server '
             '2016/2019/2022/2025\n"""\n',
             encoding="utf-8")

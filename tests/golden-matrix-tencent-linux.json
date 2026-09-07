@@ -1,0 +1,19 @@
+{
+  "schema": "https://ohbs-image.dev/golden-matrix/v1",
+  "provider": "tencentcloud",
+  "validated_at": "2026-08-31",
+  "targets": [
+    {"profile":"tencentos3","level":1,"source_image_id":"img-7rqxtnh9","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v1.0.0"},
+    {"profile":"tencentos3","level":2,"source_image_id":"img-7rqxtnh9","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v1.0.0"},
+    {"profile":"tencentos4","level":1,"source_image_id":"img-6n21msk1","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v1.0.0"},
+    {"profile":"tencentos4","level":2,"source_image_id":"img-6n21msk1","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v1.0.0"},
+    {"profile":"rocky9","level":1,"source_image_id":"img-ixbfw1ar","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v2.0.0"},
+    {"profile":"rocky9","level":2,"source_image_id":"img-ixbfw1ar","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v2.0.0"},
+    {"profile":"rhel8","level":1,"source_image_id":"img-kp3mv36j","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v4.0.0"},
+    {"profile":"rhel8","level":2,"source_image_id":"img-kp3mv36j","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v4.0.0"},
+    {"profile":"rhel9","level":1,"source_image_id":"img-02j8jprl","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v2.0.0"},
+    {"profile":"rhel9","level":2,"source_image_id":"img-02j8jprl","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v2.0.0"},
+    {"profile":"rhel10","level":1,"source_image_id":"img-29guuzjp","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v1.0.1"},
+    {"profile":"rhel10","level":2,"source_image_id":"img-29guuzjp","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v1.0.1"}
+  ]
+}

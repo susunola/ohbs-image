@@ -84,6 +84,7 @@ class ResolvedConfig:
     attestation_required: bool          # [attestation].required — signed provenance is required before release
     test_components: list[str]          # [meta].test_components — user-defined test scripts run before snapshot
     verify_boot: bool                   # [meta].verify_boot — boot a probe instance from the produced image and re-audit before declaring success (default false)
+    native_phase_timeout_minutes: dict[str, int] = field(default_factory=dict)
     site_policy_controls: dict[str, dict[str, Any]] = field(default_factory=dict)
     packer_extra: dict[str, Any] = field(default_factory=dict)  # [build.packer] — arbitrary packer tencentcloud-cvm builder args (passthrough)
     run_id: str = ""                    # runtime-only evidence correlation ID (not read from TOML)
@@ -616,6 +617,24 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
             f"[build].max_build_minutes must be 15-1440, got {max_build_minutes}. "
             "Use a value long enough for the profile and short enough to cap cost.")
 
+    # Optional Native Engine phase caps. Omitted phases continue to use only
+    # the global build deadline, preserving existing behaviour.
+    native = _get_table(data, "native")
+    phase_raw = native.get("phase_timeout_minutes", {})
+    if not isinstance(phase_raw, dict):
+        raise ConfigError("[native.phase_timeout_minutes] must be a table.")
+    allowed_phases = {"launch", "connect", "provision", "reboot", "snapshot", "sync"}
+    unknown_phases = sorted(set(phase_raw) - allowed_phases)
+    if unknown_phases:
+        raise ConfigError("[native.phase_timeout_minutes] unknown phase(s): " +
+                          ", ".join(unknown_phases))
+    native_phase_timeout_minutes: dict[str, int] = {}
+    for phase_name, value in phase_raw.items():
+        if not isinstance(value, int) or isinstance(value, bool) or not (1 <= value <= 1440):
+            raise ConfigError(
+                f"[native.phase_timeout_minutes].{phase_name} must be an integer 1-1440.")
+        native_phase_timeout_minutes[str(phase_name)] = value
+
     # [meta].test_components — user-defined test scripts run before snapshot.
     test_components = _read_str_list(data, "meta", "test_components")
 
@@ -681,7 +700,8 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         assume_role_arn=assume_role_arn,
         assume_role_session=assume_role_session,
         assume_role_duration=assume_role_duration,
-        image_os_tag=str(meta.get("os_tag", p.get("os_tag", ""))),
+        image_os_tag=str(p.get("os_tag", "")) if meta.get("os_tag") == profile_name
+        else str(meta.get("os_tag", p.get("os_tag", ""))),
         image_benchmark=benchmark,
         catalog_basename=catalog_basename,
         level=level,
@@ -706,6 +726,7 @@ def resolve(data: dict[str, Any]) -> ResolvedConfig:
         attestation_required=attestation_required,
         test_components=test_components,
         verify_boot=verify_boot,
+        native_phase_timeout_minutes=native_phase_timeout_minutes,
     )
 
 def _lineage_path() -> Path:

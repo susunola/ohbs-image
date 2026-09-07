@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from ohbs_image._discover import cmd_discover, discover_resources
+from ohbs_image._discover import cmd_discover, discover_resources, rank_instance_types
 
 
 def test_discover_subnets_normalizes_cloud_response(monkeypatch):
@@ -43,6 +43,16 @@ def test_discover_images_filters_profile(monkeypatch):
     rows = discover_resources("images", "ap-guangzhou", profile="ubuntu2404")
     assert [row["id"] for row in rows] == ["img-u"]
     assert set(rows[0]) == {"id", "name", "os", "architecture", "state", "created_at"}
+
+
+def test_rocky_discovery_does_not_select_other_distributions_or_versions(monkeypatch):
+    monkeypatch.setenv("TENCENTCLOUD_SECRET_ID", "sid")
+    monkeypatch.setenv("TENCENTCLOUD_SECRET_KEY", "key")
+    names = ["TencentOS Server 4", "Rocky Linux 9.8 64bit", "Rocky Linux 10.0 64bit"]
+    monkeypatch.setattr("ohbs_image._tc3_api", lambda *a, **kw: {"Response": {
+        "ImageSet": [{"ImageId": name, "OsName": name} for name in names]}})
+    assert [row["id"] for row in discover_resources("images", "ap-guangzhou", profile="rocky9")] == [names[1]]
+    assert [row["id"] for row in discover_resources("images", "ap-guangzhou", profile="rocky10")] == [names[2]]
 
 
 def test_discover_images_matches_tencentos_major_without_digit_collisions(monkeypatch):
@@ -109,3 +119,30 @@ def test_discover_instance_types_filters_and_normalizes(monkeypatch):
     in_stock = discover_resources("instance-types", "ap-guangzhou", zone="ap-guangzhou-3",
                                   in_stock=True)
     assert [r["id"] for r in in_stock] == ["S5.MEDIUM2", "S5.LARGE8"]
+
+
+def test_instance_ranking_prefers_observed_reliability_then_p95() -> None:
+    candidates = [
+        {"id": "S5.SMALL2", "cpu": 1, "memory": 2, "status": "AVAILABLE"},
+        {"id": "S5.MEDIUM2", "cpu": 2, "memory": 4, "status": "AVAILABLE"},
+        {"id": "S5.LARGE8", "cpu": 4, "memory": 8, "status": "AVAILABLE"},
+    ]
+    history = [
+        {"instance_type": "S5.SMALL2", "status": "failed", "build_seconds": 300},
+        {"instance_type": "S5.MEDIUM2", "status": "completed", "build_seconds": 200},
+        {"instance_type": "S5.MEDIUM2", "status": "completed", "build_seconds": 180},
+        {"instance_type": "S5.LARGE8", "status": "completed", "build_seconds": 240},
+    ]
+    result = rank_instance_types(candidates, history)
+    assert [row["id"] for row in result] == ["S5.MEDIUM2", "S5.LARGE8", "S5.SMALL2"]
+    assert result[0]["recommended"] is True
+    assert result[0]["selection_evidence"] == {"samples": 2, "failure_rate": 0.0,
+        "p95_build_seconds": 200.0, "reason": "2 builds; failure_rate=0.0%; p95=200.0s"}
+
+
+def test_instance_ranking_without_history_is_deterministic_and_stock_safe() -> None:
+    result = rank_instance_types([
+        {"id": "B", "cpu": 2, "memory": 4, "status": "SOLD_OUT"},
+        {"id": "A", "cpu": 2, "memory": 4, "status": "AVAILABLE"},
+    ])
+    assert [row["id"] for row in result] == ["A", "B"]

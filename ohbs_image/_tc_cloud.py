@@ -5,6 +5,7 @@ import os
 import subprocess
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from datetime import UTC
 from pathlib import Path
 from typing import Any, cast
@@ -45,7 +46,9 @@ def _image_ids_still_exist(region: str, image_ids: list[str],
 
 def _tc3_api(service: str, action: str, version: str, region: str,
              params: dict[str, Any], secret_id: str, secret_key: str,
-             token: str | None = None, max_retries: int = 3) -> dict[str, Any]:
+             token: str | None = None, max_retries: int = 3,
+             attempt_observer: Callable[[int, str], None] | None = None,
+             ) -> dict[str, Any]:
     """Call a Tencent Cloud API v3 endpoint with TC3-HMAC-SHA256 signing.
 
     Retries transient failures — connection resets, timeouts, and 429/5xx
@@ -122,11 +125,17 @@ def _tc3_api(service: str, action: str, version: str, region: str,
                     str(error.get("Code") or "ProviderError"),
                     str(error.get("Message") or "provider request failed"), phase=operation)
                 if failure.retryable and attempt < max_retries - 1:
+                    if attempt_observer:
+                        attempt_observer(attempt + 1, "retry")
                     time.sleep(2 ** attempt)
                     continue
                 terminal(failure, attempt + 1)
+                if attempt_observer:
+                    attempt_observer(attempt + 1, "provider_error")
                 return document
             PROVIDER_BREAKER.success(operation)
+            if attempt_observer:
+                attempt_observer(attempt + 1, "success")
             return document
         except urllib.error.HTTPError as exc:
             # Only retry rate-limit/gateway errors; a real 4xx (bad request,
@@ -134,24 +143,38 @@ def _tc3_api(service: str, action: str, version: str, region: str,
             if exc.code not in (429, 500, 502, 503, 504) or attempt == max_retries - 1:
                 failure = classify_provider_error(f"HTTP{exc.code}", str(exc), phase=operation)
                 terminal(failure, attempt + 1)
+                if attempt_observer:
+                    attempt_observer(attempt + 1, "http_error")
                 raise ConfigError(
                     f"Tencent Cloud API {action} ({service}) request failed: HTTP {exc.code}") from exc
+            if attempt_observer:
+                attempt_observer(attempt + 1, "retry")
         except urllib.error.URLError as exc:
             # Network-layer failure (DNS, reset, timeout) — worth a retry.
             if attempt == max_retries - 1:
                 failure = classify_provider_error("NetworkError", str(exc.reason), phase=operation)
                 terminal(failure, attempt + 1)
+                if attempt_observer:
+                    attempt_observer(attempt + 1, "network_error")
                 raise ConfigError(
                     f"Tencent Cloud API {action} ({service}) request failed: {exc.reason}") from exc
+            if attempt_observer:
+                attempt_observer(attempt + 1, "retry")
         except (TimeoutError, ConnectionError, OSError) as exc:  # socket.timeout / conn reset
             if attempt == max_retries - 1:
                 failure = classify_provider_error("NetworkError", str(exc), phase=operation)
                 terminal(failure, attempt + 1)
+                if attempt_observer:
+                    attempt_observer(attempt + 1, "network_error")
                 raise ConfigError(
                     f"Tencent Cloud API {action} ({service}) network error: {exc}") from exc
+            if attempt_observer:
+                attempt_observer(attempt + 1, "retry")
         except json.JSONDecodeError as exc:
             failure = classify_provider_error("InvalidJSON", str(exc), phase=operation)
             terminal(failure, attempt + 1)
+            if attempt_observer:
+                attempt_observer(attempt + 1, "invalid_json")
             raise ConfigError(
                 f"Tencent Cloud API {action} ({service}) returned invalid JSON") from exc
         time.sleep(2 ** attempt)
@@ -165,7 +188,11 @@ def _my_public_ip() -> str | None:
     Returns None on any failure (offline, blocked egress, DNS) — the caller
     must treat that as "can't verify" rather than "blocked".
     """
-    for url in ("https://ifconfig.me/ip", "https://api.ipify.org"):
+    # Prefer IPv4 because Tencent Cloud build CVMs currently receive an IPv4
+    # public address and the configured security-group rule is IPv4. Falling
+    # back to dual-stack endpoints is still useful for diagnostic warnings.
+    for url in ("https://api4.ipify.org", "https://v4.ident.me",
+                "https://ifconfig.me/ip", "https://api.ipify.org"):
         try:
             with urllib.request.urlopen(url, timeout=3) as resp:  # noqa: S310
                 ip = str(resp.read().decode("utf-8")).strip()
@@ -263,10 +290,68 @@ def _check_security_group_ingress(r: ResolvedConfig) -> None:
     allowed = _sg_ingress_allows(policies, my_ip, port)
     if allowed is False:
         proto_label = "WinRM/3389" if r.family == "windows" else f"SSH/{port}"
+        import ipaddress
+        prefix = 128 if ipaddress.ip_address(my_ip).version == 6 else 32
         warn(f"Security group {r.security_group_id} does not appear to allow "
              f"{proto_label} from this machine's public IP ({my_ip}) — Packer "
              f"will likely time out connecting to the build instance. Add an "
-             f"inbound rule for {my_ip}/32 : TCP {port} before running 'build'.")
+             f"inbound rule for {my_ip}/{prefix} : TCP {port} before running 'build'.")
+
+
+def _create_temporary_ingress(r: ResolvedConfig) -> dict[str, str] | None:
+    """Create one run-scoped controller ingress rule, or return None if allowed.
+
+    This is opt-in because it mutates a user-owned security group.  Deletion
+    uses exact rule matching rather than a shifting PolicyIndex.
+    """
+    import ipaddress
+
+    ip = _my_public_ip()
+    if not ip:
+        raise ConfigError("cannot determine controller public IP for temporary ingress")
+    port = 3389 if r.family == "windows" else (r.ssh_port or 22)
+    prefix = 128 if ipaddress.ip_address(ip).version == 6 else 32
+    cidr = f"{ip}/{prefix}"
+    sid, skey, tok = _creds(r.secret_id_env, r.secret_key_env, r.security_token_env)
+    described = _tc3_api(
+        "vpc", "DescribeSecurityGroupPolicies", "2017-03-12", r.region,
+        {"SecurityGroupId": r.security_group_id}, sid, skey, tok or None)
+    policies = described.get("Response", {}).get("SecurityGroupPolicySet") or {}
+    if _sg_ingress_allows(policies, ip, port) is True:
+        return None
+    rule = {
+        "Protocol": "TCP", "Port": str(port), "CidrBlock": cidr,
+        "Action": "ACCEPT", "PolicyDescription": f"ohbs-image run {r.run_id[:12]}",
+    }
+    response = _tc3_api(
+        "vpc", "CreateSecurityGroupPolicies", "2017-03-12", r.region,
+        {"SecurityGroupId": r.security_group_id,
+         "SecurityGroupPolicySet": {"Ingress": [rule]}}, sid, skey, tok or None)
+    error = response.get("Response", {}).get("Error")
+    if error:
+        raise ConfigError(f"temporary security-group ingress creation failed: {error}")
+    ok(f"Temporary security-group ingress created: {cidr} TCP/{port}")
+    return rule
+
+
+def _delete_temporary_ingress(r: ResolvedConfig, rule: dict[str, str] | None) -> None:
+    """Best-effort exact-match removal of a rule created by this run."""
+    if not rule:
+        return
+    sid, skey, tok = _creds(r.secret_id_env, r.secret_key_env, r.security_token_env)
+    match = {key: rule[key] for key in ("Action", "Protocol", "CidrBlock", "Port")}
+    try:
+        response = _tc3_api(
+            "vpc", "DeleteSecurityGroupPolicies", "2017-03-12", r.region,
+            {"SecurityGroupId": r.security_group_id,
+             "SecurityGroupPolicySet": {"Ingress": [match]}}, sid, skey, tok or None)
+        error = response.get("Response", {}).get("Error")
+        if error:
+            warn(f"Could not delete temporary security-group ingress: {error}")
+        else:
+            ok(f"Temporary security-group ingress removed: {rule['CidrBlock']}")
+    except Exception as exc:
+        warn(f"Could not delete temporary security-group ingress: {exc}")
 
 def _images_exist(region: str, image_ids: list[str],
                   r: ResolvedConfig | None = None) -> list[str]:
@@ -356,6 +441,7 @@ def _probe_setup_keypair(r: ResolvedConfig) -> tuple[str, str, str]:
     the cloud KeyPair and the local temp dir leak.
     """
     import secrets
+    import shutil
     import tempfile
     sid, skey, tok = _creds(r.secret_id_env, r.secret_key_env, r.security_token_env)
     if not sid or not skey:
@@ -374,29 +460,51 @@ def _probe_setup_keypair(r: ResolvedConfig) -> tuple[str, str, str]:
         pub = fh.read().strip()
     run_id = r.run_id or ohbs_image._new_run_id()
     r.run_id = run_id
-    key_name = f"ohbs-image-probe-{run_id}-{secrets.token_hex(2)}"
+    # Tencent Cloud caps KeyName at 25 characters. A full UUID made both
+    # clean-boot verification and the native builder fail before launch.
+    # Keep a recognizable prefix plus enough run entropy for concurrent jobs.
+    compact_run = "".join(char for char in run_id.lower()
+                          if char in "0123456789abcdef")[:10]
+    key_name = f"ohbs_{compact_run}_{secrets.token_hex(2)}"
     resp = ohbs_image._tc3_api("cvm", "ImportKeyPair", "2017-03-12", r.region,
                     {"KeyName": key_name, "ProjectId": 0, "PublicKey": pub},
                     sid, skey, tok or None)
     resp_r = resp.get("Response", {})
     if "Error" in resp_r:
+        shutil.rmtree(tmpdir, ignore_errors=True)
         raise ConfigError(f"ImportKeyPair failed: {resp_r['Error']}")
     key_id = resp_r.get("KeyId")
     if not key_id:
+        shutil.rmtree(tmpdir, ignore_errors=True)
         raise ConfigError("ImportKeyPair returned no KeyId")
     return str(key_id), priv, pub
 
 def _probe_teardown_keypair(r: ResolvedConfig, key_id: str, priv_path: str) -> None:
     """Best-effort cleanup of the probe key pair (cloud KeyPair + local files)."""
     import shutil
+    import time
     if key_id:
         sid, skey, tok = _creds(r.secret_id_env, r.secret_key_env, r.security_token_env)
         if sid and skey:
-            try:
-                ohbs_image._tc3_api("cvm", "DeleteKeyPairs", "2017-03-12", r.region,
-                         {"KeyIds": [key_id]}, sid, skey, tok or None)
-            except Exception as exc:
-                warn(f"Could not delete probe key pair {key_id}: {exc}")
+            for attempt in range(12):
+                try:
+                    response = ohbs_image._tc3_api(
+                        "cvm", "DeleteKeyPairs", "2017-03-12", r.region,
+                        {"KeyIds": [key_id]}, sid, skey, tok or None)
+                    error = response.get("Response", {}).get("Error")
+                    if not error:
+                        break
+                    if attempt == 11:
+                        warn(f"Could not delete probe key pair {key_id}: {error}")
+                    else:
+                        # Instance termination is asynchronous; Tencent Cloud
+                        # keeps the attached key busy for a short interval.
+                        time.sleep(5)
+                except Exception as exc:
+                    if attempt == 11:
+                        warn(f"Could not delete probe key pair {key_id}: {exc}")
+                    else:
+                        time.sleep(5)
     if priv_path:
         shutil.rmtree(os.path.dirname(priv_path), ignore_errors=True)
 

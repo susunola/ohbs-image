@@ -6,6 +6,8 @@ from dataclasses import asdict, dataclass
 from importlib import metadata
 from typing import Any, Protocol, runtime_checkable
 
+from ._logging import ConfigError
+
 PROVIDER_API_VERSION = "1.0"
 ENTRY_POINT_GROUP = "ohbs_image.providers"
 
@@ -113,6 +115,13 @@ def _provider_document(provider: Provider) -> dict[str, Any]:
         isinstance(check, dict) and check.get("passed") is True for check in checks
     ):
         raise ProviderCompatibilityError(f"provider {provider.name!r} failed its offline contract test")
+    native_engine: dict[str, Any] | None = None
+    try:
+        from .native.providers import provider_capabilities
+
+        native_engine = asdict(provider_capabilities(provider.name))
+    except (ValueError, ImportError, ConfigError):
+        pass
     return {
         "name": provider.name,
         "api_version": provider.api_version,
@@ -120,6 +129,7 @@ def _provider_document(provider: Provider) -> dict[str, Any]:
         "maturity": getattr(provider, "maturity", "external-unverified"),
         "production_ready": getattr(provider, "maturity", "external-unverified") == "production",
         "capabilities": asdict(provider.capabilities),
+        "native_engine": native_engine,
         "contract": contract,
     }
 

@@ -23,6 +23,20 @@ from ohbs_image._quickstart import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def test_cloud_errors_are_not_reported_as_success(tmp_path, monkeypatch):
+    from ohbs_image._quickstart import _cmd_cleanup, _create_vpc, _record_resources
+    _set_creds(monkeypatch)
+    def reject(*args, **kwargs):
+        return {"Response": {"Error": {"Code": "UnauthorizedOperation"}}}
+    monkeypatch.setattr("ohbs_image._tc3_api", reject)
+    with pytest.raises(ConfigError, match="UnauthorizedOperation"):
+        _create_vpc("ap-guangzhou", "id", "key", None)
+    target = tmp_path / "network.toml"
+    _record_resources(target, "ap-guangzhou", {"vpc_id": "vpc-task"})
+    assert _cmd_cleanup(target) == 1
+    assert _resource_path(target).exists()
+
+
 def _args(target: str, **overrides: object) -> argparse.Namespace:
     base = {
         "profile": "ubuntu2204", "region": "ap-guangzhou", "zone": "",
@@ -54,6 +68,7 @@ class _FakeCloud:
             return {"Response": {"ZoneSet": [
                 {"Zone": z, "ZoneState": "AVAILABLE"} for z in self.zones]}}
         if action == "CreateVpc":
+            assert params["EnableMulticast"] == "false"
             return {"Response": {"Vpc": {"VpcId": "vpc-qsvpc"}}}
         if action == "CreateSubnet":
             return {"Response": {"Subnet": {"SubnetId": "subnet-qssub"}}}

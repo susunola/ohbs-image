@@ -32,7 +32,7 @@ jobs:
         run: python scripts/check_release.py --tag "${GITHUB_REF_NAME}"
 
       - name: Install pinned build tooling
-        run: pip install "build==1.2.2.post1" "setuptools==75.3.0" "wheel==0.45.1"
+        run: pip install "build==1.3.0" "setuptools==80.9.0" "wheel==0.45.1"
 
       - name: Build wheel + sdist (no isolation — pinned backend above)
         run: python -m build --no-isolation

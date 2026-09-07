@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-VERSION = "0.21.0"
+VERSION = "0.22.0"
 
 logger = logging.getLogger("ohbs-image")
 

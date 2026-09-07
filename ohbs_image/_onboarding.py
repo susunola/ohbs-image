@@ -1003,7 +1003,7 @@ secret_key_env = "TENCENTCLOUD_SECRET_KEY"
 {('winrm_password_env = "WINRM_PASSWORD"' if PROFILES[profile].get('family') == 'windows' else '')}
 
 [meta]
-os_tag = "{profile}"
+os_tag = "{PROFILES[profile]['os_tag']}"
 benchmark = "{PROFILES[profile].get('benchmark', '')}"
 '''
 

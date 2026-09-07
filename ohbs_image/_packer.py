@@ -231,7 +231,7 @@ def run_packer(
         fail("packer not found in PATH.")
         return PackerResult(exit_code=1)
 
-def run_preflight(r: ResolvedConfig) -> bool:
+def run_preflight(r: ResolvedConfig, builder: str = "packer") -> bool:
     """Run all pre-flight checks. Returns True if everything passes."""
     banner("preflight")
     all_ok = True
@@ -275,8 +275,19 @@ def run_preflight(r: ResolvedConfig) -> bool:
                  "pip install pywinrm")
             all_ok = False
 
-    # packer binary
-    if shutil.which("packer"):
+    # Controller-specific toolchain. The native backend intentionally has no
+    # Packer dependency, but its first vertical slice is Linux/SSH only.
+    if builder == "native":
+        if family == "windows":
+            fail("native builder currently supports Linux profiles only")
+            all_ok = False
+        for tool in ("ssh", "scp", "ssh-keygen"):
+            if shutil.which(tool):
+                ok(f"{tool} found in PATH (native builder)")
+            else:
+                fail(f"{tool} not found in PATH — required by native builder")
+                all_ok = False
+    elif shutil.which("packer"):
         ok("packer found in PATH")
     else:
         fail("packer not found in PATH — install from https://developer.hashicorp.com/packer/install")

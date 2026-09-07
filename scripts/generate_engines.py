@@ -17,7 +17,7 @@ ROLES = ROOT / "ohbs_image" / "roles"
 GROUPS = {
     "linux": ("cis-ubuntu2004", "ohbs_engine.py",
               ("cis-ubuntu2204", "cis-ubuntu2404", "cis-rhel8", "cis-rhel9",
-               "cis-rhel10", "cis-rocky9", "cis-tencentos3",
+               "cis-rhel10", "cis-rocky9", "cis-rocky10", "cis-tencentos3",
                "cis-tencentos4")),
     "windows-legacy": ("cis-win2016", "ohbs_engine.ps1",
                        ("cis-win2019", "cis-win2022", "cis-win2025")),

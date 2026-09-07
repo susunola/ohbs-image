@@ -4,11 +4,50 @@ import argparse
 import json
 import os
 import re
+from pathlib import Path
 from typing import Any
 
 import ohbs_image
 
 from ._logging import fail
+
+
+def rank_instance_types(candidates: list[dict[str, Any]],
+                        history: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Rank purchasable CVM types using observed reliability, latency and size."""
+    observed: dict[str, list[dict[str, Any]]] = {}
+    for row in history or []:
+        observed.setdefault(str(row.get("instance_type") or ""), []).append(row)
+    ranked = []
+    for row in candidates:
+        instance_type = str(row.get("id") or "")
+        samples = observed.get(instance_type, [])
+        failures = sum(str(item.get("status") or "").lower() != "completed"
+                       for item in samples)
+        failure_rate = failures / len(samples) if samples else None
+        durations = sorted(float(item.get("build_seconds") or 0) for item in samples
+                           if float(item.get("build_seconds") or 0) > 0)
+        p95 = durations[max(0, (95 * len(durations) + 99) // 100 - 1)] if durations else None
+        available = str(row.get("status") or "").upper() not in {"SOLD_OUT", "UNAVAILABLE"}
+        # Evidence dominates size. With no history, prefer the smallest
+        # purchasable type meeting the caller's CPU/memory constraints.
+        sort_key = (not available,
+                    failure_rate if failure_rate is not None else 1.0,
+                    p95 if p95 is not None else float("inf"),
+                    int(row.get("cpu") or 0), int(row.get("memory") or 0), instance_type)
+        reason = (f"{len(samples)} builds; failure_rate={failure_rate:.1%}; p95={p95:.1f}s"
+                  if samples and p95 is not None else
+                  "no history; smallest purchasable candidate")
+        ranked.append({**row, "selection_evidence": {"samples": len(samples),
+            "failure_rate": round(failure_rate, 4) if failure_rate is not None else None,
+            "p95_build_seconds": round(p95, 3) if p95 is not None else None,
+            "reason": reason}, "_selection_key": sort_key})
+    ranked.sort(key=lambda item: item["_selection_key"])
+    for position, row in enumerate(ranked, 1):
+        row.pop("_selection_key", None)
+        row["recommendation_rank"] = position
+        row["recommended"] = position == 1
+    return ranked
 
 
 def _credentials() -> tuple[str, str, str]:
@@ -87,6 +126,10 @@ def discover_resources(kind: str, region: str, *, zone: str = "",
                 continue
             name = str(row.get("ImageName", ""))
             haystack = f"{name} {row.get('OsName', '')}".lower()
+            if profile in ("rocky9", "rocky10"):
+                major = profile.removeprefix("rocky")
+                if not re.search(rf"rocky(?:\s+linux)?\s+{major}(?:\D|$)", haystack):
+                    continue
             if profile in ("tencentos3", "tencentos4"):
                 major = profile[-1]
                 # Match the OS major next to the product name. A generic
@@ -136,6 +179,18 @@ def cmd_discover(args: argparse.Namespace) -> int:
     except Exception as exc:
         fail(f"Discovery failed: {exc}")
         return 1
+    if args.resource == "instance-types" and getattr(args, "rank", False):
+        try:
+            history_path = str(getattr(args, "history", "") or "")
+            history_doc = json.loads(Path(history_path).read_text(encoding="utf-8")) \
+                if history_path else []
+            history = history_doc.get("builds", []) if isinstance(history_doc, dict) else history_doc
+            if not isinstance(history, list):
+                raise ValueError("history must be an array or an object with builds")
+            rows = rank_instance_types(rows, [item for item in history if isinstance(item, dict)])
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            fail(f"Instance ranking failed: {exc}")
+            return 1
     if args.output == "json":
         print(json.dumps({"schema": "https://ohbs-image.dev/discover/v1",
                           "resource": args.resource, "region": args.region,

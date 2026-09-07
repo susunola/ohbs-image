@@ -121,7 +121,7 @@ build {
   #    generated this template (no more guessing from pause_before values).
   provisioner "shell" {
     remote_path = "__REMOTE_DIR__/ohbs-image-banner.sh"
-    inline = ["echo '==> ohbs-image version: __VERSION__'"]
+    inline = __IDENTITY_CHECK_INLINE__
   }
 
   # 1. Install ansible-core (roles uploaded by ohbs-image — no galaxy needed)
@@ -424,15 +424,24 @@ build {
       "sudo systemctl unmask selinux-autorelabel-mark.service >/dev/null 2>&1 || true",
       "sudo rm -f /.autorelabel",
       "# Safe disabled -> enforcing transition: boot once with policy loaded in",
-      "# permissive mode, relabel the live filesystem, then stage enforcing",
-      "# for a second controlled reboot. Never setenforce in-place: services",
-      "# started before the transition retain wrong domains and become unusable.",
+      "# permissive mode, relabel the live filesystem, then enable enforcement.",
       "case '__CIS_LEVEL__' in L2|level2*) OHBS_IS_L2=1 ;; *) OHBS_IS_L2=0 ;; esac",
       "if [ \"$OHBS_IS_L2\" = 1 ] && [ \"$(sudo getenforce 2>/dev/null)\" = 'Permissive' ]; then",
       "  echo '[ohbs-image] SELinux L2 promotion: full relabel under permissive policy'",
       "  sudo chattr -i /root/.ssh/authorized_keys 2>/dev/null || true",
       "  sudo timeout 1200s fixfiles -f -F relabel || { echo '[ohbs-image] SELinux relabel FAILED'; exit 1; }",
+      "  sudo restorecon -RF /etc/ssh /root/.ssh /home/ohbsimage/.ssh /var/lib/ohbs-image-build 2>/dev/null || true",
+      "  # OpenSSH 9.8 splits pre-auth/session handling into helper binaries.",
+      "  # Older Rocky 9 policy databases can leave them unlabeled, causing",
+      "  # sshd-session to run as kernel_t and new connections to die at banner.",
+      "  sudo dnf -y -q install policycoreutils-python-utils >/dev/null",
+      "  for helper in /usr/sbin/sshd /usr/libexec/openssh/sshd-session /usr/libexec/openssh/sshd-auth /usr/libexec/sshd-session /usr/libexec/sshd-auth /usr/sbin/sshd-session /usr/sbin/sshd-auth; do",
+      "    [ ! -e \"$helper\" ] || { sudo semanage fcontext -a -t sshd_exec_t \"$helper\" >/dev/null 2>&1 || sudo semanage fcontext -m -t sshd_exec_t \"$helper\"; sudo restorecon -F \"$helper\"; }",
+      "  done",
       "  sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config",
+      "  # Use the standard early-boot full relabel. A 50GB cloud disk can take",
+      "  # well beyond 20 minutes, so the following reconnect window is 60m.",
+      "  sudo fixfiles -F onboot",
       "  echo \"[ohbs-image] SELinux enforcing staged: runtime=$(sudo getenforce) config=$(sudo grep '^SELINUX=' /etc/selinux/config)\"",
       "fi",
       "# Post-reboot state evidence: if SELinux autorelabel ran at boot it would",
@@ -476,6 +485,7 @@ build {
       "sudo tee /usr/local/sbin/ohbs-cloud-agent-permissions >/dev/null <<'OHBS_CLOUD_PERMS'",
       "#!/bin/sh",
       "chmod 0644 /run/.barad_agent.pid 2>/dev/null || true",
+      "chmod 0644 /run/barad_agent.lock 2>/dev/null || true",
       "find /usr/local/qcloud/monitor -type f \\( -name executor.log -o -name dispatcher.log \\) -exec chmod 0640 {} + 2>/dev/null || true",
       "OHBS_CLOUD_PERMS",
       "sudo chmod 0755 /usr/local/sbin/ohbs-cloud-agent-permissions",
@@ -510,26 +520,31 @@ build {
     ]
   }
 
-  # 5.6 A second controlled reboot is required after an L2 disabled ->
-  #     permissive relabel. It starts every service directly in its enforcing
-  #     SELinux domain; an in-place setenforce leaves sshd/auditd/TAT in stale
-  #     domains. The extra reboot is harmless for L1 and keeps one template.
+  # 5.6 Reboot into the standard early-boot autorelabel/enforcing transition.
   provisioner "shell" {
     pause_before = "5s"
     remote_path  = "__REMOTE_DIR__/ohbs-image-final-selinux-reboot.sh"
-    inline       = ["sudo shutdown -r +1"]
+    inline = [
+      "case '__CIS_LEVEL__' in L2|level2*) sudo shutdown -r +1 ;; *) echo '[ohbs-image] final SELinux reboot skipped for L1' ;; esac"
+    ]
   }
 
   provisioner "shell" {
     pause_before        = "90s"
     expect_disconnect   = true
-    start_retry_timeout = "20m"
+    start_retry_timeout = "60m"
     max_retries         = 0
     remote_path         = "__REMOTE_DIR__/ohbs-image-final-reconnected.sh"
     inline = [
       "case '__CIS_LEVEL__' in L2|level2*) OHBS_IS_L2=1 ;; *) OHBS_IS_L2=0 ;; esac",
-      "[ \"$OHBS_IS_L2\" != 1 ] || [ \"$(sudo getenforce 2>/dev/null)\" = 'Enforcing' ] || { echo '[ohbs-image] L2 requires SELinux enforcing after final reboot'; exit 1; }",
+      "OHBS_HAS_SELINUX=0; case '__OS_TAG__' in ubuntu-*) ;; *) command -v getenforce >/dev/null 2>&1 && [ -e /etc/selinux/config ] && OHBS_HAS_SELINUX=1 ;; esac",
+      "[ \"$OHBS_IS_L2\" != 1 ] || [ \"$OHBS_HAS_SELINUX\" != 1 ] || [ \"$(sudo getenforce 2>/dev/null)\" = 'Enforcing' ] || { echo '[ohbs-image] L2 requires SELinux enforcing after final reboot'; exit 1; }",
       "echo \"[ohbs-image] final boot: selinux=$(sudo getenforce 2>/dev/null) sshd=$(sudo systemctl is-active sshd 2>/dev/null)\"",
+      "if [ \"$OHBS_IS_L2\" = 1 ]; then",
+      "  sudo restorecon -RF /etc/ssh /root/.ssh /home/ohbsimage/.ssh /var/lib/ohbs-image-build 2>/dev/null || true",
+      "  sudo sshd -t || { echo '[ohbs-image] sshd configuration invalid after enforcing transition'; exit 1; }",
+      "  sudo systemctl is-active --quiet sshd || sudo systemctl is-active --quiet ssh || { echo '[ohbs-image] SSH service inactive after final reboot'; exit 1; }",
+      "fi",
       "sudo systemctl reset-failed auditd >/dev/null 2>&1 || true",
       "sudo timeout 90s systemctl start auditd >/dev/null 2>&1 || true",
       "if grep -E '[[:space:]]/dev/shm[[:space:]].*noexec' /etc/fstab >/dev/null 2>&1; then sudo mount -o remount,nodev,nosuid,noexec /dev/shm >/dev/null 2>&1 || true; fi",
@@ -624,8 +639,8 @@ build {
       "# /opt/ohbs-image-ansible/roles/ by the cleanup step.",
       "ENG=$(ls -d /opt/ohbs-image-ansible/roles/cis-*/files 2>/dev/null | head -1)",
       "if [ -n \"$ENG\" ] && [ -f \"$ENG/ohbs_engine.py\" ]; then",
-      "  CAT=\"$ENG/rules.json\"; [ -f \"$ENG/__IMAGE_CATALOG__\" ] && CAT=\"$ENG/__IMAGE_CATALOG__\";",
-      "  sudo /opt/ohbs-image-ansible/bin/python \"$ENG/ohbs_engine.py\" --catalog \"$CAT\" --mode scan --profile '__CIS_PROFILE_SHORT__' --out /tmp/cis-final-scan.json >/dev/null 2>&1 && sudo install -m 0600 -o root -g root /tmp/cis-final-scan.json /opt/ohbs-image-AUDIT-RESULT.json && sudo rm -f /tmp/cis-final-scan.json && echo '[ohbs-image] final-state audit refreshed' || echo '[ohbs-image] WARNING: final-state re-scan failed; keeping pre-finalize audit'",
+      "  CAT=\"$ENG/rules.json\"; # active benchmark catalog, including scoped overrides",
+      "  sudo /opt/ohbs-image-ansible/bin/python \"$ENG/ohbs_engine.py\" --catalog \"$CAT\" --benchmark '__IMAGE_BENCHMARK__' --mode scan --profile '__CIS_PROFILE_SHORT__' --out /tmp/cis-final-scan.json >/dev/null 2>&1 && sudo install -m 0600 -o root -g root /tmp/cis-final-scan.json /opt/ohbs-image-AUDIT-RESULT.json && sudo rm -f /tmp/cis-final-scan.json && echo '[ohbs-image] final-state audit refreshed' || echo '[ohbs-image] WARNING: final-state re-scan failed; keeping pre-finalize audit'",
       "else",
       "  echo '[ohbs-image] WARNING: engine not found under /opt/ohbs-image-ansible/roles/cis-*/files; final-state re-scan skipped, keeping pre-finalize audit'",
       "fi",
@@ -651,8 +666,8 @@ __IDEMPOTENCY_BLOCK____SMOKE_TEST_BLOCK____SUPPLY_CHAIN_BLOCK____TEST_COMPONENTS
       "echo '[ohbs-image] final SSH policy: root login disabled; ohbsimage admin remains available'",
       "ENG=$(ls -d /opt/ohbs-image-ansible/roles/cis-*/files 2>/dev/null | head -1)",
       "if [ -n \"$ENG\" ] && [ -f \"$ENG/ohbs_engine.py\" ]; then",
-      "  CAT=\"$ENG/rules.json\"; [ -f \"$ENG/__IMAGE_CATALOG__\" ] && CAT=\"$ENG/__IMAGE_CATALOG__\";",
-      "  sudo /opt/ohbs-image-ansible/bin/python \"$ENG/ohbs_engine.py\" --catalog \"$CAT\" --mode scan --profile '__CIS_PROFILE_SHORT__' --out /tmp/cis-definitive-scan.json >/dev/null 2>&1 && sudo install -m 0600 -o root -g root /tmp/cis-definitive-scan.json /opt/ohbs-image-AUDIT-RESULT.json && sudo rm -f /tmp/cis-definitive-scan.json && echo '[ohbs-image] definitive post-lock audit refreshed' || echo '[ohbs-image] WARNING: definitive post-lock audit failed; keeping pre-lock audit'",
+      "  CAT=\"$ENG/rules.json\"; # active benchmark catalog, including scoped overrides",
+      "  sudo /opt/ohbs-image-ansible/bin/python \"$ENG/ohbs_engine.py\" --catalog \"$CAT\" --benchmark '__IMAGE_BENCHMARK__' --mode scan --profile '__CIS_PROFILE_SHORT__' --out /tmp/cis-definitive-scan.json >/dev/null 2>&1 && sudo install -m 0600 -o root -g root /tmp/cis-definitive-scan.json /opt/ohbs-image-AUDIT-RESULT.json && sudo rm -f /tmp/cis-definitive-scan.json && echo '[ohbs-image] definitive post-lock audit refreshed' || echo '[ohbs-image] WARNING: definitive post-lock audit failed; keeping pre-lock audit'",
       "fi",
       "echo \"__CIS_IMAGE_AUDIT_B64__$(sudo gzip -c /opt/ohbs-image-AUDIT-RESULT.json 2>/dev/null | base64 -w0)\""
     ]

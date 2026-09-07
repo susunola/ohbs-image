@@ -54,11 +54,19 @@ PROFILES: dict[str, dict[str, Any]] = {
                                  benchmark="CIS-v4.0.0"),
     "rhel9":       _rhel_profile("cis-rhel9", "rhel-9", benchmark="CIS-v2.0.0"),
     "rhel10":      _rhel_profile("cis-rhel10", "rhel-10", benchmark="CIS-v1.0.1"),
+    # CIS Rocky Linux 10 Benchmark v1.0.0 contains the same 328 control IDs
+    # as the implemented EL10 catalog. Keep an independent role so reports,
+    # provenance and future revisions retain the correct benchmark identity.
+    "rocky10":     _rhel_profile(
+        "cis-rocky10", "rocky-10", benchmark="CIS-v1.0.0",
+        pip_index_url="https://mirrors.cloud.tencent.com/pypi/simple/"),
     # Rocky 9 ships the same EL9 userspace as RHEL 9 — the v2.0.0 rule
     # catalogs are rule-for-rule identical (297/297, 0 level diffs), so the
     # rhel9 payload is shared verbatim with only the benchmark identity
     # changed (CIS Rocky Linux 9 Benchmark v2.0.0, see role vars).
-    "rocky9":      _rhel_profile("cis-rocky9", "rocky-9", benchmark="CIS-v2.0.0"),
+    "rocky9":      _rhel_profile(
+        "cis-rocky9", "rocky-9", benchmark="CIS-v2.0.0",
+        pip_index_url="https://mirrors.cloud.tencent.com/pypi/simple/"),
     # Current TencentOS Server 3.1 public image img-eb30mz89 listens on 22;
     # probing from the build controller on 2026-08-27 confirmed 36000 is
     # refused while 22 accepts SSH. Keep this explicit so the historical
@@ -113,7 +121,7 @@ SAMPLE_CONFIG = """\
 [build]
 profile             = "tencentos3"
 #   Linux profiles: ubuntu2004 | ubuntu2204 | ubuntu2404 |
-#                   rhel8 | rhel9 | rhel10 | rocky9 |
+#                   rhel8 | rhel9 | rhel10 | rocky9 | rocky10 |
 #                   tencentos3 | tencentos4
 #   Windows:        win2016 | win2019 | win2022 | win2025
 region              = "ap-guangzhou"

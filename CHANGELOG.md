@@ -7,6 +7,46 @@ can be traced across rebuilds.
 
 ## [Unreleased]
 
+### Fixed
+- Linux builds verify the guest distribution and version before provisioning;
+  conflicting profile metadata is rejected, and legacy profile-name tags are
+  normalized to canonical OS tags.
+- Audit comparisons reject empty, unknown and unevaluated evidence. Apply
+  success no longer counts as scan success. Baseline explanations distinguish
+  audit pass rate from catalog result coverage and expose missing/duplicate IDs.
+- Acceptance plans record the source commit, dirty workspace state and config
+  hashes; a focused Rocky 9 L1/L2 matrix supports reproducible validation.
+
+## [0.22.0] - 2026-09-02
+
+### Added
+- **`ohbs-image policy simulate`** — dry-run a candidate policy bundle against
+  every registered artifact (or a selected subset) and report what it would
+  allow, deny, newly allow and newly deny versus an optional baseline. Reads
+  only; never quarantines, rolls back or mutates. `--fail-on-newly-denied`
+  turns it into a CI gate. Answers "what breaks if I ship this policy?" before
+  the policy is published rather than after.
+- **`ohbs-image policy exceptions`** — show every time-bounded exception's
+  expiry posture as active / expiring / expired, with `--within-days` to flag
+  what lapses soon and `--fail-on-expired` for CI. Exceptions were already
+  expiry-aware at *evaluation* time, so a lapsed waiver silently stopped
+  applying with nothing telling its owner; this is the missing visibility half.
+- Simulation results are order-independent. Registry reads (SQLite or a
+  filesystem glob) do not guarantee row order, and the result carries a
+  `document_hash` — artifacts are now sorted before evaluation, so two runs
+  over identical inputs produce one identical document instead of two digests.
+
+### Fixed
+- **Deprecation notices promised a removal their own contract forbids.** The
+  flat aliases (`verify-image`, `verify-release`, `cleanup-images`,
+  `cleanup-runs`, the flat `verify` default) and the pre-rebrand `cis-image`
+  entry name were advertised as "scheduled for removal in 0.22.0", but those
+  names are frozen as top-level commands in `contracts/core-contracts.json`,
+  and `docs/core-contract-stability.md` requires a new major contract version
+  plus a documented migration path to remove one. The notices now target
+  **1.0.0**, matching the documented policy. This is a text-only change: the
+  aliases keep working exactly as before.
+
 ## [0.21.0] - 2026-09-01
 
 > First installable release of the 0.20.x feature line. v0.20.0 was tagged and
@@ -15,6 +55,24 @@ can be traced across rebuilds.
 > the release that actually delivers the 0.20.0 feature set.
 
 ### Added
+- **Release-level Native fault matrix** — cancellation, snapshot failure,
+  asynchronous image failure, cross-region sync failure and cleanup now have
+  explicit lifecycle tests. A sync failure preserves the already-created
+  primary image ID in build evidence instead of losing a billable artifact.
+- **Phase-aware Native lifecycle heartbeat** — the atomic restart journal now
+  refreshes throughout launch, connect, provision, snapshot, sync and cleanup
+  without racing checkpoint writes. Build evidence includes heartbeat health
+  and a secret-free structured failure category/code/retryability/phase/type.
+  Optional per-phase minute caps intersect with the global deadline and are
+  retained as effective `phase_budget_seconds` evidence.
+- **Verified content-addressed Native transfer cache** — deterministic Ansible
+  archives now retain a stable SHA-256 across identical renders. BuildSpec v3
+  marks only that generated non-secret archive cacheable; every image-cache hit
+  is re-hashed, while arbitrary files and scripts bypass persistence. Build
+  evidence reports hits, misses, uploaded bytes and saved bytes.
+- **Native Tencent API SLO evidence** — build records now capture secret-free
+  per-operation latency, RequestId, actual retry attempts and final status, plus
+  aggregate call/failure/retry counts, total/P95/max latency and slowest calls.
 - **Public evidence index** — portable acceptance, SLO, proof, benchmark,
   compliance, and release JSON can now be rendered into a self-contained HTML
   index plus a stable JSON contract. Every entry carries its source SHA-256;

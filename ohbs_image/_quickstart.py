@@ -77,7 +77,7 @@ def _pick_source_image(region: str, profile: str) -> str:
     """Newest matching public source image for *profile* (read-only)."""
     rows = discover_resources("images", region, profile=profile)
     usable = [r for r in rows if r.get("id")
-              and str(r.get("state", "")).upper() != "UNAVAILABLE"]
+              and str(r.get("state", "")).upper() == "NORMAL"]
     if not usable:
         raise ConfigError(
             f"no matching source image for profile {profile} in {region} "
@@ -114,9 +114,11 @@ def _create_vpc(region: str, sid: str, key: str, tok: str | None) -> str:
     raw = ohbs_image._tc3_api("vpc", "CreateVpc", "2017-03-12", region, {
         "VpcName": "ohbs-image-quickstart",
         "CidrBlock": cidr,
-        "EnableMulticast": False,
+        "EnableMulticast": "false",
         "Tags": _QS_TAGS,
     }, sid, key, tok)
+    if error := raw.get("Response", {}).get("Error"):
+        raise ConfigError(f"CreateVpc failed: {error}")
     return str(raw["Response"]["Vpc"]["VpcId"])
 
 
@@ -131,6 +133,8 @@ def _create_subnet(region: str, zone: str, vpc_id: str,
         "Zone": zone,
         "Tags": _QS_TAGS,
     }, sid, key, tok)
+    if error := raw.get("Response", {}).get("Error"):
+        raise ConfigError(f"CreateSubnet failed: {error}")
     return str(raw["Response"]["Subnet"]["SubnetId"])
 
 
@@ -165,17 +169,21 @@ def _create_security_group(region: str, sid: str, key: str,
                                                       "quickstart",
                                   "Tags": _QS_TAGS,
                               }, sid, key, tok)
+    if error := raw.get("Response", {}).get("Error"):
+        raise ConfigError(f"CreateSecurityGroup failed: {error}")
     return str(raw["Response"]["SecurityGroup"]["SecurityGroupId"])
 
 
 def _configure_security_group(region: str, sg: str, profile: str, cidr: str,
                               sid: str, key: str, tok: str | None) -> None:
-    ohbs_image._tc3_api("vpc", "CreateSecurityGroupPolicies", "2017-03-12",
+    raw = ohbs_image._tc3_api("vpc", "CreateSecurityGroupPolicies", "2017-03-12",
                         region, {
                             "SecurityGroupId": sg,
                             "SecurityGroupPolicySet": {
                                 "Ingress": _security_group_ingress(profile, cidr)},
                         }, sid, key, tok)
+    if error := raw.get("Response", {}).get("Error"):
+        raise ConfigError(f"CreateSecurityGroupPolicies failed: {error}")
 
 
 def _resource_path(target: Path) -> Path:
@@ -235,8 +243,10 @@ def _cmd_cleanup(target: Path) -> int:
     all_gone = True
     for label, action, params in steps:
         try:
-            ohbs_image._tc3_api("vpc", action, "2017-03-12", region, params,
-                                sid, key, tok)
+            response = ohbs_image._tc3_api("vpc", action, "2017-03-12", region, params,
+                                          sid, key, tok)
+            if error := response.get("Response", {}).get("Error"):
+                raise ConfigError(f"{action} failed: {error}")
         except ConfigError as exc:
             warn(f"Could not delete {label}: {exc}")
             all_gone = False

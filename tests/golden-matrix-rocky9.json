@@ -1,0 +1,8 @@
+{
+  "schema": "https://ohbs-image.dev/golden-matrix/v1",
+  "provider": "tencentcloud",
+  "targets": [
+    {"profile":"rocky9","level":1,"source_image_id":"img-ixbfw1ar","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v2.0.0"},
+    {"profile":"rocky9","level":2,"source_image_id":"img-ixbfw1ar","region":"ap-guangzhou","zone":"ap-guangzhou-6","instance_type":"S5.MEDIUM2","benchmark":"CIS-v2.0.0"}
+  ]
+}

@@ -85,7 +85,7 @@ jobs:
 
       - name: Build wheel (pinned backend, same as publish.yml)
         run: |
-          pip install --quiet "build==1.2.2.post1" "setuptools==75.3.0" "wheel==0.45.1"
+          pip install --quiet "build==1.3.0" "setuptools==80.9.0" "wheel==0.45.1"
           python -m build --no-isolation --wheel --outdir dist
 
       - name: Verify wheel installs and runs in a clean container
