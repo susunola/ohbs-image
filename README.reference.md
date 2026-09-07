@@ -744,12 +744,6 @@ benchmark = "CIS-v1.0.0"
 Versioned domain contracts live in `schemas/v1/`; the control-plane HTTP contract is
 `api/openapi.yaml`. Compatibility rules are documented in `schemas/COMPATIBILITY.md`.
 
-The service exposes public health checks at `/healthz` and `/api/v1/health`.
-Authenticated endpoints cover artifacts, runs, channels, rebuild requests, and
-Prometheus metrics. Responses are filtered by authorized buckets; errors use a
-stable `{error: {code, message}}` envelope. For deployment, see the
-[production guide](docs/control-plane-production.md) and examples in `deploy/`.
-
 <p align="center">
   <img src="docs/ohbs-image-architecture.png" alt="ohbs-image build architecture — TOML config to hardened golden image" width="720">
 </p>
