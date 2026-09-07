@@ -22,9 +22,9 @@ jobs:
       run:
         working-directory: integrations/terraform-provider
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: {fetch-depth: 0}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: integrations/terraform-provider/go.mod
           cache-dependency-path: integrations/terraform-provider/go.sum
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: {fetch-depth: 0}
       - name: Import Terraform Registry signing key
         env:
@@ -45,7 +45,7 @@ jobs:
         run: |
           test -n "$GPG_PRIVATE_KEY"
           printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: "~> v2"
@@ -53,7 +53,7 @@ jobs:
           workdir: integrations/terraform-provider
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: integrations/terraform-provider/dist/*.zip
 
@@ -62,15 +62,15 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'workflow_dispatch' && inputs.snapshot
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: {fetch-depth: 0}
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: "~> v2"
           args: release --snapshot --clean --skip=sign
           workdir: integrations/terraform-provider
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: terraform-provider-snapshot
           path: integrations/terraform-provider/dist/*

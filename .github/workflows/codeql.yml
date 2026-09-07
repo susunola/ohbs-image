@@ -22,13 +22,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@42947a340483f03ba47bb1a039b2c519aab3df85 # v3, pinned 2026-08-24
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v3, pinned 2026-08-24
         with:
           languages: python
           # Python analysis is interpreted — no build step needed.
           build-mode: none
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@42947a340483f03ba47bb1a039b2c519aab3df85 # v3, pinned 2026-08-24
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v3, pinned 2026-08-24
         with:
           category: "/language:python"
