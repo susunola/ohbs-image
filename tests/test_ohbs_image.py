@@ -48,6 +48,17 @@ from ohbs_image import (
     run_preflight,
 )
 
+
+@pytest.fixture(autouse=True)
+def isolate_preflight_cloud_lookup(monkeypatch):
+    """Preflight/template tests use fake credentials, never a real cloud API.
+
+    The security-group checker itself is exercised separately through its
+    public export with explicit mocked API responses. Only replace the
+    orchestration hook here, including for real Packer syntax validation.
+    """
+    monkeypatch.setattr("ohbs_image._packer._check_security_group_ingress", lambda r: None)
+
 LINUX_PROFILES = [k for k, v in PROFILES.items() if v.get("family") != "windows"]
 WIN_PROFILES = [k for k, v in PROFILES.items() if v.get("family") == "windows"]
 
@@ -1082,6 +1093,14 @@ class TestPackaging:
 # Preflight
 # ---------------------------------------------------------------------------
 class TestRunPreflight:
+    def test_preflight_does_not_contact_cloud_with_test_credentials(self, valid_toml, monkeypatch):
+        monkeypatch.setenv("TENCENTCLOUD_SECRET_ID", "test-id")
+        monkeypatch.setenv("TENCENTCLOUD_SECRET_KEY", "test-key")
+        with mock.patch("ohbs_image._tc3_api") as cloud, \
+                mock.patch("shutil.which", return_value="/usr/bin/packer"):
+            run_preflight(resolve(valid_toml))
+        cloud.assert_not_called()
+
     def test_passes_with_valid_env(self, valid_toml, monkeypatch):
         monkeypatch.setenv("TENCENTCLOUD_SECRET_ID", "test-id")
         monkeypatch.setenv("TENCENTCLOUD_SECRET_KEY", "test-key")
