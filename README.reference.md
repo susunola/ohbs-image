@@ -307,6 +307,10 @@ documented in the full reference below.
 
 ### Full command reference
 
+Syntax below is reference notation: replace placeholders and choose optional arguments before running a command. Use `ohbs-image <command> --help` for its complete options.
+
+#### Getting started and configuration
+
 ```bash
 ohbs-image                                    # show help (exits 2)
 ohbs-image guide [builder|security|platform|consumer] [--output text|json]
@@ -325,6 +329,11 @@ ohbs-image config get ohbs.level              # effective value of one key (defa
 ohbs-image config explain --all               # full configuration key reference
 ohbs-image config migrate --apply             # atomic legacy config migration
 ohbs-image config merge base.toml env.toml    # deep-merge layered configs (validate result)
+```
+
+#### Reports and run history
+
+```bash
 ohbs-image report diff --before RUN --after RUN # compare lineage metadata
 ohbs-image report list [--profile P] [--status ok|failed] [--limit N]
 ohbs-image report show RUN_ID              # single-run evidence + run manifest
@@ -339,9 +348,11 @@ ohbs-image report slo [--days 30] [--output json]  # run success, retry and late
 ohbs-image dr drill --help                    # isolated disaster-recovery/chaos exercise
 ohbs-image report metrics --format prometheus       # Prometheus exposition format
 ohbs-image report metrics --format otlp-json        # OTLP/JSON metrics document
+```
 
-Versioned domain contracts live in `schemas/v1/`; the control-plane HTTP contract is
-`api/openapi.yaml`. Compatibility rules are documented in `schemas/COMPATIBILITY.md`.
+#### Registry, lineage and automation
+
+```bash
 ohbs-image registry rebuild [--output json]        # index approved release evidence
 ohbs-image registry list [--bucket PROFILE] [--output json]
 ohbs-image registry show IMAGE_ID [--output json]
@@ -360,15 +371,11 @@ ohbs-image worker run --handler ./rebuild-handler --once --apply # lease + retry
 ohbs-image worker run --pipeline docs/rebuild-pipeline.example.json --once --apply # built-in 4-stage pipeline
 ohbs-image cve sync --inventory artifact-packages.json --apply # OSV feed -> quarantine -> rebuild queue
 ohbs-image serve --rbac rbac.json                      # API + Web Console at http://127.0.0.1:8181/
+```
 
-The service exposes public health checks at `/healthz` and `/api/v1/health`.
-Authenticated v1 endpoints include paginated Artifact and Run queries,
-Artifact impact analysis, Channel resolution/promotion, rebuild requests, and
-Prometheus metrics. Responses are filtered by the caller's authorized Buckets;
-errors use a stable `{error: {code, message}}` envelope.
-For production, use the hardened systemd and Caddy examples in `deploy/` and
-follow `docs/control-plane-production.md`; keep the application server on
-loopback and expose it only through the TLS boundary.
+#### Channels, policy and distribution
+
+```bash
 ohbs-image channel promote PROFILE stable IMAGE_ID [--expected-generation N]  # atomic CAS pointer move
 ohbs-image channel promote PROFILE stable IMAGE_ID --operation-id deploy-42   # idempotent worker retry + fencing
 ohbs-image channel resolve PROFILE stable [--output json]  # verify pointer + artifact integrity
@@ -390,12 +397,22 @@ ohbs-image distribution execute IMAGE_ID --region ap-shanghai                  #
 ohbs-image distribution execute IMAGE_ID --region ap-shanghai --apply          # SyncImages; records pending
 ohbs-image distribution reconcile IMAGE_ID --timeout-minutes 60                 # DescribeImages → ready/failed
 ohbs-image distribution record IMAGE_ID --region ap-shanghai --replica-id img-copy --operation-id copy-job-7
+```
+
+#### Engines and rule catalogs
+
+```bash
 ohbs-image engine list                     # bundled engines: version + sha256 per profile
 ohbs-image engine verify                   # syntax-check every bundled engine (CI gate)
 ohbs-image engine version                  # ohbs-image + per-family engine versions
 ohbs-image catalog list                    # bundled rule catalogs: rules, guidance, sha256
 ohbs-image catalog verify [--strict]       # catalog JSON + guidance cross-reference gate
 ohbs-image catalog lint --report cis-rule-quality.html  # quality baseline + top 50 priorities
+```
+
+#### Diagnostics and state
+
+```bash
 ohbs-image doctor [--output text|json|sarif] [--only GROUP] [--offline] [--report-path FILE]
 ohbs-image plan [--output json]                # read-only build/resource/gate preview
 ohbs-image state path                          # print the evidence directory
@@ -408,6 +425,11 @@ ohbs-image state sync push --backend local --location /shared/ohbs-state
 ohbs-image state reconcile [--apply] [--output json]  # expired leases + orphan resource records
 ohbs-image state sync push --backend cos --location cos://bucket/ohbs-state
 ohbs-image state sync push --backend local --location /shared/ohbs-state --check
+```
+
+#### Build, audit and image lifecycle
+
+```bash
 ohbs-image preflight                          # validate config, credentials, prerequisites
 ohbs-image validate                           # render templates + packer validate
 ohbs-image build                              # render + packer build → custom image
@@ -431,16 +453,23 @@ ohbs-image cleanup images --apply                 # actually delete (default = d
 ohbs-image cleanup runs --older-than 24           # find tagged orphaned build/probe CVMs (dry run)
 ohbs-image cleanup runs --older-than 24 --apply   # actually terminate the tagged CVMs (hours must be > 0)
 ohbs-image cleanup runs --include-legacy --apply  # explicitly include pre-manifest probes after review
-# --- deprecated flat aliases ---
-# These names are frozen in contracts/core-contracts.json as top-level commands,
-# and docs/core-contract-stability.md requires a new major contract version plus a
-# documented migration path to remove one. They therefore stay supported through
-# the 0.x line and will be removed in 1.0.0, not in a minor release.
+```
+
+#### Legacy aliases
+
+These aliases remain supported under the [core contract policy](docs/core-contract-stability.md). Prefer the replacement shown in each comment.
+
+```bash
 ohbs-image verify --provenance <file>         # [deprecated] use `ohbs-image verify provenance`
 ohbs-image verify-image --image <img-id>      # [deprecated] use `ohbs-image verify image`
 ohbs-image verify-release --image img-xxx     # [deprecated] use `ohbs-image verify release`
 ohbs-image cleanup-images [--older-than 30]   # [deprecated] use `ohbs-image cleanup images`
 ohbs-image cleanup-runs --older-than 24       # [deprecated] use `ohbs-image cleanup runs`
+```
+
+#### Independent audits and maintenance
+
+```bash
 ohbs-image drift --host <ip> [--image <id>]   # config drift on a running instance vs image baseline
 ohbs-image drift --host <ip> --save-baseline  # save the current host scan as a drift baseline
 ohbs-image check-source                       # vendor image refresh detection (rebuild needed?)
@@ -450,10 +479,7 @@ ohbs-image audit --tool kitty --parse out.csv # independent audit: HardeningKitt
 ohbs-image clean                              # remove .ohbs-image-build/
 ```
 
-Policy bundles support relative `extends` inheritance, environment overrides, and
-time-bounded exceptions requiring an owner, approver, reason, and expiry. Start from
-[`docs/policy-bundle.example.json`](docs/policy-bundle.example.json); remove the example
-exception before use. Every check writes a hash-protected decision under the registry state.
+### Common flags
 
 | Flag | Applies to | Description |
 |---|---|---|
@@ -534,6 +560,15 @@ without editing the workflow. Scheduled runs can rotate the representative
 profile through repository variable `OHBS_CLOUD_CANARY_PROFILE`.
 
 ## Configuration
+
+### Policy bundles
+
+Policy bundles support relative `extends` inheritance, environment overrides, and
+time-bounded exceptions requiring an owner, approver, reason, and expiry. Start from
+[the policy example](docs/policy-bundle.example.json); remove the example exception
+before use. Every check writes a hash-protected decision under the registry state.
+
+### Build configuration
 
 `ohbs-image.toml` is the single source of truth — no manual template editing.
 
@@ -703,6 +738,17 @@ benchmark = "CIS-v1.0.0"
 ---
 
 ## Architecture
+
+### Control plane and contracts
+
+Versioned domain contracts live in `schemas/v1/`; the control-plane HTTP contract is
+`api/openapi.yaml`. Compatibility rules are documented in `schemas/COMPATIBILITY.md`.
+
+The service exposes public health checks at `/healthz` and `/api/v1/health`.
+Authenticated endpoints cover artifacts, runs, channels, rebuild requests, and
+Prometheus metrics. Responses are filtered by authorized buckets; errors use a
+stable `{error: {code, message}}` envelope. For deployment, see the
+[production guide](docs/control-plane-production.md) and examples in `deploy/`.
 
 <p align="center">
   <img src="docs/ohbs-image-architecture.png" alt="ohbs-image build architecture — TOML config to hardened golden image" width="720">
