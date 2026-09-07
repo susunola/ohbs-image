@@ -748,17 +748,16 @@ def _probe_scan(r: ResolvedConfig, ip: str, ssh_port: int, ssh_user: str,
     # (CIS / legacy).  The build promotes the active catalog to rules.json too,
     # so rules.json is always safe, but this makes the probe explicit.
     cat = r.catalog_basename or "rules.json"
-    # Role dirs are dash-named (cis-ubuntu2204, cis-rhel8, ...) — the glob
-    # must match that, not the old underscore form.
+    # Never fall back to another role: that would audit the wrong benchmark.
+    import shlex
     remote = (
-        "ENG=$(ls -d /opt/ohbs-image-ansible/roles/cis-*/files 2>/dev/null | head -1); "
-        "if [ -n \"$ENG\" ] && [ -f \"$ENG/ohbs_engine.py\" ]; then "
+        f"ENG={shlex.quote('/opt/ohbs-image-ansible/roles/' + r.role_dir + '/files')}; "
+        "test -f \"$ENG/ohbs_engine.py\" || exit 1; "
         "CAT=\"$ENG/rules.json\"; "
         f"[ -f \"$ENG/{cat}\" ] && CAT=\"$ENG/{cat}\"; "
         "sudo /opt/ohbs-image-ansible/bin/python \"$ENG/ohbs_engine.py\" "
-        f"--catalog \"$CAT\" --mode scan --profile {profile} "
-        "--out /tmp/ohbs-image-verify.json >/dev/null 2>&1 && "
-        "cat /tmp/ohbs-image-verify.json; fi"
+        f"--catalog \"$CAT\" --benchmark {shlex.quote(r.image_benchmark)} "
+        f"--mode scan --profile {profile} --out -"
     )
     key_args = ["-i", key_path] if key_path else []
     try:
@@ -771,8 +770,13 @@ def _probe_scan(r: ResolvedConfig, ip: str, ssh_port: int, ssh_user: str,
         return {"error": f"remote scan timed out after 900s on {ip}"}
     except FileNotFoundError:
         return {"error": "ssh not found in PATH — cannot scan remote host"}
+    if cp.returncode != 0:
+        return {"error": f"remote scan exited with status {cp.returncode}"}
     try:
-        return cast("dict[str, Any]", json.loads(cp.stdout))
+        result = json.loads(cp.stdout)
+        if not isinstance(result, dict):
+            return {"error": "remote scan returned a non-object JSON result"}
+        return result
     except json.JSONDecodeError:
         return {"error": cp.stdout[:300] or cp.stderr[:300]}
 

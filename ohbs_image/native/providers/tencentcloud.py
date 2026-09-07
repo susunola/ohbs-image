@@ -56,7 +56,7 @@ def _tracked_body(r: ResolvedConfig, response: dict[str, Any],
     evidence = getattr(r, "_native_provider_evidence", None)
     if not isinstance(evidence, dict):
         evidence = {"api_requests": []}
-        r._native_provider_evidence = evidence
+        vars(r)["_native_provider_evidence"] = evidence
     requests = evidence.setdefault("api_requests", [])
     requests.append({
         "action": action,
@@ -94,7 +94,7 @@ def _call(r: ResolvedConfig, service: str, action: str, version: str,
         evidence = getattr(r, "_native_provider_evidence", None)
         if not isinstance(evidence, dict):
             evidence = {"api_requests": []}
-            r._native_provider_evidence = evidence
+            vars(r)["_native_provider_evidence"] = evidence
         response_body = response.get("Response", {}) if "response" in locals() else {}
         evidence.setdefault("api_requests", []).append({
             "action": action,
@@ -149,7 +149,7 @@ def _validate_image_identity(r: ResolvedConfig, image: dict[str, Any],
 
 
 def _validate_source_image(r: ResolvedConfig, sid: str, skey: str,
-                           token: str) -> None:
+                           token: str | None) -> None:
     images = _call(r, "cvm", "DescribeImages", "2017-03-12", r.region,
                    {"ImageIds": [r.source_image_id]}, sid, skey,
                    token or None).get("ImageSet") or []
@@ -162,7 +162,7 @@ def _validate_source_image(r: ResolvedConfig, sid: str, skey: str,
     if state != "NORMAL":
         raise ConfigError(f"source image {r.source_image_id} is not ready: {state or 'UNKNOWN'}")
     _validate_image_identity(r, exact[0], role="source")
-    evidence = r._native_provider_evidence
+    evidence = vars(r)["_native_provider_evidence"]
     evidence["source_image"] = {
         key: exact[0].get(key) for key in (
             "ImageId", "ImageName", "ImageState", "OsName", "Platform",
@@ -291,7 +291,7 @@ def create_image(r: ResolvedConfig, instance_id: str, image_name: str,
             raise ConfigError(
                 f"CreateImage outcome is ambiguous and could not be reconciled: {exc}") from exc
         image_id = str(candidates[0]["ImageId"])
-        evidence = r._native_provider_evidence
+        evidence = vars(r)["_native_provider_evidence"]
         evidence["create_image_reconciled"] = True
     image = _wait_image_normal(r.region, image_id, deadline, sid, skey, token, r)
     _validate_output_image(r, image, image_name)
@@ -299,7 +299,7 @@ def create_image(r: ResolvedConfig, instance_id: str, image_name: str,
 
 
 def _images_by_name(r: ResolvedConfig, image_name: str, sid: str,
-                    skey: str, token: str) -> list[dict[str, Any]]:
+                    skey: str, token: str | None) -> list[dict[str, Any]]:
     body = _call(
         r, "cvm", "DescribeImages", "2017-03-12", r.region,
         {"Filters": [{"Name": "image-name", "Values": [image_name]}]},
@@ -314,7 +314,7 @@ def _validate_output_image(r: ResolvedConfig, image: dict[str, Any],
     _validate_image_identity(r, image, role="output")
     if str(image.get("ImageName") or "") != image_name:
         raise ConfigError("output image name does not match the requested image name")
-    evidence = r._native_provider_evidence
+    evidence = vars(r)["_native_provider_evidence"]
     source = evidence.get("source_image") or {}
     source_arch = str(source.get("Architecture") or "").lower()
     output_arch = str(image.get("Architecture") or "").lower()
@@ -333,7 +333,7 @@ def _validate_output_image(r: ResolvedConfig, image: dict[str, Any],
 def _validate_replica_image(r: ResolvedConfig, image: dict[str, Any],
                             region: str) -> dict[str, Any]:
     _validate_image_identity(r, image, role=f"replica {region}")
-    source = r._native_provider_evidence.get("output_image") or {}
+    source = vars(r)["_native_provider_evidence"].get("output_image") or {}
     for field in ("Architecture", "OsName"):
         expected = str(source.get(field) or "").lower()
         observed = str(image.get(field) or "").lower()
@@ -350,7 +350,7 @@ def _validate_replica_image(r: ResolvedConfig, image: dict[str, Any],
 
 
 def _wait_image_normal(region: str, image_id: str, deadline: float,
-                       sid: str, skey: str, token: str,
+                       sid: str, skey: str, token: str | None,
                        runtime: ResolvedConfig | None = None) -> dict[str, Any]:
     attempt = 0
     while time.monotonic() < deadline:
@@ -412,7 +412,7 @@ def copy_images(r: ResolvedConfig, image_id: str,
                 errors.append(f"{region}: {exc}")
     if errors:
         raise ConfigError("copied image verification failed: " + "; ".join(sorted(errors)))
-    r._native_provider_evidence["replica_images"] = sorted(
+    vars(r)["_native_provider_evidence"]["replica_images"] = sorted(
         replicas, key=lambda item: str(item["region"]))
     return [by_region[region] for region in r.image_copy_regions]
 

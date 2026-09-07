@@ -35,7 +35,7 @@ def _tags(instance: dict[str, Any]) -> dict[str, str]:
 def _discover_instances(runtime: Any, run_id: str) -> list[dict[str, Any]]:
     sid, skey, token = _creds(
         runtime.secret_id_env, runtime.secret_key_env, runtime.security_token_env)
-    params = {"Filters": [
+    params: dict[str, Any] = {"Filters": [
         {"Name": "tag:managed_by", "Values": ["ohbs-image"]},
         {"Name": "tag:ephemeral", "Values": ["true"]},
         {"Name": "tag:run_id", "Values": [run_id]},
@@ -63,7 +63,7 @@ def _discover_expired_instances(runtime: Any, now_epoch: int) -> list[dict[str, 
     """Discover only explicitly OHBS-owned ephemeral CVMs with expired leases."""
     sid, skey, token = _creds(
         runtime.secret_id_env, runtime.secret_key_env, runtime.security_token_env)
-    params = {"Filters": [
+    params: dict[str, Any] = {"Filters": [
         {"Name": "tag:managed_by", "Values": ["ohbs-image"]},
         {"Name": "tag:ephemeral", "Values": ["true"]},
     ], "Limit": 100, "Offset": 0}
@@ -96,7 +96,7 @@ def sweep_expired_resources(runtime: Any, workdir: Path, *, apply: bool = False,
     instances = _discover_expired_instances(runtime, now)
     actions = []
     for instance in instances:
-        resource = {"type": "instance", "id": str(instance.get("InstanceId") or ""),
+        resource: dict[str, Any] = {"type": "instance", "id": str(instance.get("InstanceId") or ""),
                     "state": str(instance.get("InstanceState") or ""),
                     "run_id": _tags(instance).get("run_id", ""),
                     "lease_expires_epoch": int(_tags(instance)["lease_expires_epoch"])}

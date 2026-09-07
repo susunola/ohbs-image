@@ -5614,6 +5614,21 @@ class TestVerifyImageMinScoreFallback:
 class TestProbeScanTimeout:
     """P1 — SSH TimeoutExpired must surface as a scan error, not a crash."""
 
+    def test_failed_command_cannot_return_a_passing_document(self, valid_toml, monkeypatch):
+        monkeypatch.setattr("ohbs_image.subprocess.run", lambda *a, **k:
+                            subprocess.CompletedProcess([], 1,
+                                stdout='{"summary":{"all":{"score":100}}}', stderr=""))
+        doc = ohbs_image._probe_scan(resolve(valid_toml), "1.2.3.4", 22, "ohbsimage", 1)
+        assert "error" in doc
+        assert "summary" not in doc
+
+    @pytest.mark.parametrize("output", ["[]", "null", "100", '"pass"'])
+    def test_non_object_json_is_error(self, valid_toml, monkeypatch, output):
+        monkeypatch.setattr("ohbs_image.subprocess.run", lambda *a, **k:
+                            subprocess.CompletedProcess([], 0, stdout=output, stderr=""))
+        doc = ohbs_image._probe_scan(resolve(valid_toml), "1.2.3.4", 22, "ohbsimage", 1)
+        assert "non-object" in doc["error"]
+
     def test_timeout_returns_error_dict(self, valid_toml, monkeypatch):
         from ohbs_image import _probe_scan
         r = resolve(valid_toml)
@@ -6671,11 +6686,9 @@ class TestProbeKeyWiring:
         assert _probe_ssh_ready("1.2.3.4", 22, "ohbsimage") is True
         assert "-i" not in cmds[0]  # no dangling -i without a key
 
-    def test_probe_scan_uses_identity_file_and_dash_glob(
+    def test_probe_scan_uses_identity_file_and_exact_role(
         self, valid_toml, monkeypatch):
-        """The remote command must glob the dash-named role dirs
-        (cis-ubuntu2204, cis-rhel8, …) — the old underscore glob cis_*
-        never matched and made every fresh-boot scan a silent no-op."""
+        """Never select a different role or read a stale temporary result."""
         from ohbs_image import _probe_scan
         r = resolve(valid_toml)
         cmds = []
@@ -6688,8 +6701,11 @@ class TestProbeKeyWiring:
         cmd = cmds[0]
         assert "-i" in cmd and cmd[cmd.index("-i") + 1] == "/tmp/probe_key"
         remote = cmd[-1]
-        assert "cis-*" in remote
+        assert f"roles/{r.role_dir}/files" in remote
+        assert "cis-*" not in remote
         assert "cis_*" not in remote
+        assert "--out -" in remote
+        assert "ohbs-image-verify.json" not in remote
 
 
 class TestFinalStateRescanWarning:
