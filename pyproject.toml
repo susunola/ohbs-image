@@ -40,11 +40,11 @@ ohbs-image = "ohbs_image:main"
 
 [project.optional-dependencies]
 dev = [
-    "ansible-core>=2.19.12",
+    "ansible-core>=2.19.13",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "mypy>=2.3.1",
-    "ruff>=0.16.6",
+    "ruff>=0.16.7",
     "tomli_w>=1.2.0",
     "pywinrm>=0.5.0",
 ]
