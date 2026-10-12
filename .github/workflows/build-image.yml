@@ -50,7 +50,7 @@ jobs:
 
       # packer is required by `ohbs-image build` (same pin as ci.yml).
       - name: Install packer
-        uses: hashicorp/setup-packer@c4e4b2636b98ce7566f9ec9c309e26821f695bd2 # main, pinned 2026-08-23
+        uses: hashicorp/setup-packer@97ec7008e79c4247af034e505b489f47f01173a6 # main, pinned 2026-08-23
         with:
           version: "1.16.0"
 
