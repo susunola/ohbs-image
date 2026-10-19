@@ -117,7 +117,8 @@ class StateDatabase:
 
     def search_artifacts(self, *, bucket: str = "", status: str = "",
                          version: str = "", query: str = "", label: str = "",
-                         limit: int = 100, offset: int = 0) -> tuple[int, list[dict[str, Any]]]:
+                         limit: int = 100, offset: int = 0,
+                         allowed_buckets: list[str] | None = None) -> tuple[int, list[dict[str, Any]]]:
         self.initialize()
         clauses: list[str] = []
         parameters: list[Any] = []
@@ -125,6 +126,12 @@ class StateDatabase:
             if value:
                 clauses.append(f"{column}=?")
                 parameters.append(value)
+        if allowed_buckets is not None:
+            if not allowed_buckets:
+                return 0, []
+            placeholders = ",".join("?" for _ in allowed_buckets)
+            clauses.append(f"bucket IN ({placeholders})")
+            parameters.extend(allowed_buckets)
         if query:
             clauses.append("(artifact_id LIKE ? OR bucket LIKE ? OR version LIKE ? OR document LIKE ?)")
             pattern = f"%{query}%"

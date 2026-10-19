@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -93,5 +94,46 @@ def consume_approval(root: Path, approval_id: str, *, action: str, resource: str
         document["document_hash"] = _hash(document)
         _atomic_write_bytes(path, (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode())
         return document
+    finally:
+        lock.rmdir()
+
+
+def execute_approved_operation(root: Path, approval_id: str, *, action: str,
+                               resource: str, payload: dict[str, Any],
+                               operation_id: str,
+                               execute: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+    """Serialize approval use and retain a response for identical retries.
+
+    The callback must itself be durable and idempotent for operation_id: a crash
+    after its commit but before this document is saved must be safe to retry.
+    Failed callbacks leave the approval available.
+    """
+    if not operation_id.strip() or len(operation_id) > 256:
+        raise ValueError("operation_id must contain 1-256 characters")
+    path = _path(root, approval_id)
+    lock = _state_lock(path)
+    try:
+        document = _read_object(path)
+        if document is None or document.get("document_hash") != _hash(document):
+            raise ValueError("approval request not found or corrupt")
+        if (document.get("action") != action or document.get("resource") != resource
+                or document.get("payload") != payload):
+            raise ValueError("approval request does not match this operation")
+        if document.get("status") == "consumed":
+            result = document.get("operation_result")
+            if document.get("operation_id") != operation_id or not isinstance(result, dict):
+                raise ValueError("approval request was consumed by another operation")
+            return result
+        if document.get("status") != "approved":
+            raise ValueError("approval request has not reached quorum")
+        expires = datetime.fromisoformat(str(document["expires_at"]).replace("Z", "+00:00"))
+        if expires <= datetime.now(UTC):
+            raise ValueError("approval request expired")
+        result = execute()
+        document.update(status="consumed", consumed_at=_stamp(),
+                        operation_id=operation_id, operation_result=result)
+        document["document_hash"] = _hash(document)
+        _atomic_write_bytes(path, (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode())
+        return result
     finally:
         lock.rmdir()
