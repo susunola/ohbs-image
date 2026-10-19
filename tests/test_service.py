@@ -362,3 +362,148 @@ def test_auditor_can_search_structured_audit_events(tmp_path):
     assert result["events"][0]["subject"] == "release"
     status, _, _ = service.dispatch("GET", "/api/v1/audit", "Bearer view-token")
     assert status == 403
+
+
+def test_missing_or_invalid_bucket_scope_denies_direct_access(tmp_path):
+    service = _service(tmp_path)
+    for scope in (None, "rhel10", {}):
+        principal = {"subject": "unscoped", "roles": ["viewer", "promoter"]}
+        if scope is not None:
+            principal["buckets"] = scope
+        service.tokens["unscoped"] = principal
+        assert service.dispatch("GET", "/api/v1/artifacts/img-1",
+                                "Bearer unscoped")[0] == 403
+        assert service.dispatch("PUT", "/api/v1/channels/rhel10/stable",
+                                "Bearer unscoped", body=b'{}')[0] == 403
+        status, _, body = service.dispatch("GET", "/api/v1/artifacts", "Bearer unscoped")
+        assert status == 200 and json.loads(body)["count"] == 0
+
+
+def test_artifact_scope_is_applied_before_pagination(tmp_path):
+    from ohbs_image._registry import put_artifact
+    service = _service(tmp_path)
+    for index, bucket in enumerate(("rhel10", "ubuntu2404", "rhel10", "ubuntu2404")):
+        doc = {"schema": ARTIFACT_SCHEMA, "artifact_id": f"img-page-{index}",
+               "bucket": bucket, "version": "v1", "status": "active",
+               "created_at": f"2099-01-0{index + 1}T00:00:00Z"}
+        doc["document_hash"] = _hash(doc)
+        put_artifact(doc, tmp_path / "registry")
+    ids = []
+    for offset in range(3):
+        status, _, body = service.dispatch(
+            "GET", f"/api/v1/artifacts?limit=1&offset={offset}", "Bearer view-token")
+        result = json.loads(body)
+        assert status == 200 and result["count"] == 3
+        ids.extend(row["artifact_id"] for row in result["artifacts"])
+    assert ids == ["img-page-2", "img-page-0", "img-1"]
+    status, _, body = service.dispatch("GET", "/api/v1/artifacts?limit=1", "Bearer admin-token")
+    assert status == 200 and json.loads(body)["count"] == 5
+
+
+def test_approved_promotion_retries_and_failure_preserves_approval(tmp_path):
+    service = _service(tmp_path)
+    service.approval_policy = {"required_channels": ["stable"]}
+    payload = {"artifact_id": "img-1", "expected_generation": 0}
+    approval = create_approval(tmp_path, requester="release", action="channel.promote",
+                               resource="rhel10/stable", payload=payload, required=1)
+    approve(tmp_path, approval["approval_id"], approver="reviewer")
+    headers = {"Approval-Id": approval["approval_id"], "Idempotency-Key": "approved-deploy"}
+    # A provider/storage error must not burn the approval.
+    from unittest.mock import patch
+    with patch("ohbs_image._service.promote_channel", side_effect=ValueError("temporary failure")):
+        assert service.dispatch("PUT", "/api/v1/channels/rhel10/stable", "Bearer promote-token",
+                                body=json.dumps(payload).encode(), headers=headers)[0] == 400
+    path = tmp_path / "approvals" / f"{approval['approval_id']}.json"
+    assert json.loads(path.read_text())["status"] == "approved"
+    first = service.dispatch("PUT", "/api/v1/channels/rhel10/stable", "Bearer promote-token",
+                             body=json.dumps(payload).encode(), headers=headers)
+    # Replay survives a control-plane restart and does not execute promotion again.
+    service = ControlPlane(tmp_path, service.rbac_path)
+    service.approval_policy = {"required_channels": ["stable"]}
+    with patch("ohbs_image._service.promote_channel", side_effect=AssertionError("replayed mutation")):
+        second = service.dispatch("PUT", "/api/v1/channels/rhel10/stable", "Bearer promote-token",
+                                  body=json.dumps(payload).encode(), headers=headers)
+    assert first == second and first[0] == 200
+    assert json.loads(first[2])["generation"] == 1
+    headers["Idempotency-Key"] = "different-operation"
+    assert service.dispatch("PUT", "/api/v1/channels/rhel10/stable", "Bearer promote-token",
+                            body=json.dumps(payload).encode(), headers=headers)[0] == 400
+    headers["Idempotency-Key"] = "approved-deploy"
+    assert service.dispatch("PUT", "/api/v1/channels/rhel10/stable", "Bearer promote-token",
+                            body=b'{"artifact_id":"img-other"}', headers=headers)[0] == 400
+
+
+def test_http_patch_revokes_artifact_and_enforces_authorization(tmp_path, monkeypatch):
+    import http.client
+    import threading
+    from http.server import ThreadingHTTPServer
+
+    from ohbs_image._service import serve_control_plane
+    service = _service(tmp_path)
+    servers = []
+    ready = threading.Event()
+
+    class TestServer(ThreadingHTTPServer):
+        def serve_forever(self, poll_interval=0.05):
+            servers.append(self)
+            ready.set()
+            super().serve_forever(poll_interval=poll_interval)
+
+    monkeypatch.setattr("ohbs_image._service.ThreadingHTTPServer", TestServer)
+    worker = threading.Thread(target=serve_control_plane,
+                              args=("127.0.0.1", 0, tmp_path, service.rbac_path), daemon=True)
+    worker.start()
+    assert ready.wait(5)
+    server = servers[0]
+    try:
+        for token, expected in (("view-token", 403), ("admin-token", 200)):
+            connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+            try:
+                connection.request("PATCH", "/api/v1/artifacts/img-1/status",
+                                   body=json.dumps({"status": "revoked", "reason": "test"}),
+                                   headers={"Authorization": f"Bearer {token}",
+                                            "Content-Type": "application/json"})
+                response = connection.getresponse()
+                result = json.loads(response.read())
+                assert response.status == expected
+                if expected == 200:
+                    assert result["artifact"]["status"] == "revoked"
+            finally:
+                connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=5)
+
+
+def test_approved_promotion_recovers_after_result_persistence_failure(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from ohbs_image import _approvals
+    from ohbs_image._channels import resolve_channel
+    service = _service(tmp_path)
+    service.approval_policy = {"required_channels": ["stable"]}
+    payload = {"artifact_id": "img-1", "expected_generation": 0}
+    approval = create_approval(tmp_path, requester="release", action="channel.promote",
+                               resource="rhel10/stable", payload=payload, required=1)
+    approve(tmp_path, approval["approval_id"], approver="reviewer")
+    headers = {"Approval-Id": approval["approval_id"], "Idempotency-Key": "recover-deploy"}
+    write = _approvals._atomic_write_bytes
+
+    def fail_write(*args, **kwargs):
+        raise OSError("interrupted before approval persistence")
+
+    monkeypatch.setattr(_approvals, "_atomic_write_bytes", fail_write)
+    assert service.dispatch("PUT", "/api/v1/channels/rhel10/stable", "Bearer promote-token",
+                            body=json.dumps(payload).encode(), headers=headers)[0] == 400
+    assert resolve_channel("rhel10", "stable", tmp_path / "registry")["channel"]["generation"] == 1
+    monkeypatch.setattr(_approvals, "_atomic_write_bytes", write)
+
+    def retry(_index):
+        return service.dispatch("PUT", "/api/v1/channels/rhel10/stable", "Bearer promote-token",
+                                body=json.dumps(payload).encode(), headers=headers)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(retry, range(2)))
+    assert responses[0] == responses[1] and responses[0][0] == 200
+    assert resolve_channel("rhel10", "stable", tmp_path / "registry")["channel"]["generation"] == 1

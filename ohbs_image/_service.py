@@ -15,7 +15,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from ._ancestry import descendants, impact_plan
-from ._approvals import approve, consume_approval, create_approval
+from ._approvals import approve, consume_approval, create_approval, execute_approved_operation
 from ._channels import promote_channel, resolve_channel
 from ._config import _lineage_path
 from ._console import CONSOLE_CSS, CONSOLE_HTML, CONSOLE_JS
@@ -118,7 +118,7 @@ class ControlPlane:
         if "admin" not in roles and role not in roles:
             raise AuthorizationError(f"role {role} is required")
         buckets = principal.get("buckets")
-        if bucket and "admin" not in roles and isinstance(buckets, list) and bucket not in buckets:
+        if bucket and "admin" not in roles and (not isinstance(buckets, list) or bucket not in buckets):
             raise AuthorizationError(f"access to bucket {bucket} is denied")
 
     @staticmethod
@@ -284,15 +284,17 @@ class ControlPlane:
                 requested_bucket = query.get("bucket", [""])[0]
                 if requested_bucket and not self._visible(principal, requested_bucket):
                     raise AuthorizationError("access to artifact bucket is denied")
+                allowed_buckets = None
+                if not self._is_admin(principal):
+                    scope = principal.get("buckets")
+                    allowed_buckets = [str(item) for item in scope] if isinstance(scope, list) else []
                 count, rows = _database(self.root / "registry").search_artifacts(
                     bucket=requested_bucket, status=query.get("status", [""])[0],
                     version=query.get("version", [""])[0],
                     query=query.get("q", [""])[0], label=query.get("label", [""])[0],
-                    limit=limit, offset=offset)
-                rows = [row for row in rows if self._visible(
-                    principal, row.get("bucket"))]
-                visible_count = count if self._is_admin(principal) or requested_bucket else len(rows)
-                return self._json(200, {"count": visible_count, "limit": limit,
+                    limit=limit, offset=offset,
+                    allowed_buckets=allowed_buckets)
+                return self._json(200, {"count": count, "limit": limit,
                     "offset": offset, "artifacts": rows})
             if method == "POST" and route == ["artifacts"]:
                 self._authorize(principal, "admin")
@@ -579,16 +581,27 @@ class ControlPlane:
                         )
                     required_channels = {
                         str(item) for item in self.approval_policy.get("required_channels", [])}
+                    if not isinstance(payload, dict):
+                        raise ValueError("promotion payload must be an object")
+
+                    def promote() -> dict[str, Any]:
+                        return promote_channel(
+                            bucket, channel, str(payload.get("artifact_id") or ""),
+                            expected_generation=payload.get("expected_generation"),
+                            operation_id=operation_id,
+                            actor=str(principal.get("subject") or "unknown"),
+                            root=self.root / "registry")
+
                     if channel in required_channels:
                         approval_id = (headers or {}).get("Approval-Id", "")
                         if not approval_id:
                             raise AuthorizationError("Approval-Id is required for this channel")
-                        consume_approval(self.root, approval_id, action="channel.promote",
-                                         resource=f"{bucket}/{channel}", payload=payload)
-                    result = promote_channel(bucket, channel, str(payload.get("artifact_id") or ""),
-                        expected_generation=payload.get("expected_generation"),
-                        operation_id=operation_id, actor=str(principal.get("subject") or "unknown"),
-                        root=self.root / "registry")
+                        result = execute_approved_operation(
+                            self.root, approval_id, action="channel.promote",
+                            resource=f"{bucket}/{channel}", payload=payload,
+                            operation_id=operation_id, execute=promote)
+                    else:
+                        result = promote()
                     self._audit(principal, "channel.promote", f"{bucket}/{channel}", "allowed")
                     return self._json(200, result)
             if method == "GET" and route == ["metrics"]:
@@ -666,6 +679,9 @@ def serve_control_plane(host: str, port: int, root: Path, rbac_path: Path, *,
             self._dispatch()
 
         def do_POST(self) -> None:  # noqa: N802
+            self._dispatch()
+
+        def do_PATCH(self) -> None:  # noqa: N802
             self._dispatch()
 
         def log_message(self, format: str, *args: object) -> None:
